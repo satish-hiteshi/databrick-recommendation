@@ -71,15 +71,30 @@ for _k, _v in {
 mlflow.set_registry_uri("databricks-uc")
 mlflow.set_experiment("/Shared/feedsai-experiments")
 
-from mlflow_model import log_model
+import importlib, mlflow_model as _mm
+importlib.reload(_mm)
+from mlflow_model import FeedsAIModel
 
-run_id = log_model(
-    entities_meta_path=ENTITIES_META_PATH,
-    pipeline_src_dir=DATABRICKS_PKG,
-    run_name="feedsai-v1",
-    registered_model_name=REGISTERED_MODEL,
-)
-print(f"run_id={run_id}")
+pipeline_pkg = os.path.join(DATABRICKS_PKG, "pipeline")
+
+pip_deps = [
+    "voyageai>=0.3", "rank-bm25>=0.2.2", "numpy>=1.24",
+    "databricks-vectorsearch>=0.40", "databricks-sql-connector>=3.0",
+    "pandas>=2.0", "mlflow>=2.14",
+]
+
+with mlflow.start_run(run_name="feedsai-v1") as run:
+    mlflow.pyfunc.log_model(
+        artifact_path="model",
+        python_model=FeedsAIModel(),
+        artifacts={"entities_meta": ENTITIES_META_PATH},
+        code_paths=[pipeline_pkg],
+        pip_requirements=pip_deps,
+        registered_model_name=REGISTERED_MODEL,
+    )
+    run_id = run.info.run_id
+
+print(f"run_id={run_id}  |  code_paths=[{pipeline_pkg}]")
 
 # COMMAND ----------
 

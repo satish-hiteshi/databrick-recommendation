@@ -98,23 +98,28 @@ dbutils.library.restartPython()
 import sys, os
 import mlflow
 
-# Compute the path to the databricks/ directory from the notebook's own path.
-# In Databricks Repos the notebook lives at:
-#   /Workspace/Repos/<user>/<repo>/databricks/notebooks/04_deploy_model
-# so going two levels up gives us the databricks/ directory.
+# notebookPath() returns the workspace-relative path WITHOUT the /Workspace prefix.
+# e.g.  /Users/you@company.com/repo/databricks/notebooks/04_deploy_model
+# Filesystem path on Databricks always starts with /Workspace, so we prepend it.
 _nb_path = (
     dbutils.notebook.entry_point
     .getDbutils().notebook().getContext()
     .notebookPath().get()
 )
-# notebookPath is a workspace path like /Workspace/Repos/.../databricks/notebooks/04_deploy_model
-DATABRICKS_PKG = os.path.dirname(os.path.dirname(_nb_path))
-# e.g. /Workspace/Repos/<user>/<repo>/databricks
+DATABRICKS_PKG = "/Workspace" + os.path.dirname(os.path.dirname(_nb_path))
+# e.g. /Workspace/Users/you@company.com/repo/databricks
+
+# Remove any stale 'pipeline' cached from the root pipeline/ directory,
+# then insert our databricks/pipeline/ at the front of sys.path.
+for mod in list(sys.modules.keys()):
+    if mod == "pipeline" or mod.startswith("pipeline."):
+        del sys.modules[mod]
 
 if DATABRICKS_PKG not in sys.path:
     sys.path.insert(0, DATABRICKS_PKG)
 
 print(f"DATABRICKS_PKG = {DATABRICKS_PKG}")
+print(f"sys.path[0]    = {sys.path[0]}")
 
 # COMMAND ----------
 

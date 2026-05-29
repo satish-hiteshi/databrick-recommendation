@@ -77,7 +77,8 @@ from mlflow_model import FeedsAIModel
 from mlflow.models.signature import ModelSignature
 from mlflow.types.schema import Schema, ColSpec
 
-pipeline_pkg = os.path.join(DATABRICKS_PKG, "pipeline")
+pipeline_pkg    = os.path.join(DATABRICKS_PKG, "pipeline")
+mlflow_model_py = os.path.join(DATABRICKS_PKG, "mlflow_model.py")
 
 signature = ModelSignature(
     inputs=Schema([ColSpec("string", "query")]),
@@ -95,7 +96,7 @@ with mlflow.start_run(run_name="feedsai-v1") as run:
         artifact_path="model",
         python_model=FeedsAIModel(),
         artifacts={"entities_meta": ENTITIES_META_PATH},
-        code_paths=[pipeline_pkg],
+        code_paths=[pipeline_pkg, mlflow_model_py],
         signature=signature,
         pip_requirements=pip_deps,
         registered_model_name=REGISTERED_MODEL,

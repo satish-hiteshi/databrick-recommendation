@@ -1,31 +1,14 @@
 # Databricks notebook source
 
 # COMMAND ----------
-# MAGIC %md
-# MAGIC # 01 — Setup Catalog, Schema & Delta Tables
-# MAGIC
-# MAGIC **Run this once** before anything else.
-# MAGIC
-# MAGIC Prerequisites:
-# MAGIC - An existing Unity Catalog **catalog** (use an existing one or ask your admin to create one).
-# MAGIC - `CREATE SCHEMA` privilege on that catalog.
-# MAGIC
-# MAGIC What this notebook creates:
-# MAGIC - Schema `{CATALOG}.feedsai`
-# MAGIC - Delta table `{CATALOG}.feedsai.entities`  — with Change Data Feed enabled (required for Vector Search Delta Sync)
-# MAGIC - Delta table `{CATALOG}.feedsai.query_history`
 
-# COMMAND ----------
-
-# ── CONFIGURE YOUR SANDBOX HERE ──────────────────────────────────────
 CATALOG = "dev_feeds_silver_infotech"
-SCHEMA  = "feedsai"       # Schema that will be created inside the catalog
-# ─────────────────────────────────────────────────────────────────────
+SCHEMA  = "feedsai"
 
 # COMMAND ----------
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
-print(f"Schema ready: {CATALOG}.{SCHEMA}")
+print(f"Schema: {CATALOG}.{SCHEMA}")
 
 # COMMAND ----------
 
@@ -52,7 +35,7 @@ TBLPROPERTIES (
     delta.columnMapping.mode   = 'name'
 )
 """)
-print(f"Table ready: {CATALOG}.{SCHEMA}.entities")
+print(f"Table: {CATALOG}.{SCHEMA}.entities")
 
 # COMMAND ----------
 
@@ -70,7 +53,7 @@ TBLPROPERTIES (
     'delta.feature.allowColumnDefaults' = 'supported'
 )
 """)
-print(f"Table ready: {CATALOG}.{SCHEMA}.query_history")
+print(f"Table: {CATALOG}.{SCHEMA}.query_history")
 
 # COMMAND ----------
 

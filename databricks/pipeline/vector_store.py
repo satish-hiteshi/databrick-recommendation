@@ -1,136 +1,63 @@
-"""
-Databricks Vector Search + in-memory BM25 for Feeds.ai.
-
-vector_search()  → Databricks Vector Search (Delta Sync Index, cosine similarity)
-keyword_search() → rank-bm25 index built in memory from entity_store data
-setup()          → called once at model startup after entity_store is initialised
-"""
-
 import numpy as np
 from rank_bm25 import BM25Okapi
 from databricks.vector_search.client import VectorSearchClient
 
-from pipeline.config import (
-    VS_ENDPOINT,
-    VS_INDEX,
-    TOP_K_RETRIEVAL,
-)
+from pipeline.config import VS_ENDPOINT, VS_INDEX, TOP_K_RETRIEVAL
 from pipeline import entity_store
 
+_vs_index      = None
+_bm25_index    = None
+_bm25_entities = []
 
-# ── Module-level singletons ───────────────────────────────────────────
-
-_vs_index   = None
-_bm25_index = None
-_bm25_entities: list = []
-
-
-# ── Databricks Vector Search ──────────────────────────────────────────
 
 def _get_vs_index():
     global _vs_index
     if _vs_index is None:
-        # No-arg initialisation uses Databricks automatic workspace credentials.
-        # This works in both Model Serving and notebooks without needing an
-        # explicit PAT, and avoids token-expiry issues at runtime.
-        client = VectorSearchClient(disable_notice=True)
-        _vs_index = client.get_index(
-            endpoint_name=VS_ENDPOINT,
-            index_name=VS_INDEX,
-        )
+        client    = VectorSearchClient(disable_notice=True)
+        _vs_index = client.get_index(endpoint_name=VS_ENDPOINT, index_name=VS_INDEX)
     return _vs_index
 
 
-def vector_search(
-    query_embedding,
-    target_verticals=None,
-    top_k: int = TOP_K_RETRIEVAL,
-) -> list[tuple]:
-    """
-    ANN search in Databricks Vector Search.
-    Returns list of (entity_id, name, vertical, score) sorted by score desc.
-
-    Filter syntax: a tuple passed as the filter value means "IN" condition.
-    e.g. {"vertical": ("game", "movie", "tv")}
-    """
-    index = _get_vs_index()
-
-    vec = query_embedding.tolist() if isinstance(query_embedding, np.ndarray) else query_embedding
-
+def vector_search(query_embedding, target_verticals=None, top_k=TOP_K_RETRIEVAL):
+    index   = _get_vs_index()
+    vec     = query_embedding.tolist() if isinstance(query_embedding, np.ndarray) else query_embedding
     filters = {"vertical": tuple(target_verticals)} if target_verticals else None
 
-    response = index.similarity_search(
-        query_vector=vec,
-        columns=["entity_id", "name", "vertical"],
-        filters=filters,
-        num_results=top_k,
-    )
-
-    # Response shape: {"manifest": {"columns": [{"name": ...}, ...]},
-    #                  "result":   {"data_array": [[...], ...]}}
+    response  = index.similarity_search(query_vector=vec, columns=["entity_id", "name", "vertical"], filters=filters, num_results=top_k)
     col_names = [col["name"] for col in response.get("manifest", {}).get("columns", [])]
     rows      = response.get("result", {}).get("data_array", [])
 
-    # The VS SDK appends score as the final column
     try:
-        eid_idx  = col_names.index("entity_id")
-        name_idx = col_names.index("name")
-        vert_idx = col_names.index("vertical")
+        eid_idx, name_idx, vert_idx = col_names.index("entity_id"), col_names.index("name"), col_names.index("vertical")
     except ValueError:
         eid_idx, name_idx, vert_idx = 0, 1, 2
 
-    results = []
-    for row in rows:
-        score = float(row[-1])  # score is always last
-        results.append((row[eid_idx], row[name_idx], row[vert_idx], score))
-
-    return results
+    return [(row[eid_idx], row[name_idx], row[vert_idx], float(row[-1])) for row in rows]
 
 
-# ── BM25 keyword search ───────────────────────────────────────────────
-
-def _build_bm25_index() -> None:
+def _build_bm25_index():
     global _bm25_index, _bm25_entities
-    entities = entity_store.get_all()
-    corpus = [[kw.lower() for kw in e["bm25_keywords"]] for e in entities]
-    _bm25_index   = BM25Okapi(corpus)
+    entities       = entity_store.get_all()
+    corpus         = [[kw.lower() for kw in e["bm25_keywords"]] for e in entities]
+    _bm25_index    = BM25Okapi(corpus)
     _bm25_entities = entities
-    print(f"BM25 index built over {len(entities)} entities.")
 
 
-def keyword_search(
-    anchor_keywords: list[str],
-    target_verticals=None,
-    top_k: int = TOP_K_RETRIEVAL,
-) -> list[tuple]:
-    """
-    BM25 keyword search across all entities.
-    Returns list of (entity_id, name, vertical, bm25_score) sorted by score desc.
-    """
+def keyword_search(anchor_keywords, target_verticals=None, top_k=TOP_K_RETRIEVAL):
     if _bm25_index is None:
         _build_bm25_index()
 
-    query_tokens = [kw.lower() for kw in anchor_keywords]
-    scores = _bm25_index.get_scores(query_tokens)
-
-    scored = []
-    for idx, score in enumerate(scores):
-        e = _bm25_entities[idx]
-        if target_verticals and e["vertical"] not in target_verticals:
-            continue
-        scored.append((e["entity_id"], e["name"], e["vertical"], float(score)))
-
+    scores = _bm25_index.get_scores([kw.lower() for kw in anchor_keywords])
+    scored = [
+        (e["entity_id"], e["name"], e["vertical"], float(s))
+        for e, s in zip(_bm25_entities, scores)
+        if not target_verticals or e["vertical"] in target_verticals
+    ]
     scored.sort(key=lambda x: x[3], reverse=True)
     return scored[:top_k]
 
 
-# ── One-time setup ────────────────────────────────────────────────────
-
-def setup() -> None:
-    """
-    Must be called after entity_store.init_from_list().
-    Builds the BM25 index and pre-connects to the VS index.
-    """
+def setup():
     _build_bm25_index()
     _get_vs_index()
-    print("Vector store ready (Databricks VS + BM25).")
+    print(f"Vector store ready: {len(_bm25_entities)} entities")

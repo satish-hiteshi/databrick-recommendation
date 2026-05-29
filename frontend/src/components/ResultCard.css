@@ -1,0 +1,154 @@
+.result-card {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 150ms ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.result-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+.result-card:active {
+  transform: scale(0.995);
+}
+.result-card[data-vertical="game"] { border-left-color: #10B981; }
+.result-card[data-vertical="movie"] { border-left-color: #3B82F6; }
+.result-card[data-vertical="tv"] { border-left-color: #F59E0B; }
+
+.result-rank {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 28px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.result-card[data-vertical="game"] .result-rank { color: #10B981; }
+.result-card[data-vertical="movie"] .result-rank { color: #3B82F6; }
+.result-card[data-vertical="tv"] .result-rank { color: #F59E0B; }
+
+.result-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.result-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.vert-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  text-transform: capitalize;
+}
+
+.dual-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.match-pct {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+/* Score bar */
+.score-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.score-track {
+  flex: 1;
+  height: 6px;
+  background: #F1F5F9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.score-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* Signal details row */
+.signal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rrf-text {
+  font-size: 11px;
+  color: #94A3B8;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.signal-indicator {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+}
+.sig-vec {
+  background: #DBEAFE;
+  color: #1E40AF;
+}
+.sig-bm25 {
+  background: #EDE9FE;
+  color: #6D28D9;
+}
+.sig-miss {
+  background: #F1F5F9;
+  color: #94A3B8;
+}
+.sig-overlap {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+/* Keywords */
+.result-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.kw-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: #F1F5F9;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+}

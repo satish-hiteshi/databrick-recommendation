@@ -1,0 +1,153 @@
+.sidebar {
+  width: 200px;
+  min-width: 200px;
+  background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
+  border-right: 1px solid #334155;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 10px;
+  transition: width 200ms ease, min-width 200ms ease;
+}
+.sidebar.collapsed {
+  width: 60px;
+  min-width: 60px;
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+  margin-bottom: 14px;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px;
+  overflow: hidden;
+}
+
+.logo-icon {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  background: var(--primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-text-group {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.logo-text {
+  font-weight: 700;
+  font-size: 17px;
+  color: #FFFFFF;
+}
+.logo-sub {
+  font-size: 10px;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+.collapse-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748B;
+  border-radius: 6px;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+}
+.collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #CBD5E1;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: #334155;
+  margin: 0 6px 14px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-tab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  color: #94A3B8;
+  font-weight: 500;
+  font-size: 15px;
+  transition: all 150ms ease;
+  border-left: 3px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sidebar.collapsed .sidebar-tab {
+  justify-content: center;
+  padding: 11px 0;
+  border-left: none;
+  border-bottom: 2px solid transparent;
+}
+.sidebar-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #CBD5E1;
+}
+.sidebar-tab.active {
+  background: #1E293B;
+  color: #FFFFFF;
+  border-left-color: #4361EE;
+}
+.sidebar.collapsed .sidebar-tab.active {
+  border-left-color: transparent;
+  border-bottom-color: #4361EE;
+}
+
+.tab-letter {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.sidebar-tab.active .tab-letter {
+  background: #4361EE;
+  color: white;
+}
+
+.tab-label {
+  font-size: 15px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px 6px;
+  text-align: center;
+}
+.sidebar-version {
+  font-size: 11px;
+  color: #475569;
+}

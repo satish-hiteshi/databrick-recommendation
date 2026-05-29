@@ -1,0 +1,323 @@
+{
+  "summary": {
+    "total_queries": 15,
+    "successful_with_results": 9,
+    "nlu_failures": 1,
+    "resolution_failures": 5,
+    "avg_latency_ms": 830.3,
+    "avg_nlu_ms": 776.3,
+    "avg_retrieval_ms": 53.7,
+    "avg_rerank_ms": 0.3,
+    "min_latency_ms": 428.3,
+    "max_latency_ms": 2637.3
+  },
+  "avg_results_per_query": 6.0,
+  "within_vertical": {
+    "accuracy": 100.0,
+    "correct": 40,
+    "total": 40,
+    "details": [
+      {
+        "qid": "Q1",
+        "target_verticals": [
+          "game"
+        ],
+        "correct": 10,
+        "total": 10,
+        "accuracy": 100.0
+      },
+      {
+        "qid": "Q2",
+        "target_verticals": [
+          "game"
+        ],
+        "correct": 10,
+        "total": 10,
+        "accuracy": 100.0
+      },
+      {
+        "qid": "Q3",
+        "target_verticals": [
+          "game"
+        ],
+        "correct": 10,
+        "total": 10,
+        "accuracy": 100.0
+      },
+      {
+        "qid": "Q4",
+        "target_verticals": [
+          "movie"
+        ],
+        "correct": 10,
+        "total": 10,
+        "accuracy": 100.0
+      }
+    ]
+  },
+  "cross_vertical": {
+    "queries_with_diversity": 0,
+    "total": 2,
+    "details": [
+      {
+        "qid": "Q6",
+        "vertical_distribution": {
+          "movie": 10
+        },
+        "num_verticals": 1,
+        "has_diversity": false
+      },
+      {
+        "qid": "Q7",
+        "vertical_distribution": {
+          "tv": 10
+        },
+        "num_verticals": 1,
+        "has_diversity": false
+      }
+    ]
+  },
+  "thematic": [
+    {
+      "qid": "Q11",
+      "anchor_resolved": "Marvel Zombies",
+      "vertical_distribution": {
+        "movie": 7,
+        "game": 2,
+        "tv": 1
+      },
+      "top3": [
+        [
+          "Night of the Zoopocalypse",
+          "movie"
+        ],
+        [
+          "Thunderbolts*",
+          "movie"
+        ],
+        [
+          "Outbreak: Shades of Horror",
+          "game"
+        ]
+      ]
+    },
+    {
+      "qid": "Q12",
+      "note": "no results"
+    },
+    {
+      "qid": "Q13",
+      "anchor_resolved": "Nullstar: Solus",
+      "vertical_distribution": {
+        "game": 10
+      },
+      "top3": [
+        [
+          "TetherGeist",
+          "game"
+        ],
+        [
+          "ReSetna",
+          "game"
+        ],
+        [
+          "Super Meat Boy 3D",
+          "game"
+        ]
+      ]
+    },
+    {
+      "qid": "Q14",
+      "note": "no results"
+    },
+    {
+      "qid": "Q15",
+      "anchor_resolved": "Nullstar: Solus",
+      "vertical_distribution": {
+        "game": 10
+      },
+      "top3": [
+        [
+          "TetherGeist",
+          "game"
+        ],
+        [
+          "ReSetna",
+          "game"
+        ],
+        [
+          "Super Meat Boy 3D",
+          "game"
+        ]
+      ]
+    }
+  ],
+  "scores": {
+    "final": {
+      "min": 0.0323,
+      "max": 1.1,
+      "avg": 0.2309,
+      "median": 0.1637
+    },
+    "vector": {
+      "min": 0.0,
+      "max": 1.0,
+      "avg": 0.1973,
+      "median": 0.1249
+    },
+    "bm25": {
+      "min": 0.0,
+      "max": 1.0,
+      "avg": 0.1128,
+      "median": 0.0291
+    },
+    "dual_signal_results": 53,
+    "total_results": 90,
+    "dual_signal_pct": 58.9,
+    "vector_dominant_count": 69,
+    "bm25_dominant_count": 20
+  },
+  "nlu": [
+    {
+      "qid": "Q1",
+      "anchor_entity": "Elden Ring Nightreign",
+      "intent": "similar",
+      "target_verticals": [
+        "game"
+      ],
+      "query_type": "within_vertical"
+    },
+    {
+      "qid": "Q2",
+      "anchor_entity": "Resident Evil Requiem",
+      "intent": "similar",
+      "target_verticals": [
+        "game"
+      ],
+      "query_type": "within_vertical"
+    },
+    {
+      "qid": "Q3",
+      "anchor_entity": "Silent Hill",
+      "intent": "similar",
+      "target_verticals": [
+        "game"
+      ],
+      "query_type": "within_vertical"
+    },
+    {
+      "qid": "Q4",
+      "anchor_entity": "Star Wars: The Mandalorian and Grogu",
+      "intent": "similar",
+      "target_verticals": [
+        "movie"
+      ],
+      "query_type": "within_vertical"
+    },
+    {
+      "qid": "Q5",
+      "anchor_entity": "Stranger Things: Tales from 85",
+      "intent": "similar",
+      "target_verticals": [
+        "tv"
+      ],
+      "query_type": "within_vertical"
+    },
+    {
+      "qid": "Q6",
+      "anchor_entity": "Elden Ring Nightreign",
+      "intent": "recommend",
+      "target_verticals": [
+        "movie"
+      ],
+      "query_type": "cross_vertical"
+    },
+    {
+      "qid": "Q7",
+      "anchor_entity": "Resident Evil",
+      "intent": "similar",
+      "target_verticals": [
+        "tv"
+      ],
+      "query_type": "within_vertical"
+    },
+    {
+      "qid": "Q8",
+      "anchor_entity": "horror movies",
+      "intent": "recommend",
+      "target_verticals": [
+        "game"
+      ],
+      "query_type": "cross_vertical"
+    },
+    {
+      "qid": "Q9",
+      "anchor_entity": "fantasy RPG games",
+      "intent": "recommend",
+      "target_verticals": [
+        "movie"
+      ],
+      "query_type": "cross_vertical"
+    },
+    {
+      "qid": "Q10",
+      "anchor_entity": "action adventure games",
+      "intent": "recommend",
+      "target_verticals": [
+        "tv"
+      ],
+      "query_type": "cross_vertical"
+    },
+    {
+      "qid": "Q11",
+      "anchor_entity": "Marvel Zombies",
+      "intent": "similar",
+      "target_verticals": [
+        "game",
+        "movie",
+        "tv"
+      ],
+      "query_type": "cross_vertical"
+    },
+    {
+      "qid": "Q12",
+      "anchor_entity": "N/A",
+      "intent": "N/A",
+      "target_verticals": [],
+      "query_type": "N/A"
+    },
+    {
+      "qid": "Q13",
+      "anchor_entity": "null",
+      "intent": "explore",
+      "target_verticals": [
+        "game",
+        "movie",
+        "tv"
+      ],
+      "query_type": "cross_vertical"
+    },
+    {
+      "qid": "Q14",
+      "anchor_entity": "sci-fi",
+      "intent": "recommend",
+      "target_verticals": [
+        "game",
+        "movie",
+        "tv"
+      ],
+      "query_type": "cross_vertical"
+    },
+    {
+      "qid": "Q15",
+      "anchor_entity": "null",
+      "intent": "explore",
+      "target_verticals": [
+        "game",
+        "movie",
+        "tv"
+      ],
+      "query_type": "cross_vertical"
+    }
+  ]
+}

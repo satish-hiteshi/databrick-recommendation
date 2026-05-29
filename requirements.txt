@@ -1,0 +1,11 @@
+voyageai
+groq
+qdrant-client
+psycopg2-binary
+rank-bm25
+python-dotenv
+numpy
+tqdm
+fastapi
+uvicorn
+python-multipart

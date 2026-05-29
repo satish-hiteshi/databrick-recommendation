@@ -1,0 +1,4045 @@
+{
+  "Q1": {
+    "qid": "Q1",
+    "query": "What games feel like Hollow Knight: Silksong?",
+    "mode": "entity_single",
+    "anchor_count": 1,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "Little Nightmares III",
+        "vertical": "game",
+        "gt_score": 27.0
+      },
+      {
+        "name": "Haste",
+        "vertical": "game",
+        "gt_score": 26.0
+      },
+      {
+        "name": "Adorable Adventures",
+        "vertical": "game",
+        "gt_score": 26.0
+      },
+      {
+        "name": "Silent Hill f",
+        "vertical": "game",
+        "gt_score": 25.0
+      },
+      {
+        "name": "Time Flies",
+        "vertical": "game",
+        "gt_score": 24.0
+      },
+      {
+        "name": "Primal Planet",
+        "vertical": "game",
+        "gt_score": 24.0
+      },
+      {
+        "name": "Ender Magnolia: Bloom in the Mist",
+        "vertical": "game",
+        "gt_score": 23.0
+      },
+      {
+        "name": "Is This Seat Taken?",
+        "vertical": "game",
+        "gt_score": 23.0
+      },
+      {
+        "name": "Clair Obscur: Expedition 33",
+        "vertical": "game",
+        "gt_score": 22.0
+      },
+      {
+        "name": "Sophie: Starlight Whispers",
+        "vertical": "game",
+        "gt_score": 21.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Ender Magnolia: Bloom in the Mist",
+        "vertical": "game",
+        "pipeline_score": 0.3437
+      },
+      {
+        "name": "Inayah: Life after Gods",
+        "vertical": "game",
+        "pipeline_score": 0.2775
+      },
+      {
+        "name": "Sophie: Starlight Whispers",
+        "vertical": "game",
+        "pipeline_score": 0.2679
+      },
+      {
+        "name": "Possessor(s)",
+        "vertical": "game",
+        "pipeline_score": 0.2341
+      },
+      {
+        "name": "Plus Ultra: Legado",
+        "vertical": "game",
+        "pipeline_score": 0.2195
+      },
+      {
+        "name": "Somber Echoes",
+        "vertical": "game",
+        "pipeline_score": 0.1892
+      },
+      {
+        "name": "Blade Chimera",
+        "vertical": "game",
+        "pipeline_score": 0.1817
+      },
+      {
+        "name": "SteamDolls: Order of Chaos",
+        "vertical": "game",
+        "pipeline_score": 0.1366
+      },
+      {
+        "name": "Spirit of the North 2",
+        "vertical": "game",
+        "pipeline_score": 0.1352
+      },
+      {
+        "name": "Shadow Labyrinth",
+        "vertical": "game",
+        "pipeline_score": 0.1312
+      }
+    ],
+    "overlap_names": [
+      "Ender Magnolia: Bloom in the Mist",
+      "Sophie: Starlight Whispers"
+    ],
+    "overlap_count": 2,
+    "precision_at_10": 0.2,
+    "recall_at_10": 0.2,
+    "verdict": "POOR",
+    "false_negatives": [
+      {
+        "name": "Little Nightmares III",
+        "vertical": "game",
+        "gt_score": 27.0
+      },
+      {
+        "name": "Haste",
+        "vertical": "game",
+        "gt_score": 26.0
+      },
+      {
+        "name": "Adorable Adventures",
+        "vertical": "game",
+        "gt_score": 26.0
+      },
+      {
+        "name": "Silent Hill f",
+        "vertical": "game",
+        "gt_score": 25.0
+      },
+      {
+        "name": "Time Flies",
+        "vertical": "game",
+        "gt_score": 24.0
+      },
+      {
+        "name": "Primal Planet",
+        "vertical": "game",
+        "gt_score": 24.0
+      },
+      {
+        "name": "Is This Seat Taken?",
+        "vertical": "game",
+        "gt_score": 23.0
+      },
+      {
+        "name": "Clair Obscur: Expedition 33",
+        "vertical": "game",
+        "gt_score": 22.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Inayah: Life after Gods",
+        "vertical": "game",
+        "pipeline_score": 0.2775,
+        "gt_score": 13.0
+      },
+      {
+        "name": "Possessor(s)",
+        "vertical": "game",
+        "pipeline_score": 0.2341,
+        "gt_score": 16.0
+      },
+      {
+        "name": "Plus Ultra: Legado",
+        "vertical": "game",
+        "pipeline_score": 0.2195,
+        "gt_score": 15.0
+      },
+      {
+        "name": "Somber Echoes",
+        "vertical": "game",
+        "pipeline_score": 0.1892,
+        "gt_score": 19.0
+      },
+      {
+        "name": "Blade Chimera",
+        "vertical": "game",
+        "pipeline_score": 0.1817,
+        "gt_score": 15.0
+      },
+      {
+        "name": "SteamDolls: Order of Chaos",
+        "vertical": "game",
+        "pipeline_score": 0.1366,
+        "gt_score": 17.0
+      },
+      {
+        "name": "Spirit of the North 2",
+        "vertical": "game",
+        "pipeline_score": 0.1352,
+        "gt_score": 14.0
+      },
+      {
+        "name": "Shadow Labyrinth",
+        "vertical": "game",
+        "pipeline_score": 0.1312,
+        "gt_score": 14.0
+      }
+    ]
+  },
+  "Q2": {
+    "qid": "Q2",
+    "query": "Find me movies that have a similar vibe to Predator: Badlands",
+    "mode": "entity_single",
+    "anchor_count": 1,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "TRON: Ares",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Star Wars: The Mandalorian and Grogu",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "gt_score": 9.0
+      },
+      {
+        "name": "The Fantastic 4: First Steps",
+        "vertical": "movie",
+        "gt_score": 9.0
+      },
+      {
+        "name": "The Electric State",
+        "vertical": "movie",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Thunderbolts*",
+        "vertical": "movie",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Superman",
+        "vertical": "movie",
+        "gt_score": 9.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "pipeline_score": 0.5479
+      },
+      {
+        "name": "Jurassic World Rebirth",
+        "vertical": "movie",
+        "pipeline_score": 0.2416
+      },
+      {
+        "name": "War Machine",
+        "vertical": "movie",
+        "pipeline_score": 0.2314
+      },
+      {
+        "name": "Worldbreaker",
+        "vertical": "movie",
+        "pipeline_score": 0.2091
+      },
+      {
+        "name": "Primitive War",
+        "vertical": "movie",
+        "pipeline_score": 0.2025
+      },
+      {
+        "name": "Star Wars: The Mandalorian and Grogu",
+        "vertical": "movie",
+        "pipeline_score": 0.1567
+      },
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "pipeline_score": 0.1474
+      },
+      {
+        "name": "Apex",
+        "vertical": "movie",
+        "pipeline_score": 0.1362
+      },
+      {
+        "name": "Avatar: Fire and Ash",
+        "vertical": "movie",
+        "pipeline_score": 0.1295
+      },
+      {
+        "name": "Thunderbolts*",
+        "vertical": "movie",
+        "pipeline_score": 0.0798
+      }
+    ],
+    "overlap_names": [
+      "Predator: Wastelands",
+      "Star Wars: The Mandalorian and Grogu",
+      "The Land That Time Forgot",
+      "Thunderbolts*"
+    ],
+    "overlap_count": 4,
+    "precision_at_10": 0.4,
+    "recall_at_10": 0.4,
+    "verdict": "FAIR",
+    "false_negatives": [
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "TRON: Ares",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "The Fantastic 4: First Steps",
+        "vertical": "movie",
+        "gt_score": 9.0
+      },
+      {
+        "name": "The Electric State",
+        "vertical": "movie",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Superman",
+        "vertical": "movie",
+        "gt_score": 9.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Jurassic World Rebirth",
+        "vertical": "movie",
+        "pipeline_score": 0.2416,
+        "gt_score": 5.0
+      },
+      {
+        "name": "War Machine",
+        "vertical": "movie",
+        "pipeline_score": 0.2314,
+        "gt_score": 7.0
+      },
+      {
+        "name": "Worldbreaker",
+        "vertical": "movie",
+        "pipeline_score": 0.2091,
+        "gt_score": 7.0
+      },
+      {
+        "name": "Primitive War",
+        "vertical": "movie",
+        "pipeline_score": 0.2025,
+        "gt_score": 7.0
+      },
+      {
+        "name": "Apex",
+        "vertical": "movie",
+        "pipeline_score": 0.1362,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Avatar: Fire and Ash",
+        "vertical": "movie",
+        "pipeline_score": 0.1295,
+        "gt_score": 7.0
+      }
+    ]
+  },
+  "Q3": {
+    "qid": "Q3",
+    "query": "TV shows like Alien: Earth",
+    "mode": "entity_single",
+    "anchor_count": 1,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "The Beauty",
+        "vertical": "tv",
+        "gt_score": 13.0
+      },
+      {
+        "name": "Something Very Bad Is Going to Happen",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Pluribus",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Common Side Effects",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Star City",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "The Institute",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Marvel Zombies",
+        "vertical": "tv",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Murderbot",
+        "vertical": "tv",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Paradise",
+        "vertical": "tv",
+        "gt_score": 7.0
+      },
+      {
+        "name": "The Terminal List: Dark Wolf",
+        "vertical": "tv",
+        "gt_score": 7.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Marvel Zombies",
+        "vertical": "tv",
+        "pipeline_score": 0.21
+      },
+      {
+        "name": "Star City",
+        "vertical": "tv",
+        "pipeline_score": 0.2041
+      },
+      {
+        "name": "Nine Bodies in a Mexican Morgue",
+        "vertical": "tv",
+        "pipeline_score": 0.2014
+      },
+      {
+        "name": "The Beauty",
+        "vertical": "tv",
+        "pipeline_score": 0.1875
+      },
+      {
+        "name": "Something Very Bad Is Going to Happen",
+        "vertical": "tv",
+        "pipeline_score": 0.1804
+      },
+      {
+        "name": "The Institute",
+        "vertical": "tv",
+        "pipeline_score": 0.1707
+      },
+      {
+        "name": "Pluribus",
+        "vertical": "tv",
+        "pipeline_score": 0.1674
+      },
+      {
+        "name": "Unchosen",
+        "vertical": "tv",
+        "pipeline_score": 0.1445
+      },
+      {
+        "name": "Murderbot",
+        "vertical": "tv",
+        "pipeline_score": 0.1433
+      },
+      {
+        "name": "The Last Frontier",
+        "vertical": "tv",
+        "pipeline_score": 0.1397
+      }
+    ],
+    "overlap_names": [
+      "Marvel Zombies",
+      "Murderbot",
+      "Pluribus",
+      "Something Very Bad Is Going to Happen",
+      "Star City",
+      "The Beauty",
+      "The Institute"
+    ],
+    "overlap_count": 7,
+    "precision_at_10": 0.7,
+    "recall_at_10": 0.7,
+    "verdict": "EXCELLENT",
+    "false_negatives": [
+      {
+        "name": "Common Side Effects",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Paradise",
+        "vertical": "tv",
+        "gt_score": 7.0
+      },
+      {
+        "name": "The Terminal List: Dark Wolf",
+        "vertical": "tv",
+        "gt_score": 7.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Nine Bodies in a Mexican Morgue",
+        "vertical": "tv",
+        "pipeline_score": 0.2014,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Unchosen",
+        "vertical": "tv",
+        "pipeline_score": 0.1445,
+        "gt_score": 7.0
+      },
+      {
+        "name": "The Last Frontier",
+        "vertical": "tv",
+        "pipeline_score": 0.1397,
+        "gt_score": 4.0
+      }
+    ]
+  },
+  "Q4": {
+    "qid": "Q4",
+    "query": "I love the game Vampire: The Masquerade - Bloodlines 2, what movies should I watch?",
+    "mode": "entity_single",
+    "anchor_count": 1,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "The Rats: A Witcher Tale",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "The Anacondas",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Ice Beast",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Return to Silent Hill",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Night of the Zoopocalypse",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Enola Holmes 3",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Stitch Head",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Wormtown",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Fear Below",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Anaconda",
+        "vertical": "movie",
+        "gt_score": 4.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Tales from Black Manor",
+        "vertical": "movie",
+        "pipeline_score": 1.0279
+      },
+      {
+        "name": "Vampires of the Velvet Lounge",
+        "vertical": "movie",
+        "pipeline_score": 0.5912
+      },
+      {
+        "name": "In the Lost Lands",
+        "vertical": "movie",
+        "pipeline_score": 0.4561
+      },
+      {
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "pipeline_score": 0.4232
+      },
+      {
+        "name": "Return to Silent Hill",
+        "vertical": "movie",
+        "pipeline_score": 0.4087
+      },
+      {
+        "name": "The Rats: A Witcher Tale",
+        "vertical": "movie",
+        "pipeline_score": 0.3624
+      },
+      {
+        "name": "Peaky Blinders: The Immortal Man",
+        "vertical": "movie",
+        "pipeline_score": 0.2059
+      },
+      {
+        "name": "Sherlock Holmes Mare of the Night",
+        "vertical": "movie",
+        "pipeline_score": 0.2038
+      },
+      {
+        "name": "Witchboard",
+        "vertical": "movie",
+        "pipeline_score": 0.1907
+      },
+      {
+        "name": "Bone Hill",
+        "vertical": "movie",
+        "pipeline_score": 0.1907
+      }
+    ],
+    "overlap_names": [
+      "Return to Silent Hill",
+      "The Rats: A Witcher Tale"
+    ],
+    "overlap_count": 2,
+    "precision_at_10": 0.2,
+    "recall_at_10": 0.2,
+    "verdict": "POOR",
+    "false_negatives": [
+      {
+        "name": "The Anacondas",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Ice Beast",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Night of the Zoopocalypse",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Enola Holmes 3",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Stitch Head",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Wormtown",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Fear Below",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Anaconda",
+        "vertical": "movie",
+        "gt_score": 4.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Tales from Black Manor",
+        "vertical": "movie",
+        "pipeline_score": 1.0279,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Vampires of the Velvet Lounge",
+        "vertical": "movie",
+        "pipeline_score": 0.5912,
+        "gt_score": 3.0
+      },
+      {
+        "name": "In the Lost Lands",
+        "vertical": "movie",
+        "pipeline_score": 0.4561,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "pipeline_score": 0.4232,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Peaky Blinders: The Immortal Man",
+        "vertical": "movie",
+        "pipeline_score": 0.2059,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Sherlock Holmes Mare of the Night",
+        "vertical": "movie",
+        "pipeline_score": 0.2038,
+        "gt_score": 2.0
+      },
+      {
+        "name": "Witchboard",
+        "vertical": "movie",
+        "pipeline_score": 0.1907,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Bone Hill",
+        "vertical": "movie",
+        "pipeline_score": 0.1907,
+        "gt_score": 3.0
+      }
+    ]
+  },
+  "Q5": {
+    "qid": "Q5",
+    "query": "I really enjoyed the TV show Devil May Cry, what games would I like?",
+    "verdict": "FAILED",
+    "error": "NLU failed after 3 attempts: Error code: 400 - {'error': {'message': 'tool call validation failed: parameters for tool analyze_query did not match schema: errors: [`/query_mode`: value must be one of \"entity_single\", \"entity_multi\", \"theme_based\", \"descriptive\", \"mixed\"]', 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '<function=analyze_query>{\"query_mode\": \"cross_vertical\", \"query_type\": \"cross_vertical\", \"positive_entities\": [\"Devil May Cry\"], \"negative_entities\": [], \"additional_keywords\": [], \"description_derived_keywords\": [], \"target_verticals\": [\"game\"]} </function>'}}",
+    "overlap_count": 0,
+    "precision_at_10": 0,
+    "recall_at_10": 0,
+    "ideal_top10": [],
+    "pipeline_top10": [],
+    "false_negatives": [],
+    "false_positives": [],
+    "overlap_names": [],
+    "mode": ""
+  },
+  "Q6": {
+    "qid": "Q6",
+    "query": "Based on the movie Avatar: Fire and Ash, recommend me TV shows and games",
+    "mode": "entity_single",
+    "anchor_count": 1,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "RoboGobo",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Mermicorno: Starfall",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Wolf King",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Mickey Mouse Clubhouse+",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Iron Man and His Awesome Friends",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Gabriel and the Guardians",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Goosebumps: The Vanishing",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Star Wars: Tales of the Underworld",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "LEGO Star Wars: Rebuild the Galaxy - Pieces of the Past",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "LEGO Marvel Avengers: Strange Tails",
+        "vertical": "tv",
+        "gt_score": 9.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "The Mighty Nein",
+        "vertical": "tv",
+        "pipeline_score": 0.7
+      },
+      {
+        "name": "Gabriel and the Guardians",
+        "vertical": "tv",
+        "pipeline_score": 0.6958
+      },
+      {
+        "name": "Eyes of Wakanda",
+        "vertical": "tv",
+        "pipeline_score": 0.6083
+      },
+      {
+        "name": "Fire and Water: Making the Avatar Films",
+        "vertical": "tv",
+        "pipeline_score": 0.504
+      },
+      {
+        "name": "Armorsaurs",
+        "vertical": "tv",
+        "pipeline_score": 0.3418
+      },
+      {
+        "name": "The Black Dagger Brotherhood",
+        "vertical": "tv",
+        "pipeline_score": 0.3014
+      },
+      {
+        "name": "The Dinosaurs",
+        "vertical": "tv",
+        "pipeline_score": 0.2766
+      },
+      {
+        "name": "Chief of War",
+        "vertical": "tv",
+        "pipeline_score": 0.2702
+      },
+      {
+        "name": "Iyanu",
+        "vertical": "tv",
+        "pipeline_score": 0.2226
+      },
+      {
+        "name": "Wolf King",
+        "vertical": "tv",
+        "pipeline_score": 0.1781
+      }
+    ],
+    "overlap_names": [
+      "Gabriel and the Guardians",
+      "Wolf King"
+    ],
+    "overlap_count": 2,
+    "precision_at_10": 0.1,
+    "recall_at_10": 0.2,
+    "verdict": "POOR",
+    "false_negatives": [
+      {
+        "name": "RoboGobo",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Mermicorno: Starfall",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Mickey Mouse Clubhouse+",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Iron Man and His Awesome Friends",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Goosebumps: The Vanishing",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Star Wars: Tales of the Underworld",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "LEGO Star Wars: Rebuild the Galaxy - Pieces of the Past",
+        "vertical": "tv",
+        "gt_score": 9.0
+      },
+      {
+        "name": "LEGO Marvel Avengers: Strange Tails",
+        "vertical": "tv",
+        "gt_score": 9.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "The Mighty Nein",
+        "vertical": "tv",
+        "pipeline_score": 0.7,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Eyes of Wakanda",
+        "vertical": "tv",
+        "pipeline_score": 0.6083,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Fire and Water: Making the Avatar Films",
+        "vertical": "tv",
+        "pipeline_score": 0.504,
+        "gt_score": 2.0
+      },
+      {
+        "name": "Armorsaurs",
+        "vertical": "tv",
+        "pipeline_score": 0.3418,
+        "gt_score": 4.0
+      },
+      {
+        "name": "The Black Dagger Brotherhood",
+        "vertical": "tv",
+        "pipeline_score": 0.3014,
+        "gt_score": 3.0
+      },
+      {
+        "name": "The Dinosaurs",
+        "vertical": "tv",
+        "pipeline_score": 0.2766,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Chief of War",
+        "vertical": "tv",
+        "pipeline_score": 0.2702,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Iyanu",
+        "vertical": "tv",
+        "pipeline_score": 0.2226,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Crimson Desert",
+        "vertical": "game",
+        "pipeline_score": 0.6266,
+        "gt_score": 5.0
+      },
+      {
+        "name": "Echoes of the End",
+        "vertical": "game",
+        "pipeline_score": 0.4101,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Aphelion",
+        "vertical": "game",
+        "pipeline_score": 0.1858,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Hyrule Warriors: Age of Imprisonment",
+        "vertical": "game",
+        "pipeline_score": 0.084,
+        "gt_score": 5.0
+      },
+      {
+        "name": "The Adventures of Elliot: The Millennium Tales",
+        "vertical": "game",
+        "pipeline_score": 0.084,
+        "gt_score": 5.0
+      },
+      {
+        "name": "Dreams of Another",
+        "vertical": "game",
+        "pipeline_score": 0.0721,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Myrk: Echoes of the Forgotten",
+        "vertical": "game",
+        "pipeline_score": 0.0687,
+        "gt_score": 2.0
+      },
+      {
+        "name": "GreedFall: The Dying World",
+        "vertical": "game",
+        "pipeline_score": 0.0586,
+        "gt_score": 5.0
+      },
+      {
+        "name": "Bearly Escape",
+        "vertical": "game",
+        "pipeline_score": 0.0502,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Bee Simulator: The Hive",
+        "vertical": "game",
+        "pipeline_score": 0.0502,
+        "gt_score": 4.0
+      }
+    ]
+  },
+  "Q7": {
+    "qid": "Q7",
+    "query": "I love both Code Vein II and Monster Hunter Wilds, find me similar games",
+    "mode": "entity_multi",
+    "anchor_count": 2,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "Monster Hunter Stories 3: Twisted Reflection",
+        "vertical": "game",
+        "gt_score": 31.0
+      },
+      {
+        "name": "Wuchang: Fallen Feathers",
+        "vertical": "game",
+        "gt_score": 27.0
+      },
+      {
+        "name": "Titan Quest II",
+        "vertical": "game",
+        "gt_score": 27.0
+      },
+      {
+        "name": "Elden Ring Nightreign",
+        "vertical": "game",
+        "gt_score": 27.0
+      },
+      {
+        "name": "The Blood of Dawnwalker",
+        "vertical": "game",
+        "gt_score": 26.0
+      },
+      {
+        "name": "Hytale",
+        "vertical": "game",
+        "gt_score": 25.0
+      },
+      {
+        "name": "The Seven Deadly Sins: Origin",
+        "vertical": "game",
+        "gt_score": 25.0
+      },
+      {
+        "name": "Duet Night Abyss",
+        "vertical": "game",
+        "gt_score": 25.0
+      },
+      {
+        "name": "Atomfall",
+        "vertical": "game",
+        "gt_score": 25.0
+      },
+      {
+        "name": "Legend of Ymir",
+        "vertical": "game",
+        "gt_score": 25.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Monster Hunter Stories 3: Twisted Reflection",
+        "vertical": "game",
+        "pipeline_score": 0.8144
+      },
+      {
+        "name": "Beast of Reincarnation",
+        "vertical": "game",
+        "pipeline_score": 0.4697
+      },
+      {
+        "name": "AI Limit",
+        "vertical": "game",
+        "pipeline_score": 0.3772
+      },
+      {
+        "name": "Mongil: Star Dive",
+        "vertical": "game",
+        "pipeline_score": 0.3663
+      },
+      {
+        "name": "The Blood of Dawnwalker",
+        "vertical": "game",
+        "pipeline_score": 0.3438
+      },
+      {
+        "name": "Elden Ring Nightreign",
+        "vertical": "game",
+        "pipeline_score": 0.3317
+      },
+      {
+        "name": "Duet Night Abyss",
+        "vertical": "game",
+        "pipeline_score": 0.3211
+      },
+      {
+        "name": "Tails of Iron II: Whiskers of Winter",
+        "vertical": "game",
+        "pipeline_score": 0.3062
+      },
+      {
+        "name": "Wuchang: Fallen Feathers",
+        "vertical": "game",
+        "pipeline_score": 0.297
+      },
+      {
+        "name": "Crimson Desert",
+        "vertical": "game",
+        "pipeline_score": 0.2838
+      }
+    ],
+    "overlap_names": [
+      "Duet Night Abyss",
+      "Elden Ring Nightreign",
+      "Monster Hunter Stories 3: Twisted Reflection",
+      "The Blood of Dawnwalker",
+      "Wuchang: Fallen Feathers"
+    ],
+    "overlap_count": 5,
+    "precision_at_10": 0.5,
+    "recall_at_10": 0.5,
+    "verdict": "GOOD",
+    "false_negatives": [
+      {
+        "name": "Titan Quest II",
+        "vertical": "game",
+        "gt_score": 27.0
+      },
+      {
+        "name": "Hytale",
+        "vertical": "game",
+        "gt_score": 25.0
+      },
+      {
+        "name": "The Seven Deadly Sins: Origin",
+        "vertical": "game",
+        "gt_score": 25.0
+      },
+      {
+        "name": "Atomfall",
+        "vertical": "game",
+        "gt_score": 25.0
+      },
+      {
+        "name": "Legend of Ymir",
+        "vertical": "game",
+        "gt_score": 25.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Beast of Reincarnation",
+        "vertical": "game",
+        "pipeline_score": 0.4697,
+        "gt_score": 17.0
+      },
+      {
+        "name": "AI Limit",
+        "vertical": "game",
+        "pipeline_score": 0.3772,
+        "gt_score": 22.0
+      },
+      {
+        "name": "Mongil: Star Dive",
+        "vertical": "game",
+        "pipeline_score": 0.3663,
+        "gt_score": 18.0
+      },
+      {
+        "name": "Tails of Iron II: Whiskers of Winter",
+        "vertical": "game",
+        "pipeline_score": 0.3062,
+        "gt_score": 17.0
+      },
+      {
+        "name": "Crimson Desert",
+        "vertical": "game",
+        "pipeline_score": 0.2838,
+        "gt_score": 19.0
+      }
+    ]
+  },
+  "Q8": {
+    "qid": "Q8",
+    "query": "Movies like both Predator: Badlands and The Old Guard 2",
+    "mode": "entity_multi",
+    "anchor_count": 2,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "gt_score": 17.0
+      },
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "gt_score": 16.0
+      },
+      {
+        "name": "Red Sonja",
+        "vertical": "movie",
+        "gt_score": 13.0
+      },
+      {
+        "name": "TRON: Ares",
+        "vertical": "movie",
+        "gt_score": 13.0
+      },
+      {
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "gt_score": 13.0
+      },
+      {
+        "name": "Star Wars: The Mandalorian and Grogu",
+        "vertical": "movie",
+        "gt_score": 13.0
+      },
+      {
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "gt_score": 12.0
+      },
+      {
+        "name": "The Fantastic 4: First Steps",
+        "vertical": "movie",
+        "gt_score": 12.0
+      },
+      {
+        "name": "The Electric State",
+        "vertical": "movie",
+        "gt_score": 12.0
+      },
+      {
+        "name": "Thunderbolts*",
+        "vertical": "movie",
+        "gt_score": 12.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "pipeline_score": 0.9899
+      },
+      {
+        "name": "Red Sonja",
+        "vertical": "movie",
+        "pipeline_score": 0.4934
+      },
+      {
+        "name": "Avatar: Fire and Ash",
+        "vertical": "movie",
+        "pipeline_score": 0.4304
+      },
+      {
+        "name": "Jurassic World Rebirth",
+        "vertical": "movie",
+        "pipeline_score": 0.4153
+      },
+      {
+        "name": "Lost Horizon",
+        "vertical": "movie",
+        "pipeline_score": 0.324
+      },
+      {
+        "name": "Suky",
+        "vertical": "movie",
+        "pipeline_score": 0.3156
+      },
+      {
+        "name": "Star Wars: The Mandalorian and Grogu",
+        "vertical": "movie",
+        "pipeline_score": 0.3017
+      },
+      {
+        "name": "Thunderbolts*",
+        "vertical": "movie",
+        "pipeline_score": 0.2593
+      },
+      {
+        "name": "Apex",
+        "vertical": "movie",
+        "pipeline_score": 0.1698
+      },
+      {
+        "name": "War Machine",
+        "vertical": "movie",
+        "pipeline_score": 0.1634
+      }
+    ],
+    "overlap_names": [
+      "Predator: Wastelands",
+      "Red Sonja",
+      "Star Wars: The Mandalorian and Grogu",
+      "Thunderbolts*"
+    ],
+    "overlap_count": 4,
+    "precision_at_10": 0.4,
+    "recall_at_10": 0.4,
+    "verdict": "FAIR",
+    "false_negatives": [
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "gt_score": 17.0
+      },
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "gt_score": 16.0
+      },
+      {
+        "name": "TRON: Ares",
+        "vertical": "movie",
+        "gt_score": 13.0
+      },
+      {
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "gt_score": 13.0
+      },
+      {
+        "name": "The Fantastic 4: First Steps",
+        "vertical": "movie",
+        "gt_score": 12.0
+      },
+      {
+        "name": "The Electric State",
+        "vertical": "movie",
+        "gt_score": 12.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Avatar: Fire and Ash",
+        "vertical": "movie",
+        "pipeline_score": 0.4304,
+        "gt_score": 10.0
+      },
+      {
+        "name": "Jurassic World Rebirth",
+        "vertical": "movie",
+        "pipeline_score": 0.4153,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Lost Horizon",
+        "vertical": "movie",
+        "pipeline_score": 0.324,
+        "gt_score": 10.0
+      },
+      {
+        "name": "Suky",
+        "vertical": "movie",
+        "pipeline_score": 0.3156,
+        "gt_score": 8.0
+      },
+      {
+        "name": "Apex",
+        "vertical": "movie",
+        "pipeline_score": 0.1698,
+        "gt_score": 7.0
+      },
+      {
+        "name": "War Machine",
+        "vertical": "movie",
+        "pipeline_score": 0.1634,
+        "gt_score": 11.0
+      }
+    ]
+  },
+  "Q9": {
+    "qid": "Q9",
+    "query": "I enjoy Resident Evil Requiem and Silent Hill f as games, recommend me movies and TV shows",
+    "mode": "entity_multi",
+    "anchor_count": 2,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "Ice Beast",
+        "vertical": "movie",
+        "gt_score": 12.0
+      },
+      {
+        "name": "Marvel Zombies",
+        "vertical": "tv",
+        "gt_score": 12.0
+      },
+      {
+        "name": "The Anacondas",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Fear Below",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Mission: Impossible - The Final Reckoning",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "TRON: Ares",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Karate Kid: Legends",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Star Wars: The Mandalorian and Grogu",
+        "vertical": "movie",
+        "gt_score": 10.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Return to Silent Hill",
+        "vertical": "movie",
+        "pipeline_score": 0.85
+      },
+      {
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "pipeline_score": 0.7822
+      },
+      {
+        "name": "Silent Zone",
+        "vertical": "movie",
+        "pipeline_score": 0.6836
+      },
+      {
+        "name": "George A. Romero's Resident Evil",
+        "vertical": "movie",
+        "pipeline_score": 0.6106
+      },
+      {
+        "name": "Evil Dead Burn",
+        "vertical": "movie",
+        "pipeline_score": 0.6014
+      },
+      {
+        "name": "The Strangers: Chapter 3",
+        "vertical": "movie",
+        "pipeline_score": 0.4511
+      },
+      {
+        "name": "Final Destination Bloodlines",
+        "vertical": "movie",
+        "pipeline_score": 0.45
+      },
+      {
+        "name": "American Psychopath",
+        "vertical": "movie",
+        "pipeline_score": 0.4254
+      },
+      {
+        "name": "Passenger",
+        "vertical": "movie",
+        "pipeline_score": 0.4178
+      },
+      {
+        "name": "Scream 7",
+        "vertical": "movie",
+        "pipeline_score": 0.3919
+      }
+    ],
+    "overlap_names": [
+      "Marvel Zombies"
+    ],
+    "overlap_count": 1,
+    "precision_at_10": 0.071,
+    "recall_at_10": 0.1,
+    "verdict": "POOR",
+    "false_negatives": [
+      {
+        "name": "Ice Beast",
+        "vertical": "movie",
+        "gt_score": 12.0
+      },
+      {
+        "name": "The Anacondas",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Fear Below",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Mission: Impossible - The Final Reckoning",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "TRON: Ares",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Karate Kid: Legends",
+        "vertical": "movie",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Star Wars: The Mandalorian and Grogu",
+        "vertical": "movie",
+        "gt_score": 10.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Return to Silent Hill",
+        "vertical": "movie",
+        "pipeline_score": 0.85,
+        "gt_score": 2.0
+      },
+      {
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "pipeline_score": 0.7822,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Silent Zone",
+        "vertical": "movie",
+        "pipeline_score": 0.6836,
+        "gt_score": 4.0
+      },
+      {
+        "name": "George A. Romero's Resident Evil",
+        "vertical": "movie",
+        "pipeline_score": 0.6106,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Evil Dead Burn",
+        "vertical": "movie",
+        "pipeline_score": 0.6014,
+        "gt_score": 5.0
+      },
+      {
+        "name": "The Strangers: Chapter 3",
+        "vertical": "movie",
+        "pipeline_score": 0.4511,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Final Destination Bloodlines",
+        "vertical": "movie",
+        "pipeline_score": 0.45,
+        "gt_score": 5.0
+      },
+      {
+        "name": "American Psychopath",
+        "vertical": "movie",
+        "pipeline_score": 0.4254,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Passenger",
+        "vertical": "movie",
+        "pipeline_score": 0.4178,
+        "gt_score": 5.0
+      },
+      {
+        "name": "Scream 7",
+        "vertical": "movie",
+        "pipeline_score": 0.3919,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Hell Motel",
+        "vertical": "tv",
+        "pipeline_score": 0.1754,
+        "gt_score": 3.0
+      },
+      {
+        "name": "IT: Welcome to Derry",
+        "vertical": "tv",
+        "pipeline_score": 0.1666,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Alien: Earth",
+        "vertical": "tv",
+        "pipeline_score": 0.0,
+        "gt_score": 2.0
+      }
+    ]
+  },
+  "Q10": {
+    "qid": "Q10",
+    "query": "Based on Marvel Zombies TV show and Alien: Earth TV show, what games should I play?",
+    "verdict": "FAILED",
+    "error": "No entities resolved from: ['Marvel Zombies TV show', 'Alien: Earth TV show']",
+    "overlap_count": 0,
+    "precision_at_10": 0,
+    "recall_at_10": 0,
+    "ideal_top10": [],
+    "pipeline_top10": [],
+    "false_negatives": [],
+    "false_positives": [],
+    "overlap_names": [],
+    "mode": "entity_multi"
+  },
+  "Q11": {
+    "qid": "Q11",
+    "query": "I like the movie In the Lost Lands and the game Crimson Desert, find me TV shows",
+    "mode": "entity_multi",
+    "anchor_count": 2,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "Star Wars: Tales of the Underworld",
+        "vertical": "tv",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Iyanu",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Wolf King",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Mickey Mouse Clubhouse+",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Devil May Cry",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Iron Man and His Awesome Friends",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Gabriel and the Guardians",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Goosebumps: The Vanishing",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "LEGO Star Wars: Rebuild the Galaxy - Pieces of the Past",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Marshals",
+        "vertical": "tv",
+        "gt_score": 10.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "American Primeval",
+        "vertical": "tv",
+        "pipeline_score": 1.35
+      },
+      {
+        "name": "Devil May Cry",
+        "vertical": "tv",
+        "pipeline_score": 1.129
+      },
+      {
+        "name": "A Knight of the Seven Kingdoms",
+        "vertical": "tv",
+        "pipeline_score": 1.05
+      },
+      {
+        "name": "The Abandons",
+        "vertical": "tv",
+        "pipeline_score": 0.966
+      },
+      {
+        "name": "The Black Dagger Brotherhood",
+        "vertical": "tv",
+        "pipeline_score": 0.8344
+      },
+      {
+        "name": "Marshals",
+        "vertical": "tv",
+        "pipeline_score": 0.782
+      },
+      {
+        "name": "The Mighty Nein",
+        "vertical": "tv",
+        "pipeline_score": 0.7388
+      },
+      {
+        "name": "Star Wars: Tales of the Underworld",
+        "vertical": "tv",
+        "pipeline_score": 0.6462
+      },
+      {
+        "name": "Gabriel and the Guardians",
+        "vertical": "tv",
+        "pipeline_score": 0.5551
+      },
+      {
+        "name": "Spartacus: House of Ashur",
+        "vertical": "tv",
+        "pipeline_score": 0.4695
+      }
+    ],
+    "overlap_names": [
+      "Devil May Cry",
+      "Gabriel and the Guardians",
+      "Marshals",
+      "Star Wars: Tales of the Underworld"
+    ],
+    "overlap_count": 4,
+    "precision_at_10": 0.4,
+    "recall_at_10": 0.4,
+    "verdict": "FAIR",
+    "false_negatives": [
+      {
+        "name": "Iyanu",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Wolf King",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Mickey Mouse Clubhouse+",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Iron Man and His Awesome Friends",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "Goosebumps: The Vanishing",
+        "vertical": "tv",
+        "gt_score": 10.0
+      },
+      {
+        "name": "LEGO Star Wars: Rebuild the Galaxy - Pieces of the Past",
+        "vertical": "tv",
+        "gt_score": 10.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "American Primeval",
+        "vertical": "tv",
+        "pipeline_score": 1.35,
+        "gt_score": 7.0
+      },
+      {
+        "name": "A Knight of the Seven Kingdoms",
+        "vertical": "tv",
+        "pipeline_score": 1.05,
+        "gt_score": 8.0
+      },
+      {
+        "name": "The Abandons",
+        "vertical": "tv",
+        "pipeline_score": 0.966,
+        "gt_score": 7.0
+      },
+      {
+        "name": "The Black Dagger Brotherhood",
+        "vertical": "tv",
+        "pipeline_score": 0.8344,
+        "gt_score": 9.0
+      },
+      {
+        "name": "The Mighty Nein",
+        "vertical": "tv",
+        "pipeline_score": 0.7388,
+        "gt_score": 7.0
+      },
+      {
+        "name": "Spartacus: House of Ashur",
+        "vertical": "tv",
+        "pipeline_score": 0.4695,
+        "gt_score": 4.0
+      }
+    ]
+  },
+  "Q12": {
+    "qid": "Q12",
+    "query": "I want survival horror with psychological elements across all categories",
+    "mode": "theme_based",
+    "anchor_count": 0,
+    "is_theme": true,
+    "ideal_top10": [
+      {
+        "name": "Silent Hill f",
+        "vertical": "game",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Beneath",
+        "vertical": "game",
+        "gt_score": 3.0
+      },
+      {
+        "name": "Deathground",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Post Trauma",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Labyrinth of the Demon King",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "The Alters",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Dark Atlas: Infernum",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Oxide Room 208",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Dark Hours",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Ground Zero",
+        "vertical": "game",
+        "gt_score": 2.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Dark Atlas: Infernum",
+        "vertical": "game",
+        "pipeline_score": 0.8422
+      },
+      {
+        "name": "Saint of Chains",
+        "vertical": "game",
+        "pipeline_score": 0.76
+      },
+      {
+        "name": "Post Trauma",
+        "vertical": "game",
+        "pipeline_score": 0.7222
+      },
+      {
+        "name": "Greek Tragedy",
+        "vertical": "game",
+        "pipeline_score": 0.5554
+      },
+      {
+        "name": "Winter Survival",
+        "vertical": "game",
+        "pipeline_score": 0.5245
+      },
+      {
+        "name": "Silent Hill f",
+        "vertical": "game",
+        "pipeline_score": 0.5
+      },
+      {
+        "name": "Memoreum",
+        "vertical": "game",
+        "pipeline_score": 0.4848
+      },
+      {
+        "name": "Beneath",
+        "vertical": "game",
+        "pipeline_score": 0.4
+      },
+      {
+        "name": "Ire: A Prologue",
+        "vertical": "game",
+        "pipeline_score": 0.3102
+      },
+      {
+        "name": "Order 13",
+        "vertical": "game",
+        "pipeline_score": 0.2831
+      }
+    ],
+    "overlap_names": [
+      "Beneath",
+      "Dark Atlas: Infernum",
+      "Post Trauma",
+      "Silent Hill f"
+    ],
+    "overlap_count": 4,
+    "precision_at_10": 0.235,
+    "recall_at_10": 0.4,
+    "verdict": "FAIR",
+    "false_negatives": [
+      {
+        "name": "Deathground",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Labyrinth of the Demon King",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "The Alters",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Oxide Room 208",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Dark Hours",
+        "vertical": "game",
+        "gt_score": 2.0
+      },
+      {
+        "name": "Ground Zero",
+        "vertical": "game",
+        "gt_score": 2.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Saint of Chains",
+        "vertical": "game",
+        "pipeline_score": 0.76,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Greek Tragedy",
+        "vertical": "game",
+        "pipeline_score": 0.5554,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Winter Survival",
+        "vertical": "game",
+        "pipeline_score": 0.5245,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Memoreum",
+        "vertical": "game",
+        "pipeline_score": 0.4848,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Ire: A Prologue",
+        "vertical": "game",
+        "pipeline_score": 0.3102,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Order 13",
+        "vertical": "game",
+        "pipeline_score": 0.2831,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Passenger",
+        "vertical": "movie",
+        "pipeline_score": 0.4,
+        "gt_score": 2.0
+      },
+      {
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "pipeline_score": 0.133,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Evil Dead Burn",
+        "vertical": "movie",
+        "pipeline_score": 0.0929,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Killer Whale",
+        "vertical": "movie",
+        "pipeline_score": 0.0929,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Final Destination Bloodlines",
+        "vertical": "movie",
+        "pipeline_score": 0.0629,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Silent Zone",
+        "vertical": "movie",
+        "pipeline_score": 0.0629,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Bigfoot: Blood on the Farm",
+        "vertical": "movie",
+        "pipeline_score": 0.0629,
+        "gt_score": 1.0
+      }
+    ]
+  },
+  "Q13": {
+    "qid": "Q13",
+    "query": "Find me content about space exploration and alien civilizations",
+    "mode": "theme_based",
+    "anchor_count": 0,
+    "is_theme": true,
+    "ideal_top10": [],
+    "pipeline_top10": [
+      {
+        "name": "Terra Invicta",
+        "vertical": "game",
+        "pipeline_score": 0.8
+      },
+      {
+        "name": "Star Trek: Voyager - Across the Unknown",
+        "vertical": "game",
+        "pipeline_score": 0.4948
+      },
+      {
+        "name": "Calx",
+        "vertical": "game",
+        "pipeline_score": 0.3507
+      },
+      {
+        "name": "One Lonely Outpost",
+        "vertical": "game",
+        "pipeline_score": 0.2448
+      },
+      {
+        "name": "Empyreal",
+        "vertical": "game",
+        "pipeline_score": 0.2084
+      },
+      {
+        "name": "Ambrosia Sky: Act One",
+        "vertical": "game",
+        "pipeline_score": 0.1802
+      },
+      {
+        "name": "Space for Sale",
+        "vertical": "game",
+        "pipeline_score": 0.1737
+      },
+      {
+        "name": "The Alters",
+        "vertical": "game",
+        "pipeline_score": 0.1572
+      },
+      {
+        "name": "Arknights: Endfield",
+        "vertical": "game",
+        "pipeline_score": 0.1019
+      },
+      {
+        "name": "Revenge of the Savage Planet",
+        "vertical": "game",
+        "pipeline_score": 0.0971
+      }
+    ],
+    "overlap_names": [],
+    "overlap_count": 0,
+    "precision_at_10": 0.0,
+    "recall_at_10": 0,
+    "verdict": "N/A (no metadata-based ideal)",
+    "false_negatives": [],
+    "false_positives": [
+      {
+        "name": "Terra Invicta",
+        "vertical": "game",
+        "pipeline_score": 0.8,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Star Trek: Voyager - Across the Unknown",
+        "vertical": "game",
+        "pipeline_score": 0.4948,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Calx",
+        "vertical": "game",
+        "pipeline_score": 0.3507,
+        "gt_score": 0.0
+      },
+      {
+        "name": "One Lonely Outpost",
+        "vertical": "game",
+        "pipeline_score": 0.2448,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Empyreal",
+        "vertical": "game",
+        "pipeline_score": 0.2084,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Ambrosia Sky: Act One",
+        "vertical": "game",
+        "pipeline_score": 0.1802,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Space for Sale",
+        "vertical": "game",
+        "pipeline_score": 0.1737,
+        "gt_score": 0.0
+      },
+      {
+        "name": "The Alters",
+        "vertical": "game",
+        "pipeline_score": 0.1572,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Arknights: Endfield",
+        "vertical": "game",
+        "pipeline_score": 0.1019,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Revenge of the Savage Planet",
+        "vertical": "game",
+        "pipeline_score": 0.0971,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Elio",
+        "vertical": "movie",
+        "pipeline_score": 0.4611,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Winter of Empires",
+        "vertical": "movie",
+        "pipeline_score": 0.1749,
+        "gt_score": 0.0
+      },
+      {
+        "name": "War Machine",
+        "vertical": "movie",
+        "pipeline_score": 0.1332,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Space/Time",
+        "vertical": "movie",
+        "pipeline_score": 0.1017,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Xeno",
+        "vertical": "movie",
+        "pipeline_score": 0.0666,
+        "gt_score": 0.0
+      },
+      {
+        "name": "War of the Worlds",
+        "vertical": "movie",
+        "pipeline_score": 0.0036,
+        "gt_score": 0.0
+      }
+    ]
+  },
+  "Q14": {
+    "qid": "Q14",
+    "query": "I enjoy stories with political intrigue and power struggles",
+    "mode": "theme_based",
+    "anchor_count": 0,
+    "is_theme": true,
+    "ideal_top10": [
+      {
+        "name": "Fall of an Empire",
+        "vertical": "game",
+        "gt_score": 1.0
+      },
+      {
+        "name": "Disciples: Domination",
+        "vertical": "game",
+        "gt_score": 1.0
+      },
+      {
+        "name": "Wild Horse Nine",
+        "vertical": "movie",
+        "gt_score": 1.0
+      },
+      {
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "gt_score": 1.0
+      },
+      {
+        "name": "The Residence",
+        "vertical": "tv",
+        "gt_score": 1.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Disciples: Domination",
+        "vertical": "game",
+        "pipeline_score": 0.7348
+      },
+      {
+        "name": "Fall of an Empire",
+        "vertical": "game",
+        "pipeline_score": 0.35
+      },
+      {
+        "name": "Chains of Freedom",
+        "vertical": "game",
+        "pipeline_score": 0.0429
+      },
+      {
+        "name": "Sacre Bleu",
+        "vertical": "game",
+        "pipeline_score": 0.03
+      },
+      {
+        "name": "Netherworld",
+        "vertical": "game",
+        "pipeline_score": 0.0
+      },
+      {
+        "name": "Hytale",
+        "vertical": "game",
+        "pipeline_score": 0.0
+      },
+      {
+        "name": "AI Limit",
+        "vertical": "game",
+        "pipeline_score": 0.0
+      },
+      {
+        "name": "Kingdom of Night",
+        "vertical": "game",
+        "pipeline_score": 0.0
+      },
+      {
+        "name": "Na\u00efca",
+        "vertical": "game",
+        "pipeline_score": 0.0
+      },
+      {
+        "name": "Vampire: The Masquerade - Bloodlines 2",
+        "vertical": "game",
+        "pipeline_score": 0.0
+      }
+    ],
+    "overlap_names": [
+      "Disciples: Domination",
+      "Dune: Part Three",
+      "Fall of an Empire",
+      "The Residence",
+      "Wild Horse Nine"
+    ],
+    "overlap_count": 5,
+    "precision_at_10": 0.172,
+    "recall_at_10": 1.0,
+    "verdict": "GOOD",
+    "false_negatives": [],
+    "false_positives": [
+      {
+        "name": "Chains of Freedom",
+        "vertical": "game",
+        "pipeline_score": 0.0429,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Sacre Bleu",
+        "vertical": "game",
+        "pipeline_score": 0.03,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Netherworld",
+        "vertical": "game",
+        "pipeline_score": 0.0,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Hytale",
+        "vertical": "game",
+        "pipeline_score": 0.0,
+        "gt_score": 0.0
+      },
+      {
+        "name": "AI Limit",
+        "vertical": "game",
+        "pipeline_score": 0.0,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Kingdom of Night",
+        "vertical": "game",
+        "pipeline_score": 0.0,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Na\u00efca",
+        "vertical": "game",
+        "pipeline_score": 0.0,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Vampire: The Masquerade - Bloodlines 2",
+        "vertical": "game",
+        "pipeline_score": 0.0,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Ella McCay",
+        "vertical": "movie",
+        "pipeline_score": 0.6381,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Putin",
+        "vertical": "movie",
+        "pipeline_score": 0.5122,
+        "gt_score": 0.0
+      },
+      {
+        "name": "The Alto Knights",
+        "vertical": "movie",
+        "pipeline_score": 0.4373,
+        "gt_score": 0.0
+      },
+      {
+        "name": "G20",
+        "vertical": "movie",
+        "pipeline_score": 0.3102,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Captain America: Brave New World",
+        "vertical": "movie",
+        "pipeline_score": 0.1391,
+        "gt_score": 0.0
+      },
+      {
+        "name": "The Brink of War",
+        "vertical": "movie",
+        "pipeline_score": 0.1284,
+        "gt_score": 0.0
+      },
+      {
+        "name": "True Justice: Eye For An Eye",
+        "vertical": "movie",
+        "pipeline_score": 0.0677,
+        "gt_score": 0.0
+      },
+      {
+        "name": "House of David",
+        "vertical": "tv",
+        "pipeline_score": 0.73,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Death by Lightning",
+        "vertical": "tv",
+        "pipeline_score": 0.6745,
+        "gt_score": 0.0
+      },
+      {
+        "name": "MobLand",
+        "vertical": "tv",
+        "pipeline_score": 0.5695,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Hostage",
+        "vertical": "tv",
+        "pipeline_score": 0.5541,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Spartacus: House of Ashur",
+        "vertical": "tv",
+        "pipeline_score": 0.4864,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Miss Governor",
+        "vertical": "tv",
+        "pipeline_score": 0.3198,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Star Wars: Maul - Shadow Lord",
+        "vertical": "tv",
+        "pipeline_score": 0.2793,
+        "gt_score": 0.0
+      },
+      {
+        "name": "House of Guinness",
+        "vertical": "tv",
+        "pipeline_score": 0.2504,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Bet",
+        "vertical": "tv",
+        "pipeline_score": 0.1446,
+        "gt_score": 0.0
+      }
+    ]
+  },
+  "Q15": {
+    "qid": "Q15",
+    "query": "Content that feels like exploring ancient magical ruins and forgotten civilizations",
+    "mode": "theme_based",
+    "anchor_count": 0,
+    "is_theme": true,
+    "ideal_top10": [
+      {
+        "name": "Hollow Knight: Silksong",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Vessels of Decay",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Sophie: Starlight Whispers",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Regions of Ruin: Runegate",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Sandwalkers",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Sword of the Sea",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Kun\u2019tewiktuk: A Mi\u2019kmaw Adventure",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Into the Emberlands",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Roots Devour",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Mario Kart World",
+        "vertical": "game",
+        "gt_score": 9.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Regions of Ruin: Runegate",
+        "vertical": "game",
+        "pipeline_score": 1.3
+      },
+      {
+        "name": "Echoes of the End",
+        "vertical": "game",
+        "pipeline_score": 1.001
+      },
+      {
+        "name": "Vessels of Decay",
+        "vertical": "game",
+        "pipeline_score": 0.8864
+      },
+      {
+        "name": "The Light of Celestia",
+        "vertical": "game",
+        "pipeline_score": 0.7047
+      },
+      {
+        "name": "Strings of Fate XI: Magic Dream",
+        "vertical": "game",
+        "pipeline_score": 0.5208
+      },
+      {
+        "name": "Shrine's Legacy",
+        "vertical": "game",
+        "pipeline_score": 0.4924
+      },
+      {
+        "name": "Under the Island",
+        "vertical": "game",
+        "pipeline_score": 0.4878
+      },
+      {
+        "name": "Gecko Gods",
+        "vertical": "game",
+        "pipeline_score": 0.449
+      },
+      {
+        "name": "The Adventures of Elliot: The Millennium Tales",
+        "vertical": "game",
+        "pipeline_score": 0.4432
+      },
+      {
+        "name": "Heart of Altai",
+        "vertical": "game",
+        "pipeline_score": 0.4273
+      }
+    ],
+    "overlap_names": [
+      "Regions of Ruin: Runegate",
+      "Vessels of Decay"
+    ],
+    "overlap_count": 2,
+    "precision_at_10": 0.111,
+    "recall_at_10": 0.2,
+    "verdict": "POOR",
+    "false_negatives": [
+      {
+        "name": "Hollow Knight: Silksong",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Sophie: Starlight Whispers",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Sandwalkers",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Sword of the Sea",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Kun\u2019tewiktuk: A Mi\u2019kmaw Adventure",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Into the Emberlands",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Roots Devour",
+        "vertical": "game",
+        "gt_score": 9.0
+      },
+      {
+        "name": "Mario Kart World",
+        "vertical": "game",
+        "gt_score": 9.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Echoes of the End",
+        "vertical": "game",
+        "pipeline_score": 1.001,
+        "gt_score": 8.0
+      },
+      {
+        "name": "The Light of Celestia",
+        "vertical": "game",
+        "pipeline_score": 0.7047,
+        "gt_score": 5.0
+      },
+      {
+        "name": "Strings of Fate XI: Magic Dream",
+        "vertical": "game",
+        "pipeline_score": 0.5208,
+        "gt_score": 7.0
+      },
+      {
+        "name": "Shrine's Legacy",
+        "vertical": "game",
+        "pipeline_score": 0.4924,
+        "gt_score": 7.0
+      },
+      {
+        "name": "Under the Island",
+        "vertical": "game",
+        "pipeline_score": 0.4878,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Gecko Gods",
+        "vertical": "game",
+        "pipeline_score": 0.449,
+        "gt_score": 4.0
+      },
+      {
+        "name": "The Adventures of Elliot: The Millennium Tales",
+        "vertical": "game",
+        "pipeline_score": 0.4432,
+        "gt_score": 7.0
+      },
+      {
+        "name": "Heart of Altai",
+        "vertical": "game",
+        "pipeline_score": 0.4273,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Lego Disney Princess: Villains Unite",
+        "vertical": "movie",
+        "pipeline_score": 0.2783,
+        "gt_score": 7.0
+      },
+      {
+        "name": "Snow White",
+        "vertical": "movie",
+        "pipeline_score": 0.2376,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Smurfs",
+        "vertical": "movie",
+        "pipeline_score": 0.2376,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Freakier Friday",
+        "vertical": "movie",
+        "pipeline_score": 0.2376,
+        "gt_score": 4.0
+      },
+      {
+        "name": "The Carpenter's Son",
+        "vertical": "movie",
+        "pipeline_score": 0.2232,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Iyanu",
+        "vertical": "tv",
+        "pipeline_score": 0.2791,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Talamasca: The Secret Order",
+        "vertical": "tv",
+        "pipeline_score": 0.2232,
+        "gt_score": 4.0
+      },
+      {
+        "name": "The Librarians: The Next Chapter",
+        "vertical": "tv",
+        "pipeline_score": 0.1855,
+        "gt_score": 6.0
+      }
+    ]
+  },
+  "Q16": {
+    "qid": "Q16",
+    "query": "I love Elden Ring Nightreign and dark fantasy but I absolutely hate anything cute or family-friendly, recommend movies",
+    "mode": "mixed",
+    "anchor_count": 1,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "gt_score": 5.0
+      },
+      {
+        "name": "In the Lost Lands",
+        "vertical": "movie",
+        "gt_score": 5.0
+      },
+      {
+        "name": "The Witcher: Sirens of the Deep",
+        "vertical": "movie",
+        "gt_score": 5.0
+      },
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "gt_score": 5.0
+      },
+      {
+        "name": "The Anacondas",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Red Sonja",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "G20",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "The Old Guard 2",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Dust Bunny",
+        "vertical": "movie",
+        "gt_score": 4.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "In the Lost Lands",
+        "vertical": "movie",
+        "pipeline_score": 1.5312
+      },
+      {
+        "name": "Tales from Black Manor",
+        "vertical": "movie",
+        "pipeline_score": 1.1946
+      },
+      {
+        "name": "The Rats: A Witcher Tale",
+        "vertical": "movie",
+        "pipeline_score": 1.1211
+      },
+      {
+        "name": "The Witcher: Sirens of the Deep",
+        "vertical": "movie",
+        "pipeline_score": 1.0384
+      },
+      {
+        "name": "Peter Pan's Neverland Nightmare",
+        "vertical": "movie",
+        "pipeline_score": 0.6518
+      },
+      {
+        "name": "Predator: Badlands",
+        "vertical": "movie",
+        "pipeline_score": 0.6187
+      },
+      {
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "pipeline_score": 0.589
+      },
+      {
+        "name": "The Old Guard 2",
+        "vertical": "movie",
+        "pipeline_score": 0.5765
+      },
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "pipeline_score": 0.4658
+      },
+      {
+        "name": "Wizard of Oz: Dead Walk",
+        "vertical": "movie",
+        "pipeline_score": 0.4544
+      }
+    ],
+    "overlap_names": [
+      "In the Lost Lands",
+      "The Jurassic Games: Extinction",
+      "The Old Guard 2",
+      "The Witcher: Sirens of the Deep"
+    ],
+    "overlap_count": 4,
+    "precision_at_10": 0.4,
+    "recall_at_10": 0.4,
+    "verdict": "FAIR",
+    "false_negatives": [
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "gt_score": 5.0
+      },
+      {
+        "name": "The Anacondas",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Red Sonja",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "G20",
+        "vertical": "movie",
+        "gt_score": 4.0
+      },
+      {
+        "name": "Dust Bunny",
+        "vertical": "movie",
+        "gt_score": 4.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Tales from Black Manor",
+        "vertical": "movie",
+        "pipeline_score": 1.1946,
+        "gt_score": 2.0
+      },
+      {
+        "name": "The Rats: A Witcher Tale",
+        "vertical": "movie",
+        "pipeline_score": 1.1211,
+        "gt_score": 2.0
+      },
+      {
+        "name": "Peter Pan's Neverland Nightmare",
+        "vertical": "movie",
+        "pipeline_score": 0.6518,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Predator: Badlands",
+        "vertical": "movie",
+        "pipeline_score": 0.6187,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "pipeline_score": 0.589,
+        "gt_score": 1.0
+      },
+      {
+        "name": "Wizard of Oz: Dead Walk",
+        "vertical": "movie",
+        "pipeline_score": 0.4544,
+        "gt_score": 1.0
+      }
+    ]
+  },
+  "Q17": {
+    "qid": "Q17",
+    "query": "Games similar to Resident Evil Requiem but nothing like sports or racing games, I want pure horror",
+    "mode": "entity_single",
+    "anchor_count": 1,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "Greek Tragedy",
+        "vertical": "game",
+        "gt_score": 20.0
+      },
+      {
+        "name": "Cronos: The New Dawn",
+        "vertical": "game",
+        "gt_score": 20.0
+      },
+      {
+        "name": "Silent Hill f",
+        "vertical": "game",
+        "gt_score": 19.0
+      },
+      {
+        "name": "Tormented Souls II",
+        "vertical": "game",
+        "gt_score": 19.0
+      },
+      {
+        "name": "I Hate this Place",
+        "vertical": "game",
+        "gt_score": 19.0
+      },
+      {
+        "name": "Deathground",
+        "vertical": "game",
+        "gt_score": 18.0
+      },
+      {
+        "name": "Dread Meridian",
+        "vertical": "game",
+        "gt_score": 17.0
+      },
+      {
+        "name": "Death Relives",
+        "vertical": "game",
+        "gt_score": 16.0
+      },
+      {
+        "name": "Saborus",
+        "vertical": "game",
+        "gt_score": 16.0
+      },
+      {
+        "name": "Level Zero: Extraction",
+        "vertical": "game",
+        "gt_score": 16.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Silent Hill f: Deluxe Edition",
+        "vertical": "game",
+        "pipeline_score": 0.2776
+      },
+      {
+        "name": "Cronos: The New Dawn",
+        "vertical": "game",
+        "pipeline_score": 0.2722
+      },
+      {
+        "name": "Echoes of the Living",
+        "vertical": "game",
+        "pipeline_score": 0.2572
+      },
+      {
+        "name": "Tormented Souls II",
+        "vertical": "game",
+        "pipeline_score": 0.2399
+      },
+      {
+        "name": "World War Z VR",
+        "vertical": "game",
+        "pipeline_score": 0.2169
+      },
+      {
+        "name": "Ground Zero",
+        "vertical": "game",
+        "pipeline_score": 0.2123
+      },
+      {
+        "name": "Silent Hill f",
+        "vertical": "game",
+        "pipeline_score": 0.1973
+      },
+      {
+        "name": "Post Trauma",
+        "vertical": "game",
+        "pipeline_score": 0.1843
+      },
+      {
+        "name": "Code Violet",
+        "vertical": "game",
+        "pipeline_score": 0.1679
+      },
+      {
+        "name": "The Mute House",
+        "vertical": "game",
+        "pipeline_score": 0.1438
+      }
+    ],
+    "overlap_names": [
+      "Cronos: The New Dawn",
+      "Silent Hill f",
+      "Tormented Souls II"
+    ],
+    "overlap_count": 3,
+    "precision_at_10": 0.3,
+    "recall_at_10": 0.3,
+    "verdict": "FAIR",
+    "false_negatives": [
+      {
+        "name": "Greek Tragedy",
+        "vertical": "game",
+        "gt_score": 20.0
+      },
+      {
+        "name": "I Hate this Place",
+        "vertical": "game",
+        "gt_score": 19.0
+      },
+      {
+        "name": "Deathground",
+        "vertical": "game",
+        "gt_score": 18.0
+      },
+      {
+        "name": "Dread Meridian",
+        "vertical": "game",
+        "gt_score": 17.0
+      },
+      {
+        "name": "Death Relives",
+        "vertical": "game",
+        "gt_score": 16.0
+      },
+      {
+        "name": "Saborus",
+        "vertical": "game",
+        "gt_score": 16.0
+      },
+      {
+        "name": "Level Zero: Extraction",
+        "vertical": "game",
+        "gt_score": 16.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Silent Hill f: Deluxe Edition",
+        "vertical": "game",
+        "pipeline_score": 0.2776,
+        "gt_score": 15.0
+      },
+      {
+        "name": "Echoes of the Living",
+        "vertical": "game",
+        "pipeline_score": 0.2572,
+        "gt_score": 13.0
+      },
+      {
+        "name": "World War Z VR",
+        "vertical": "game",
+        "pipeline_score": 0.2169,
+        "gt_score": 15.0
+      },
+      {
+        "name": "Ground Zero",
+        "vertical": "game",
+        "pipeline_score": 0.2123,
+        "gt_score": 16.0
+      },
+      {
+        "name": "Post Trauma",
+        "vertical": "game",
+        "pipeline_score": 0.1843,
+        "gt_score": 13.0
+      },
+      {
+        "name": "Code Violet",
+        "vertical": "game",
+        "pipeline_score": 0.1679,
+        "gt_score": 12.0
+      },
+      {
+        "name": "The Mute House",
+        "vertical": "game",
+        "pipeline_score": 0.1438,
+        "gt_score": 13.0
+      }
+    ]
+  },
+  "Q18": {
+    "qid": "Q18",
+    "query": "I enjoy Silent Hill f and CyberCorp but hate slow paced content, recommend TV shows and movies",
+    "mode": "mixed",
+    "anchor_count": 2,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "TRON: Ares",
+        "vertical": "movie",
+        "gt_score": 8.0
+      },
+      {
+        "name": "Marvel Zombies",
+        "vertical": "tv",
+        "gt_score": 8.0
+      },
+      {
+        "name": "The Anacondas",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Ice Beast",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Mission: Impossible - The Final Reckoning",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "The Electric State",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Karate Kid: Legends",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Star Wars: The Mandalorian and Grogu",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Fear Below",
+        "vertical": "movie",
+        "gt_score": 7.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "The Last GunFight",
+        "vertical": "movie",
+        "pipeline_score": 0.85
+      },
+      {
+        "name": "Return to Silent Hill",
+        "vertical": "movie",
+        "pipeline_score": 0.7
+      },
+      {
+        "name": "The Running Man",
+        "vertical": "movie",
+        "pipeline_score": 0.6125
+      },
+      {
+        "name": "F1",
+        "vertical": "movie",
+        "pipeline_score": 0.56
+      },
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "pipeline_score": 0.5587
+      },
+      {
+        "name": "Cheetahs Up Close with Bertie Gregory",
+        "vertical": "movie",
+        "pipeline_score": 0.5021
+      },
+      {
+        "name": "The Long Walk",
+        "vertical": "movie",
+        "pipeline_score": 0.4567
+      },
+      {
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "pipeline_score": 0.4238
+      },
+      {
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "pipeline_score": 0.4037
+      },
+      {
+        "name": "Havoc",
+        "vertical": "movie",
+        "pipeline_score": 0.3582
+      }
+    ],
+    "overlap_names": [
+      "Marvel Zombies"
+    ],
+    "overlap_count": 1,
+    "precision_at_10": 0.05,
+    "recall_at_10": 0.1,
+    "verdict": "POOR",
+    "false_negatives": [
+      {
+        "name": "TRON: Ares",
+        "vertical": "movie",
+        "gt_score": 8.0
+      },
+      {
+        "name": "The Anacondas",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Ice Beast",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Mission: Impossible - The Final Reckoning",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "The Electric State",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Karate Kid: Legends",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Star Wars: The Mandalorian and Grogu",
+        "vertical": "movie",
+        "gt_score": 7.0
+      },
+      {
+        "name": "Fear Below",
+        "vertical": "movie",
+        "gt_score": 7.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "The Last GunFight",
+        "vertical": "movie",
+        "pipeline_score": 0.85,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Return to Silent Hill",
+        "vertical": "movie",
+        "pipeline_score": 0.7,
+        "gt_score": 1.0
+      },
+      {
+        "name": "The Running Man",
+        "vertical": "movie",
+        "pipeline_score": 0.6125,
+        "gt_score": 4.0
+      },
+      {
+        "name": "F1",
+        "vertical": "movie",
+        "pipeline_score": 0.56,
+        "gt_score": 1.0
+      },
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "pipeline_score": 0.5587,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Cheetahs Up Close with Bertie Gregory",
+        "vertical": "movie",
+        "pipeline_score": 0.5021,
+        "gt_score": 0.0
+      },
+      {
+        "name": "The Long Walk",
+        "vertical": "movie",
+        "pipeline_score": 0.4567,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "pipeline_score": 0.4238,
+        "gt_score": 2.0
+      },
+      {
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "pipeline_score": 0.4037,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Havoc",
+        "vertical": "movie",
+        "pipeline_score": 0.3582,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Running Point",
+        "vertical": "tv",
+        "pipeline_score": 0.3891,
+        "gt_score": 0.0
+      },
+      {
+        "name": "The Testaments",
+        "vertical": "tv",
+        "pipeline_score": 0.2157,
+        "gt_score": 1.0
+      },
+      {
+        "name": "IT: Welcome to Derry",
+        "vertical": "tv",
+        "pipeline_score": 0.1666,
+        "gt_score": 2.0
+      },
+      {
+        "name": "The Dark Wizard",
+        "vertical": "tv",
+        "pipeline_score": 0.1278,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Court of Gold",
+        "vertical": "tv",
+        "pipeline_score": 0.1194,
+        "gt_score": 0.0
+      },
+      {
+        "name": "Lazarus",
+        "vertical": "tv",
+        "pipeline_score": 0.0947,
+        "gt_score": 3.0
+      },
+      {
+        "name": "Armorsaurs",
+        "vertical": "tv",
+        "pipeline_score": 0.0835,
+        "gt_score": 4.0
+      },
+      {
+        "name": "Countdown",
+        "vertical": "tv",
+        "pipeline_score": 0.0039,
+        "gt_score": 0.0
+      },
+      {
+        "name": "The Bondsman",
+        "vertical": "tv",
+        "pipeline_score": 0.0035,
+        "gt_score": 4.0
+      }
+    ]
+  },
+  "Q19": {
+    "qid": "Q19",
+    "query": "Based on my love for Monster Hunter Wilds and Crimson Desert, but I dislike sci-fi, find me movies and TV shows",
+    "mode": "entity_multi",
+    "anchor_count": 2,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "Red Sonja",
+        "vertical": "movie",
+        "gt_score": 12.0
+      },
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Lost Horizon",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Turbulence",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Iyanu",
+        "vertical": "tv",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Wolf King",
+        "vertical": "tv",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Mickey Mouse Clubhouse+",
+        "vertical": "tv",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Iron Man and His Awesome Friends",
+        "vertical": "tv",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Gabriel and the Guardians",
+        "vertical": "tv",
+        "gt_score": 11.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "The Witcher: Sirens of the Deep",
+        "vertical": "movie",
+        "pipeline_score": 1.2226
+      },
+      {
+        "name": "Lost Horizon",
+        "vertical": "movie",
+        "pipeline_score": 1.2
+      },
+      {
+        "name": "In the Lost Lands",
+        "vertical": "movie",
+        "pipeline_score": 1.0113
+      },
+      {
+        "name": "Red Sonja",
+        "vertical": "movie",
+        "pipeline_score": 0.9004
+      },
+      {
+        "name": "Predator: Badlands",
+        "vertical": "movie",
+        "pipeline_score": 0.85
+      },
+      {
+        "name": "Desert Warrior",
+        "vertical": "movie",
+        "pipeline_score": 0.8028
+      },
+      {
+        "name": "The Rats: A Witcher Tale",
+        "vertical": "movie",
+        "pipeline_score": 0.6893
+      },
+      {
+        "name": "Avatar: Fire and Ash",
+        "vertical": "movie",
+        "pipeline_score": 0.6422
+      },
+      {
+        "name": "Ice Beast",
+        "vertical": "movie",
+        "pipeline_score": 0.5917
+      },
+      {
+        "name": "The Old Guard 2",
+        "vertical": "movie",
+        "pipeline_score": 0.5631
+      }
+    ],
+    "overlap_names": [
+      "Gabriel and the Guardians",
+      "Lost Horizon",
+      "Red Sonja"
+    ],
+    "overlap_count": 3,
+    "precision_at_10": 0.167,
+    "recall_at_10": 0.3,
+    "verdict": "FAIR",
+    "false_negatives": [
+      {
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Turbulence",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "The Land That Time Forgot",
+        "vertical": "movie",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Iyanu",
+        "vertical": "tv",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Wolf King",
+        "vertical": "tv",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Mickey Mouse Clubhouse+",
+        "vertical": "tv",
+        "gt_score": 11.0
+      },
+      {
+        "name": "Iron Man and His Awesome Friends",
+        "vertical": "tv",
+        "gt_score": 11.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "The Witcher: Sirens of the Deep",
+        "vertical": "movie",
+        "pipeline_score": 1.2226,
+        "gt_score": 7.0
+      },
+      {
+        "name": "In the Lost Lands",
+        "vertical": "movie",
+        "pipeline_score": 1.0113,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Predator: Badlands",
+        "vertical": "movie",
+        "pipeline_score": 0.85,
+        "gt_score": 9.0
+      },
+      {
+        "name": "Desert Warrior",
+        "vertical": "movie",
+        "pipeline_score": 0.8028,
+        "gt_score": 6.0
+      },
+      {
+        "name": "The Rats: A Witcher Tale",
+        "vertical": "movie",
+        "pipeline_score": 0.6893,
+        "gt_score": 10.0
+      },
+      {
+        "name": "Avatar: Fire and Ash",
+        "vertical": "movie",
+        "pipeline_score": 0.6422,
+        "gt_score": 9.0
+      },
+      {
+        "name": "Ice Beast",
+        "vertical": "movie",
+        "pipeline_score": 0.5917,
+        "gt_score": 10.0
+      },
+      {
+        "name": "The Old Guard 2",
+        "vertical": "movie",
+        "pipeline_score": 0.5631,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Devil May Cry",
+        "vertical": "tv",
+        "pipeline_score": 0.8643,
+        "gt_score": 7.0
+      },
+      {
+        "name": "A Knight of the Seven Kingdoms",
+        "vertical": "tv",
+        "pipeline_score": 0.5028,
+        "gt_score": 7.0
+      },
+      {
+        "name": "The Mighty Nein",
+        "vertical": "tv",
+        "pipeline_score": 0.3775,
+        "gt_score": 5.0
+      },
+      {
+        "name": "The Black Dagger Brotherhood",
+        "vertical": "tv",
+        "pipeline_score": 0.3007,
+        "gt_score": 6.0
+      },
+      {
+        "name": "Stranger Things: Tales from '85",
+        "vertical": "tv",
+        "pipeline_score": 0.154,
+        "gt_score": 10.0
+      },
+      {
+        "name": "Eyes of Wakanda",
+        "vertical": "tv",
+        "pipeline_score": 0.1215,
+        "gt_score": 9.0
+      },
+      {
+        "name": "Outlander: Blood of My Blood",
+        "vertical": "tv",
+        "pipeline_score": 0.0284,
+        "gt_score": 7.0
+      }
+    ]
+  },
+  "Q20": {
+    "qid": "Q20",
+    "query": "I am a huge fan of Hollow Knight: Silksong, Elden Ring Nightreign, and Code Vein II for games, and I loved Marvel Zombies and Devil May Cry as TV shows. I dont like comedy or family content at all. Based on all of this, recommend me the best movies, games, and TV shows across all categories that match my taste",
+    "mode": "entity_multi",
+    "anchor_count": 5,
+    "is_theme": false,
+    "ideal_top10": [
+      {
+        "name": "Hades II",
+        "vertical": "game",
+        "gt_score": 47.0
+      },
+      {
+        "name": "Wuchang: Fallen Feathers",
+        "vertical": "game",
+        "gt_score": 46.0
+      },
+      {
+        "name": "Clair Obscur: Expedition 33",
+        "vertical": "game",
+        "gt_score": 46.0
+      },
+      {
+        "name": "Vessels of Decay",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Abiotic Factor",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Lost Soul Aside",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Dwarves: Glory, Death and Loot",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Primal Planet",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Little Nightmares III",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Dragonkin: The Banished",
+        "vertical": "game",
+        "gt_score": 45.0
+      }
+    ],
+    "pipeline_top10": [
+      {
+        "name": "Nioh 3",
+        "vertical": "game",
+        "pipeline_score": 0.5743
+      },
+      {
+        "name": "Ender Magnolia: Bloom in the Mist",
+        "vertical": "game",
+        "pipeline_score": 0.54
+      },
+      {
+        "name": "The Blood of Dawnwalker",
+        "vertical": "game",
+        "pipeline_score": 0.5088
+      },
+      {
+        "name": "Beast of Reincarnation",
+        "vertical": "game",
+        "pipeline_score": 0.4697
+      },
+      {
+        "name": "Inayah: Life after Gods",
+        "vertical": "game",
+        "pipeline_score": 0.4504
+      },
+      {
+        "name": "Sophie: Starlight Whispers",
+        "vertical": "game",
+        "pipeline_score": 0.4375
+      },
+      {
+        "name": "Vampire: The Masquerade - Bloodlines 2",
+        "vertical": "game",
+        "pipeline_score": 0.4282
+      },
+      {
+        "name": "Possessor(s)",
+        "vertical": "game",
+        "pipeline_score": 0.3917
+      },
+      {
+        "name": "AI Limit",
+        "vertical": "game",
+        "pipeline_score": 0.3772
+      },
+      {
+        "name": "Plus Ultra: Legado",
+        "vertical": "game",
+        "pipeline_score": 0.3718
+      }
+    ],
+    "overlap_names": [],
+    "overlap_count": 0,
+    "precision_at_10": 0.0,
+    "recall_at_10": 0.0,
+    "verdict": "POOR",
+    "false_negatives": [
+      {
+        "name": "Hades II",
+        "vertical": "game",
+        "gt_score": 47.0
+      },
+      {
+        "name": "Wuchang: Fallen Feathers",
+        "vertical": "game",
+        "gt_score": 46.0
+      },
+      {
+        "name": "Clair Obscur: Expedition 33",
+        "vertical": "game",
+        "gt_score": 46.0
+      },
+      {
+        "name": "Vessels of Decay",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Abiotic Factor",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Lost Soul Aside",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Dwarves: Glory, Death and Loot",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Primal Planet",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Little Nightmares III",
+        "vertical": "game",
+        "gt_score": 45.0
+      },
+      {
+        "name": "Dragonkin: The Banished",
+        "vertical": "game",
+        "gt_score": 45.0
+      }
+    ],
+    "false_positives": [
+      {
+        "name": "Nioh 3",
+        "vertical": "game",
+        "pipeline_score": 0.5743,
+        "gt_score": 35.0
+      },
+      {
+        "name": "Ender Magnolia: Bloom in the Mist",
+        "vertical": "game",
+        "pipeline_score": 0.54,
+        "gt_score": 41.0
+      },
+      {
+        "name": "The Blood of Dawnwalker",
+        "vertical": "game",
+        "pipeline_score": 0.5088,
+        "gt_score": 41.0
+      },
+      {
+        "name": "Beast of Reincarnation",
+        "vertical": "game",
+        "pipeline_score": 0.4697,
+        "gt_score": 23.0
+      },
+      {
+        "name": "Inayah: Life after Gods",
+        "vertical": "game",
+        "pipeline_score": 0.4504,
+        "gt_score": 19.0
+      },
+      {
+        "name": "Sophie: Starlight Whispers",
+        "vertical": "game",
+        "pipeline_score": 0.4375,
+        "gt_score": 41.0
+      },
+      {
+        "name": "Vampire: The Masquerade - Bloodlines 2",
+        "vertical": "game",
+        "pipeline_score": 0.4282,
+        "gt_score": 34.0
+      },
+      {
+        "name": "Possessor(s)",
+        "vertical": "game",
+        "pipeline_score": 0.3917,
+        "gt_score": 27.0
+      },
+      {
+        "name": "AI Limit",
+        "vertical": "game",
+        "pipeline_score": 0.3772,
+        "gt_score": 41.0
+      },
+      {
+        "name": "Plus Ultra: Legado",
+        "vertical": "game",
+        "pipeline_score": 0.3718,
+        "gt_score": 24.0
+      },
+      {
+        "name": "The Witcher: Sirens of the Deep",
+        "vertical": "movie",
+        "pipeline_score": 0.349,
+        "gt_score": 23.0
+      },
+      {
+        "name": "Thunderbolts*",
+        "vertical": "movie",
+        "pipeline_score": 0.2919,
+        "gt_score": 20.0
+      },
+      {
+        "name": "Silent Zone",
+        "vertical": "movie",
+        "pipeline_score": 0.1308,
+        "gt_score": 8.0
+      },
+      {
+        "name": "The Demon Detective",
+        "vertical": "movie",
+        "pipeline_score": 0.1219,
+        "gt_score": 15.0
+      },
+      {
+        "name": "Worldbreaker",
+        "vertical": "movie",
+        "pipeline_score": 0.0925,
+        "gt_score": 22.0
+      },
+      {
+        "name": "Night of the Zoopocalypse",
+        "vertical": "movie",
+        "pipeline_score": 0.0696,
+        "gt_score": 21.0
+      },
+      {
+        "name": "28 Years Later",
+        "vertical": "movie",
+        "pipeline_score": 0.0631,
+        "gt_score": 13.0
+      },
+      {
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "pipeline_score": 0.0495,
+        "gt_score": 16.0
+      },
+      {
+        "name": "28 Years Later: The Bone Temple",
+        "vertical": "movie",
+        "pipeline_score": 0.0442,
+        "gt_score": 10.0
+      },
+      {
+        "name": "The Old Guard 2",
+        "vertical": "movie",
+        "pipeline_score": 0.0343,
+        "gt_score": 16.0
+      },
+      {
+        "name": "The Black Dagger Brotherhood",
+        "vertical": "tv",
+        "pipeline_score": 0.4956,
+        "gt_score": 19.0
+      },
+      {
+        "name": "The Bondsman",
+        "vertical": "tv",
+        "pipeline_score": 0.1558,
+        "gt_score": 24.0
+      },
+      {
+        "name": "The Mighty Nein",
+        "vertical": "tv",
+        "pipeline_score": 0.0833,
+        "gt_score": 23.0
+      },
+      {
+        "name": "Gabriel and the Guardians",
+        "vertical": "tv",
+        "pipeline_score": 0.0654,
+        "gt_score": 29.0
+      },
+      {
+        "name": "Star Wars: Maul - Shadow Lord",
+        "vertical": "tv",
+        "pipeline_score": 0.023,
+        "gt_score": 24.0
+      },
+      {
+        "name": "LEGO Marvel Avengers: Strange Tails",
+        "vertical": "tv",
+        "pipeline_score": 0.0141,
+        "gt_score": 30.0
+      },
+      {
+        "name": "Eyes of Wakanda",
+        "vertical": "tv",
+        "pipeline_score": 0.0108,
+        "gt_score": 24.0
+      },
+      {
+        "name": "Iron Man and His Awesome Friends",
+        "vertical": "tv",
+        "pipeline_score": 0.0037,
+        "gt_score": 30.0
+      }
+    ]
+  }
+}

@@ -1,0 +1,2290 @@
+{
+  "Q1": {
+    "query": "What games are like Elden Ring Nightreign?",
+    "parsed_intent": {
+      "anchor_entity": "Elden Ring Nightreign",
+      "intent": "similar",
+      "target_verticals": [
+        "game"
+      ],
+      "query_type": "within_vertical",
+      "filters": {
+        "genre": null,
+        "mood": null
+      }
+    },
+    "anchor_entity_found": {
+      "name": "Elden Ring Nightreign",
+      "entity_id": "Game:385645",
+      "vertical": "game",
+      "match_type": "exact"
+    },
+    "results": [
+      {
+        "rank": 1,
+        "name": "Nioh 3",
+        "vertical": "game",
+        "final_score": 0.2611,
+        "vector_score": 0.1849,
+        "bm25_score": 0.1056,
+        "shared_keywords": [
+          "action",
+          "challenging",
+          "cooperative",
+          "open world",
+          "role-playing"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 2,
+        "name": "J\u00f6tunnslayer: Hordes of Hel",
+        "vertical": "game",
+        "final_score": 0.1819,
+        "vector_score": 0.0774,
+        "bm25_score": 0.0923,
+        "shared_keywords": [
+          "action",
+          "cooperative",
+          "dark fantasy",
+          "roguelike",
+          "role-playing"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 3,
+        "name": "Darkest Days",
+        "vertical": "game",
+        "final_score": 0.1722,
+        "vector_score": 0.0875,
+        "bm25_score": 0.0364,
+        "shared_keywords": [
+          "action",
+          "cooperative",
+          "open world",
+          "role-playing",
+          "survival"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 4,
+        "name": "Dragonkin: The Banished",
+        "vertical": "game",
+        "final_score": 0.1525,
+        "vector_score": 0.075,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "cooperative",
+          "dark fantasy",
+          "role-playing"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 5,
+        "name": "EverSiege: Untold Ages",
+        "vertical": "game",
+        "final_score": 0.1479,
+        "vector_score": 0.0517,
+        "bm25_score": 0.039,
+        "shared_keywords": [
+          "cooperative",
+          "fantasy",
+          "procedural",
+          "role-playing"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 6,
+        "name": "Code Vein II",
+        "vertical": "game",
+        "final_score": 0.1299,
+        "vector_score": 0.1856,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "dark fantasy",
+          "role-playing",
+          "survival"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 7,
+        "name": "33 Immortals",
+        "vertical": "game",
+        "final_score": 0.1286,
+        "vector_score": 0.0244,
+        "bm25_score": 0.0386,
+        "shared_keywords": [
+          "action",
+          "cooperative",
+          "fantasy",
+          "roguelike",
+          "role-playing"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 8,
+        "name": "Monster Hunter Wilds",
+        "vertical": "game",
+        "final_score": 0.0846,
+        "vector_score": 0.1209,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "fantasy",
+          "open world",
+          "role-playing"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 9,
+        "name": "Let It Die: Inferno",
+        "vertical": "game",
+        "final_score": 0.0752,
+        "vector_score": 0.1074,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "cooperative",
+          "survival"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 10,
+        "name": "Rotwood",
+        "vertical": "game",
+        "final_score": 0.0723,
+        "vector_score": 0.1033,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "roguelike",
+          "role-playing"
+        ],
+        "in_both_sets": false
+      }
+    ],
+    "debug": {
+      "vec_results_count": 20,
+      "bm25_results_count": 20,
+      "merged_count": 33,
+      "dual_signal_count": 7,
+      "vec_top5": [
+        [
+          "Elden Ring Nightreign",
+          "game",
+          "1.0000"
+        ],
+        [
+          "Code Vein II",
+          "game",
+          "0.7434"
+        ],
+        [
+          "Nioh 3",
+          "game",
+          "0.7432"
+        ],
+        [
+          "Monster Hunter Wilds",
+          "game",
+          "0.7230"
+        ],
+        [
+          "Let It Die: Inferno",
+          "game",
+          "0.7187"
+        ]
+      ],
+      "bm25_top5": [
+        [
+          "Elden Ring Nightreign",
+          "game",
+          "47.7086"
+        ],
+        [
+          "Tales of Berseria Remastered: Deluxe Edition",
+          "game",
+          "14.9134"
+        ],
+        [
+          "Nioh 3",
+          "game",
+          "12.8888"
+        ],
+        [
+          "The Blood of Dawnwalker",
+          "game",
+          "12.7342"
+        ],
+        [
+          "J\u00f6tunnslayer: Hordes of Hel",
+          "game",
+          "12.3694"
+        ]
+      ]
+    },
+    "timings": {
+      "nlu_ms": 505.8903694152832,
+      "retrieval_ms": 50.20332336425781,
+      "rerank_ms": 2.043008804321289,
+      "total_ms": 558.1367015838623
+    },
+    "status": "success"
+  },
+  "Q2": {
+    "query": "Games similar to Resident Evil Requiem",
+    "parsed_intent": {
+      "anchor_entity": "Resident Evil Requiem",
+      "intent": "similar",
+      "target_verticals": [
+        "game"
+      ],
+      "query_type": "within_vertical",
+      "filters": {
+        "genre": null,
+        "mood": null
+      }
+    },
+    "anchor_entity_found": {
+      "name": "Resident Evil Requiem",
+      "entity_id": "Game:385836",
+      "vertical": "game",
+      "match_type": "exact"
+    },
+    "results": [
+      {
+        "rank": 1,
+        "name": "Silent Hill f: Deluxe Edition",
+        "vertical": "game",
+        "final_score": 0.2276,
+        "vector_score": 0.1698,
+        "bm25_score": 0.0291,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "puzzle & trivia",
+          "survival horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 2,
+        "name": "Cronos: The New Dawn",
+        "vertical": "game",
+        "final_score": 0.2222,
+        "vector_score": 0.1517,
+        "bm25_score": 0.0534,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "horror",
+          "puzzle & trivia",
+          "survival horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 3,
+        "name": "Echoes of the Living",
+        "vertical": "game",
+        "final_score": 0.2072,
+        "vector_score": 0.1238,
+        "bm25_score": 0.0686,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "survival horror",
+          "zombies"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 4,
+        "name": "Tormented Souls II",
+        "vertical": "game",
+        "final_score": 0.1899,
+        "vector_score": 0.1138,
+        "bm25_score": 0.034,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "horror",
+          "puzzle & trivia",
+          "survival horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 5,
+        "name": "World War Z VR",
+        "vertical": "game",
+        "final_score": 0.1669,
+        "vector_score": 0.0918,
+        "bm25_score": 0.0089,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "horror",
+          "zombies"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 6,
+        "name": "Ground Zero",
+        "vertical": "game",
+        "final_score": 0.1623,
+        "vector_score": 0.0175,
+        "bm25_score": 0.1667,
+        "shared_keywords": [
+          "action",
+          "horror",
+          "resource management",
+          "survival horror",
+          "zombies"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 7,
+        "name": "Silent Hill f",
+        "vertical": "game",
+        "final_score": 0.1473,
+        "vector_score": 0.0551,
+        "bm25_score": 0.0291,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "puzzle & trivia",
+          "survival horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 8,
+        "name": "Post Trauma",
+        "vertical": "game",
+        "final_score": 0.1343,
+        "vector_score": 0.039,
+        "bm25_score": 0.0233,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "puzzle & trivia",
+          "survival horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 9,
+        "name": "Code Violet",
+        "vertical": "game",
+        "final_score": 0.1179,
+        "vector_score": 0.1685,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "horror",
+          "survival horror"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 10,
+        "name": "The Mute House",
+        "vertical": "game",
+        "final_score": 0.0938,
+        "vector_score": 0.134,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "horror"
+        ],
+        "in_both_sets": false
+      }
+    ],
+    "debug": {
+      "vec_results_count": 20,
+      "bm25_results_count": 20,
+      "merged_count": 31,
+      "dual_signal_count": 9,
+      "vec_top5": [
+        [
+          "Resident Evil Requiem",
+          "game",
+          "1.0000"
+        ],
+        [
+          "Silent Hill f: Deluxe Edition",
+          "game",
+          "0.6940"
+        ],
+        [
+          "Code Violet",
+          "game",
+          "0.6936"
+        ],
+        [
+          "Cronos: The New Dawn",
+          "game",
+          "0.6874"
+        ],
+        [
+          "The Mute House",
+          "game",
+          "0.6809"
+        ]
+      ],
+      "bm25_top5": [
+        [
+          "Resident Evil Requiem",
+          "game",
+          "56.8936"
+        ],
+        [
+          "Ground Zero",
+          "game",
+          "15.5317"
+        ],
+        [
+          "Outbreak: Shades of Horror",
+          "game",
+          "12.3122"
+        ],
+        [
+          "Pizza Bandit",
+          "game",
+          "10.8233"
+        ],
+        [
+          "Echoes of the Living",
+          "game",
+          "10.6595"
+        ]
+      ]
+    },
+    "timings": {
+      "nlu_ms": 468.37639808654785,
+      "retrieval_ms": 70.65701484680176,
+      "rerank_ms": 0.10657310485839844,
+      "total_ms": 539.139986038208
+    },
+    "status": "success"
+  },
+  "Q3": {
+    "query": "Find games like Silent Hill f",
+    "parsed_intent": {
+      "anchor_entity": "Silent Hill",
+      "intent": "similar",
+      "target_verticals": [
+        "game"
+      ],
+      "query_type": "within_vertical",
+      "filters": {
+        "genre": null,
+        "mood": null
+      }
+    },
+    "anchor_entity_found": {
+      "name": "Silent Hill f",
+      "entity_id": "Game:385240",
+      "vertical": "game",
+      "match_type": "prefix"
+    },
+    "results": [
+      {
+        "rank": 1,
+        "name": "Silent Hill f: Deluxe Edition",
+        "vertical": "game",
+        "final_score": 0.7929,
+        "vector_score": 0.7503,
+        "bm25_score": 0.559,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "konami",
+          "neobards entertainment",
+          "puzzle & trivia",
+          "ryukishi07",
+          "silent hill",
+          "survival horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 2,
+        "name": "Post Trauma",
+        "vertical": "game",
+        "final_score": 0.2564,
+        "vector_score": 0.2148,
+        "bm25_score": 0.0201,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "puzzle & trivia",
+          "survival horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 3,
+        "name": "Dollhouse: Behind the Broken Mirror",
+        "vertical": "game",
+        "final_score": 0.1507,
+        "vector_score": 0.071,
+        "bm25_score": 0.0034,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "psychological",
+          "puzzle & trivia"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 4,
+        "name": "Out of Sight",
+        "vertical": "game",
+        "final_score": 0.1365,
+        "vector_score": 0.0507,
+        "bm25_score": 0.0034,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "psychological",
+          "puzzle & trivia"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 5,
+        "name": "Tormented Souls II",
+        "vertical": "game",
+        "final_score": 0.1166,
+        "vector_score": 0.0176,
+        "bm25_score": 0.0144,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "puzzle & trivia",
+          "survival horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 6,
+        "name": "Dark Memories: Prologue",
+        "vertical": "game",
+        "final_score": 0.0907,
+        "vector_score": 0.1295,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "horror"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 7,
+        "name": "BrokenLore: Don't Watch",
+        "vertical": "game",
+        "final_score": 0.0861,
+        "vector_score": 0.123,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "psychological"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 8,
+        "name": "Inner Voice",
+        "vertical": "game",
+        "final_score": 0.0794,
+        "vector_score": 0.1134,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "horror",
+          "psychological"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 9,
+        "name": "BrokenLore: Low",
+        "vertical": "game",
+        "final_score": 0.0643,
+        "vector_score": 0.0918,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "horror",
+          "psychological"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 10,
+        "name": "Subliminal",
+        "vertical": "game",
+        "final_score": 0.0323,
+        "vector_score": 0.0461,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "horror",
+          "puzzle & trivia"
+        ],
+        "in_both_sets": false
+      }
+    ],
+    "debug": {
+      "vec_results_count": 20,
+      "bm25_results_count": 20,
+      "merged_count": 34,
+      "dual_signal_count": 6,
+      "vec_top5": [
+        [
+          "Silent Hill f",
+          "game",
+          "1.0000"
+        ],
+        [
+          "Silent Hill f: Deluxe Edition",
+          "game",
+          "0.9227"
+        ],
+        [
+          "Post Trauma",
+          "game",
+          "0.7569"
+        ],
+        [
+          "Dark Memories: Prologue",
+          "game",
+          "0.7305"
+        ],
+        [
+          "BrokenLore: Don't Watch",
+          "game",
+          "0.7284"
+        ]
+      ],
+      "bm25_top5": [
+        [
+          "Silent Hill f",
+          "game",
+          "54.7375"
+        ],
+        [
+          "Silent Hill f: Deluxe Edition",
+          "game",
+          "33.8873"
+        ],
+        [
+          "Cronos: The New Dawn",
+          "game",
+          "12.0270"
+        ],
+        [
+          "Dark Atlas: Infernum",
+          "game",
+          "9.5835"
+        ],
+        [
+          "Beneath",
+          "game",
+          "9.1705"
+        ]
+      ]
+    },
+    "timings": {
+      "nlu_ms": 623.1021881103516,
+      "retrieval_ms": 42.723894119262695,
+      "rerank_ms": 0.07748603820800781,
+      "total_ms": 665.9035682678223
+    },
+    "status": "success"
+  },
+  "Q4": {
+    "query": "Movies similar to Star Wars: The Mandalorian and Grogu",
+    "parsed_intent": {
+      "anchor_entity": "Star Wars: The Mandalorian and Grogu",
+      "intent": "similar",
+      "target_verticals": [
+        "movie"
+      ],
+      "query_type": "within_vertical",
+      "filters": {
+        "genre": null,
+        "mood": null
+      }
+    },
+    "anchor_entity_found": {
+      "name": "Star Wars: The Mandalorian and Grogu",
+      "entity_id": "Movie:386289",
+      "vertical": "movie",
+      "match_type": "exact"
+    },
+    "results": [
+      {
+        "rank": 1,
+        "name": "Winter of Empires",
+        "vertical": "movie",
+        "final_score": 0.2754,
+        "vector_score": 0.2195,
+        "bm25_score": 0.0725,
+        "shared_keywords": [
+          "adventure",
+          "science fiction",
+          "space opera"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 2,
+        "name": "Predator: Badlands",
+        "vertical": "movie",
+        "final_score": 0.2503,
+        "vector_score": 0.1943,
+        "bm25_score": 0.0475,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "franchise",
+          "science fiction"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 3,
+        "name": "Avatar: Fire and Ash",
+        "vertical": "movie",
+        "final_score": 0.2214,
+        "vector_score": 0.1606,
+        "bm25_score": 0.03,
+        "shared_keywords": [
+          "adventure",
+          "franchise",
+          "science fiction"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 4,
+        "name": "The Electric State",
+        "vertical": "movie",
+        "final_score": 0.1882,
+        "vector_score": 0.0924,
+        "bm25_score": 0.0782,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "found family",
+          "science fiction"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 5,
+        "name": "Elio",
+        "vertical": "movie",
+        "final_score": 0.1333,
+        "vector_score": 0.1904,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "science fiction"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 6,
+        "name": "Jurassic World Rebirth",
+        "vertical": "movie",
+        "final_score": 0.1322,
+        "vector_score": 0.0256,
+        "bm25_score": 0.0475,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "franchise",
+          "science fiction"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 7,
+        "name": "Dune: Part Three",
+        "vertical": "movie",
+        "final_score": 0.1166,
+        "vector_score": 0.0033,
+        "bm25_score": 0.0475,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "franchise",
+          "science fiction"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 8,
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "final_score": 0.1152,
+        "vector_score": 0.0043,
+        "bm25_score": 0.0407,
+        "shared_keywords": [
+          "action",
+          "franchise",
+          "science fiction"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 9,
+        "name": "Xeno",
+        "vertical": "movie",
+        "final_score": 0.1021,
+        "vector_score": 0.1458,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "science fiction"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 10,
+        "name": "The Fantastic 4: First Steps",
+        "vertical": "movie",
+        "final_score": 0.0591,
+        "vector_score": 0.0845,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "science fiction"
+        ],
+        "in_both_sets": false
+      }
+    ],
+    "debug": {
+      "vec_results_count": 20,
+      "bm25_results_count": 20,
+      "merged_count": 32,
+      "dual_signal_count": 8,
+      "vec_top5": [
+        [
+          "Star Wars: The Mandalorian and Grogu",
+          "movie",
+          "1.0000"
+        ],
+        [
+          "Winter of Empires",
+          "movie",
+          "0.6144"
+        ],
+        [
+          "Predator: Badlands",
+          "movie",
+          "0.6020"
+        ],
+        [
+          "Elio",
+          "movie",
+          "0.6000"
+        ],
+        [
+          "Avatar: Fire and Ash",
+          "movie",
+          "0.5853"
+        ]
+      ],
+      "bm25_top5": [
+        [
+          "Star Wars: The Mandalorian and Grogu",
+          "movie",
+          "64.4355"
+        ],
+        [
+          "The Electric State",
+          "movie",
+          "8.7526"
+        ],
+        [
+          "Winter of Empires",
+          "movie",
+          "8.4063"
+        ],
+        [
+          "TRON: Ares",
+          "movie",
+          "6.9004"
+        ],
+        [
+          "Dune: Part Three",
+          "movie",
+          "6.9004"
+        ]
+      ]
+    },
+    "timings": {
+      "nlu_ms": 815.5512809753418,
+      "retrieval_ms": 45.281171798706055,
+      "rerank_ms": 0.07581710815429688,
+      "total_ms": 860.9082698822021
+    },
+    "status": "success"
+  },
+  "Q5": {
+    "query": "TV shows like Stranger Things: Tales from 85",
+    "parsed_intent": {
+      "anchor_entity": "Stranger Things: Tales from 85",
+      "intent": "similar",
+      "target_verticals": [
+        "tv"
+      ],
+      "query_type": "within_vertical",
+      "filters": {
+        "genre": null,
+        "mood": null
+      },
+      "raw_response": {
+        "anchor_entity": "Stranger Things: Tales from 85",
+        "filters": {
+          "genre": null,
+          "mood": null
+        },
+        "intent": "similar",
+        "query_type": "within_vertical",
+        "target_verticals": [
+          "tv"
+        ]
+      }
+    },
+    "anchor_entity_found": false,
+    "error": "Entity not found: 'Stranger Things: Tales from 85'",
+    "results": [],
+    "timings": {
+      "nlu_ms": 737.205982208252,
+      "retrieval_ms": 14.425039291381836
+    },
+    "status": "success"
+  },
+  "Q6": {
+    "query": "What movies should I watch if I liked Elden Ring Nightreign?",
+    "parsed_intent": {
+      "anchor_entity": "Elden Ring Nightreign",
+      "intent": "recommend",
+      "target_verticals": [
+        "movie"
+      ],
+      "query_type": "cross_vertical",
+      "filters": {
+        "genre": null,
+        "mood": null
+      }
+    },
+    "anchor_entity_found": {
+      "name": "Elden Ring Nightreign",
+      "entity_id": "Game:385645",
+      "vertical": "game",
+      "match_type": "exact"
+    },
+    "results": [
+      {
+        "rank": 1,
+        "name": "In the Lost Lands",
+        "vertical": "movie",
+        "final_score": 1.0812,
+        "vector_score": 1.0,
+        "bm25_score": 0.9374,
+        "shared_keywords": [
+          "action",
+          "dark fantasy",
+          "fantasy"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 2,
+        "name": "The Rats: A Witcher Tale",
+        "vertical": "movie",
+        "final_score": 0.7054,
+        "vector_score": 0.546,
+        "bm25_score": 0.744,
+        "shared_keywords": [
+          "dark fantasy",
+          "fantasy"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 3,
+        "name": "Tales from Black Manor",
+        "vertical": "movie",
+        "final_score": 0.698,
+        "vector_score": 0.5354,
+        "bm25_score": 0.744,
+        "shared_keywords": [
+          "dark fantasy",
+          "fantasy"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 4,
+        "name": "The Witcher: Sirens of the Deep",
+        "vertical": "movie",
+        "final_score": 0.5842,
+        "vector_score": 0.2631,
+        "bm25_score": 1.0,
+        "shared_keywords": [
+          "action",
+          "dark fantasy",
+          "fantasy"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 5,
+        "name": "Predator: Badlands",
+        "vertical": "movie",
+        "final_score": 0.4912,
+        "vector_score": 0.7018,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "survival"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 6,
+        "name": "Until Dawn",
+        "vertical": "movie",
+        "final_score": 0.4644,
+        "vector_score": 0.6635,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "survival"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 7,
+        "name": "The Old Guard 2",
+        "vertical": "movie",
+        "final_score": 0.4532,
+        "vector_score": 0.6474,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "fantasy"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 8,
+        "name": "A Minecraft Movie",
+        "vertical": "movie",
+        "final_score": 0.3254,
+        "vector_score": 0.4648,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "fantasy"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 9,
+        "name": "The Jurassic Games: Extinction",
+        "vertical": "movie",
+        "final_score": 0.2705,
+        "vector_score": 0.0067,
+        "bm25_score": 0.5525,
+        "shared_keywords": [
+          "action",
+          "fantasy",
+          "survival"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 10,
+        "name": "Peter Pan's Neverland Nightmare",
+        "vertical": "movie",
+        "final_score": 0.2553,
+        "vector_score": 0.3647,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "fantasy"
+        ],
+        "in_both_sets": false
+      }
+    ],
+    "debug": {
+      "vec_results_count": 20,
+      "bm25_results_count": 20,
+      "merged_count": 33,
+      "dual_signal_count": 7,
+      "vec_top5": [
+        [
+          "In the Lost Lands",
+          "movie",
+          "0.5461"
+        ],
+        [
+          "Predator: Badlands",
+          "movie",
+          "0.5109"
+        ],
+        [
+          "Until Dawn",
+          "movie",
+          "0.5063"
+        ],
+        [
+          "The Old Guard 2",
+          "movie",
+          "0.5044"
+        ],
+        [
+          "The Rats: A Witcher Tale",
+          "movie",
+          "0.4925"
+        ]
+      ],
+      "bm25_top5": [
+        [
+          "The Witcher: Sirens of the Deep",
+          "movie",
+          "6.3110"
+        ],
+        [
+          "In the Lost Lands",
+          "movie",
+          "6.1006"
+        ],
+        [
+          "Tales from Black Manor",
+          "movie",
+          "5.4507"
+        ],
+        [
+          "The Rats: A Witcher Tale",
+          "movie",
+          "5.4507"
+        ],
+        [
+          "The Jurassic Games: Extinction",
+          "movie",
+          "4.8073"
+        ]
+      ]
+    },
+    "timings": {
+      "nlu_ms": 476.38988494873047,
+      "retrieval_ms": 69.31591033935547,
+      "rerank_ms": 0.07581710815429688,
+      "total_ms": 545.7816123962402
+    },
+    "status": "success"
+  },
+  "Q7": {
+    "query": "Find me TV shows similar to Resident Evil",
+    "parsed_intent": {
+      "anchor_entity": "Resident Evil",
+      "intent": "similar",
+      "target_verticals": [
+        "tv"
+      ],
+      "query_type": "within_vertical",
+      "filters": {
+        "genre": null,
+        "mood": null
+      }
+    },
+    "anchor_entity_found": {
+      "name": "Resident Evil Requiem",
+      "entity_id": "Game:385836",
+      "vertical": "game",
+      "match_type": "prefix"
+    },
+    "results": [
+      {
+        "rank": 1,
+        "name": "Marvel Zombies",
+        "vertical": "tv",
+        "final_score": 1.1,
+        "vector_score": 1.0,
+        "bm25_score": 1.0,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "horror",
+          "zombies"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 2,
+        "name": "Devil May Cry",
+        "vertical": "tv",
+        "final_score": 0.7327,
+        "vector_score": 0.8069,
+        "bm25_score": 0.2263,
+        "shared_keywords": [
+          "action",
+          "horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 3,
+        "name": "Alien: Earth",
+        "vertical": "tv",
+        "final_score": 0.7181,
+        "vector_score": 0.8476,
+        "bm25_score": 0.0827,
+        "shared_keywords": [
+          "horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 4,
+        "name": "Hell Motel",
+        "vertical": "tv",
+        "final_score": 0.717,
+        "vector_score": 0.5414,
+        "bm25_score": 0.7934,
+        "shared_keywords": [
+          "horror",
+          "suspense"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 5,
+        "name": "The Bondsman",
+        "vertical": "tv",
+        "final_score": 0.3564,
+        "vector_score": 0.2692,
+        "bm25_score": 0.2263,
+        "shared_keywords": [
+          "action",
+          "horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 6,
+        "name": "Run Away",
+        "vertical": "tv",
+        "final_score": 0.2899,
+        "vector_score": 0.0557,
+        "bm25_score": 0.5028,
+        "shared_keywords": [
+          "suspense"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 7,
+        "name": "Nemesis",
+        "vertical": "tv",
+        "final_score": 0.2791,
+        "vector_score": 0.3987,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "adventure"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 8,
+        "name": "Memory of a Killer",
+        "vertical": "tv",
+        "final_score": 0.2508,
+        "vector_score": 0.0,
+        "bm25_score": 0.5028,
+        "shared_keywords": [
+          "suspense"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 9,
+        "name": "Something Very Bad Is Going to Happen",
+        "vertical": "tv",
+        "final_score": 0.2315,
+        "vector_score": 0.1483,
+        "bm25_score": 0.0924,
+        "shared_keywords": [
+          "horror"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 10,
+        "name": "True Haunting",
+        "vertical": "tv",
+        "final_score": 0.2186,
+        "vector_score": 0.1298,
+        "bm25_score": 0.0924,
+        "shared_keywords": [
+          "horror"
+        ],
+        "in_both_sets": true
+      }
+    ],
+    "debug": {
+      "vec_results_count": 20,
+      "bm25_results_count": 20,
+      "merged_count": 30,
+      "dual_signal_count": 10,
+      "vec_top5": [
+        [
+          "Marvel Zombies",
+          "tv",
+          "0.5352"
+        ],
+        [
+          "Alien: Earth",
+          "tv",
+          "0.5183"
+        ],
+        [
+          "Devil May Cry",
+          "tv",
+          "0.5137"
+        ],
+        [
+          "Hell Motel",
+          "tv",
+          "0.4842"
+        ],
+        [
+          "Nemesis",
+          "tv",
+          "0.4684"
+        ]
+      ],
+      "bm25_top5": [
+        [
+          "Marvel Zombies",
+          "tv",
+          "7.6962"
+        ],
+        [
+          "Hell Motel",
+          "tv",
+          "6.3696"
+        ],
+        [
+          "Run Away",
+          "tv",
+          "4.5029"
+        ],
+        [
+          "Memory of a Killer",
+          "tv",
+          "4.5029"
+        ],
+        [
+          "Wayward",
+          "tv",
+          "4.5029"
+        ]
+      ]
+    },
+    "timings": {
+      "nlu_ms": 693.2897567749023,
+      "retrieval_ms": 43.923377990722656,
+      "rerank_ms": 0.0667572021484375,
+      "total_ms": 737.2798919677734
+    },
+    "status": "success"
+  },
+  "Q8": {
+    "query": "What games would I enjoy if I like horror movies?",
+    "parsed_intent": {
+      "anchor_entity": "horror movies",
+      "intent": "recommend",
+      "target_verticals": [
+        "game"
+      ],
+      "query_type": "cross_vertical",
+      "filters": {
+        "genre": "horror",
+        "mood": null
+      },
+      "raw_response": {
+        "anchor_entity": "horror movies",
+        "filters": {
+          "genre": "horror",
+          "mood": null
+        },
+        "intent": "recommend",
+        "query_type": "cross_vertical",
+        "target_verticals": [
+          "game"
+        ]
+      }
+    },
+    "anchor_entity_found": false,
+    "error": "Entity not found: 'horror movies'",
+    "results": [],
+    "timings": {
+      "nlu_ms": 439.5937919616699,
+      "retrieval_ms": 14.062881469726562
+    },
+    "status": "success"
+  },
+  "Q9": {
+    "query": "Recommend movies for someone who loves fantasy RPG games",
+    "parsed_intent": {
+      "anchor_entity": "fantasy RPG games",
+      "intent": "recommend",
+      "target_verticals": [
+        "movie"
+      ],
+      "query_type": "cross_vertical",
+      "filters": {
+        "genre": "fantasy",
+        "mood": null
+      },
+      "raw_response": {
+        "anchor_entity": "fantasy RPG games",
+        "filters": {
+          "genre": "fantasy",
+          "mood": null
+        },
+        "intent": "recommend",
+        "query_type": "cross_vertical",
+        "target_verticals": [
+          "movie"
+        ]
+      }
+    },
+    "anchor_entity_found": false,
+    "error": "Entity not found: 'fantasy RPG games'",
+    "results": [],
+    "timings": {
+      "nlu_ms": 415.5690670013428,
+      "retrieval_ms": 14.287710189819336
+    },
+    "status": "success"
+  },
+  "Q10": {
+    "query": "Find TV shows for fans of action adventure games",
+    "parsed_intent": {
+      "anchor_entity": "action adventure games",
+      "intent": "recommend",
+      "target_verticals": [
+        "tv"
+      ],
+      "query_type": "cross_vertical",
+      "filters": {
+        "genre": "action",
+        "mood": null
+      },
+      "raw_response": {
+        "anchor_entity": "action adventure games",
+        "filters": {
+          "genre": "action",
+          "mood": null
+        },
+        "intent": "recommend",
+        "query_type": "cross_vertical",
+        "target_verticals": [
+          "tv"
+        ]
+      }
+    },
+    "anchor_entity_found": false,
+    "error": "Entity not found: 'action adventure games'",
+    "results": [],
+    "timings": {
+      "nlu_ms": 340.4715061187744,
+      "retrieval_ms": 15.303850173950195
+    },
+    "status": "success"
+  },
+  "Q11": {
+    "query": "Content similar to Marvel Zombies",
+    "parsed_intent": {
+      "anchor_entity": "Marvel Zombies",
+      "intent": "similar",
+      "target_verticals": [
+        "game",
+        "movie",
+        "tv"
+      ],
+      "query_type": "cross_vertical",
+      "filters": {
+        "genre": null,
+        "mood": null
+      }
+    },
+    "anchor_entity_found": {
+      "name": "Marvel Zombies",
+      "entity_id": "TV:386583",
+      "vertical": "tv",
+      "match_type": "exact"
+    },
+    "results": [
+      {
+        "rank": 1,
+        "name": "Night of the Zoopocalypse",
+        "vertical": "movie",
+        "final_score": 0.1916,
+        "vector_score": 0.2737,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "animation",
+          "horror",
+          "science fiction"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 2,
+        "name": "Thunderbolts*",
+        "vertical": "movie",
+        "final_score": 0.1835,
+        "vector_score": 0.0704,
+        "bm25_score": 0.1142,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "marvel",
+          "science fiction",
+          "superhero"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 3,
+        "name": "Outbreak: Shades of Horror",
+        "vertical": "game",
+        "final_score": 0.1817,
+        "vector_score": 0.0565,
+        "bm25_score": 0.1404,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "horror",
+          "undead",
+          "zombies"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 4,
+        "name": "World War Z VR",
+        "vertical": "game",
+        "final_score": 0.1679,
+        "vector_score": 0.0601,
+        "bm25_score": 0.0861,
+        "shared_keywords": [
+          "action",
+          "adventure",
+          "horror",
+          "science fiction",
+          "survival",
+          "zombies"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 5,
+        "name": "Devil May Cry",
+        "vertical": "tv",
+        "final_score": 0.1536,
+        "vector_score": 0.2194,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "animation",
+          "horror"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 6,
+        "name": "Silent Zone",
+        "vertical": "movie",
+        "final_score": 0.1188,
+        "vector_score": 0.1698,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "horror",
+          "undead"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 7,
+        "name": "Worldbreaker",
+        "vertical": "movie",
+        "final_score": 0.0874,
+        "vector_score": 0.1249,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "horror",
+          "science fiction",
+          "survival"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 8,
+        "name": "28 Years Later",
+        "vertical": "movie",
+        "final_score": 0.0633,
+        "vector_score": 0.0905,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "horror",
+          "science fiction",
+          "survival"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 9,
+        "name": "Predator: Wastelands",
+        "vertical": "movie",
+        "final_score": 0.0522,
+        "vector_score": 0.0746,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "action",
+          "science fiction",
+          "survival"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 10,
+        "name": "28 Years Later: The Bone Temple",
+        "vertical": "movie",
+        "final_score": 0.0479,
+        "vector_score": 0.0684,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "horror",
+          "science fiction"
+        ],
+        "in_both_sets": false
+      }
+    ],
+    "debug": {
+      "vec_results_count": 20,
+      "bm25_results_count": 20,
+      "merged_count": 36,
+      "dual_signal_count": 4,
+      "vec_top5": [
+        [
+          "Marvel Zombies",
+          "tv",
+          "1.0000"
+        ],
+        [
+          "Night of the Zoopocalypse",
+          "movie",
+          "0.7127"
+        ],
+        [
+          "Devil May Cry",
+          "tv",
+          "0.6912"
+        ],
+        [
+          "Silent Zone",
+          "movie",
+          "0.6716"
+        ],
+        [
+          "Worldbreaker",
+          "movie",
+          "0.6538"
+        ]
+      ],
+      "bm25_top5": [
+        [
+          "Marvel Zombies",
+          "tv",
+          "45.2076"
+        ],
+        [
+          "Zombie Ship",
+          "game",
+          "14.0532"
+        ],
+        [
+          "Outbreak: Shades of Horror",
+          "game",
+          "13.7838"
+        ],
+        [
+          "Thunderbolts*",
+          "movie",
+          "12.8279"
+        ],
+        [
+          "Captain America: Brave New World",
+          "movie",
+          "12.4148"
+        ]
+      ]
+    },
+    "timings": {
+      "nlu_ms": 2596.6105461120605,
+      "retrieval_ms": 40.574073791503906,
+      "rerank_ms": 0.08916854858398438,
+      "total_ms": 2637.2737884521484
+    },
+    "status": "success"
+  },
+  "Q12": {
+    "query": "Find me something with dark fantasy themes",
+    "status": "error",
+    "error": "NLU failed after 3 attempts: Error code: 400 - {'error': {'message': 'tool call validation failed: parameters for tool extract_query_intent did not match schema: errors: [`/anchor_entity`: expected string, but got null]', 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '<function=extract_query_intent>{\"anchor_entity\": null, \"filters\": {\"genre\": \"dark fantasy\", \"mood\": null}, \"intent\": \"explore\", \"target_verticals\": [\"game\", \"movie\", \"tv\"], \"query_type\": \"cross_vertical\"}</function>'}}",
+    "parsed_intent": {},
+    "anchor_entity_found": false,
+    "results": [],
+    "debug": {},
+    "timings": {}
+  },
+  "Q13": {
+    "query": "Horror content across all categories",
+    "parsed_intent": {
+      "anchor_entity": "null",
+      "intent": "explore",
+      "target_verticals": [
+        "game",
+        "movie",
+        "tv"
+      ],
+      "query_type": "cross_vertical",
+      "filters": {
+        "genre": "horror",
+        "mood": "null"
+      }
+    },
+    "anchor_entity_found": {
+      "name": "Nullstar: Solus",
+      "entity_id": "Game:385535",
+      "vertical": "game",
+      "match_type": "prefix"
+    },
+    "results": [
+      {
+        "rank": 1,
+        "name": "TetherGeist",
+        "vertical": "game",
+        "final_score": 0.1838,
+        "vector_score": 0.1014,
+        "bm25_score": 0.0429,
+        "shared_keywords": [
+          "adventure",
+          "indie",
+          "platform",
+          "precision platformer"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 2,
+        "name": "ReSetna",
+        "vertical": "game",
+        "final_score": 0.1824,
+        "vector_score": 0.0938,
+        "bm25_score": 0.0558,
+        "shared_keywords": [
+          "adventure",
+          "indie",
+          "platform",
+          "ruins"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 3,
+        "name": "Super Meat Boy 3D",
+        "vertical": "game",
+        "final_score": 0.173,
+        "vector_score": 0.0661,
+        "bm25_score": 0.0893,
+        "shared_keywords": [
+          "arcade",
+          "indie",
+          "platform",
+          "precision platformer"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 4,
+        "name": "Star Overdrive",
+        "vertical": "game",
+        "final_score": 0.1637,
+        "vector_score": 0.0766,
+        "bm25_score": 0.0336,
+        "shared_keywords": [
+          "adventure",
+          "arcade",
+          "indie",
+          "speed"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 5,
+        "name": "Mio: Memories in Orbit",
+        "vertical": "game",
+        "final_score": 0.1358,
+        "vector_score": 0.194,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "arcade",
+          "indie",
+          "platform"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 6,
+        "name": "Shotgun Cop Man",
+        "vertical": "game",
+        "final_score": 0.1343,
+        "vector_score": 0.0107,
+        "bm25_score": 0.0893,
+        "shared_keywords": [
+          "arcade",
+          "indie",
+          "platform",
+          "precision platformer"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 7,
+        "name": "Toree Saturn",
+        "vertical": "game",
+        "final_score": 0.1279,
+        "vector_score": 0.1827,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "arcade",
+          "platform"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 8,
+        "name": "Possessor(s)",
+        "vertical": "game",
+        "final_score": 0.1276,
+        "vector_score": 0.1824,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "indie",
+          "platform"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 9,
+        "name": "Transporter",
+        "vertical": "game",
+        "final_score": 0.0953,
+        "vector_score": 0.1362,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "arcade",
+          "platform"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 10,
+        "name": "Haste",
+        "vertical": "game",
+        "final_score": 0.0916,
+        "vector_score": 0.1309,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "indie",
+          "platform"
+        ],
+        "in_both_sets": false
+      }
+    ],
+    "debug": {
+      "vec_results_count": 20,
+      "bm25_results_count": 20,
+      "merged_count": 34,
+      "dual_signal_count": 6,
+      "vec_top5": [
+        [
+          "Nullstar: Solus",
+          "game",
+          "1.0000"
+        ],
+        [
+          "Mio: Memories in Orbit",
+          "game",
+          "0.6714"
+        ],
+        [
+          "Toree Saturn",
+          "game",
+          "0.6668"
+        ],
+        [
+          "Possessor(s)",
+          "game",
+          "0.6666"
+        ],
+        [
+          "Transporter",
+          "game",
+          "0.6478"
+        ]
+      ],
+      "bm25_top5": [
+        [
+          "Nullstar: Solus",
+          "game",
+          "59.6081"
+        ],
+        [
+          "Korean Drone Flying Tour Sogeumgang",
+          "game",
+          "14.7861"
+        ],
+        [
+          "Shotgun Cop Man",
+          "game",
+          "11.9234"
+        ],
+        [
+          "Super Meat Boy 3D",
+          "game",
+          "11.9234"
+        ],
+        [
+          "ReSetna",
+          "game",
+          "10.1734"
+        ]
+      ]
+    },
+    "timings": {
+      "nlu_ms": 357.0592403411865,
+      "retrieval_ms": 71.19178771972656,
+      "rerank_ms": 0.07915496826171875,
+      "total_ms": 428.3301830291748
+    },
+    "status": "success"
+  },
+  "Q14": {
+    "query": "Recommend something for someone who loves sci-fi",
+    "parsed_intent": {
+      "anchor_entity": "sci-fi",
+      "intent": "recommend",
+      "target_verticals": [
+        "game",
+        "movie",
+        "tv"
+      ],
+      "query_type": "cross_vertical",
+      "filters": {
+        "genre": "sci-fi",
+        "mood": null
+      },
+      "raw_response": {
+        "anchor_entity": "sci-fi",
+        "filters": {
+          "genre": "sci-fi",
+          "mood": null
+        },
+        "intent": "recommend",
+        "query_type": "cross_vertical",
+        "target_verticals": [
+          "game",
+          "movie",
+          "tv"
+        ]
+      }
+    },
+    "anchor_entity_found": false,
+    "error": "Entity not found: 'sci-fi'",
+    "results": [],
+    "timings": {
+      "nlu_ms": 646.5253829956055,
+      "retrieval_ms": 14.103412628173828
+    },
+    "status": "success"
+  },
+  "Q15": {
+    "query": "What should I watch or play this weekend if I like mystery and thriller?",
+    "parsed_intent": {
+      "anchor_entity": "null",
+      "intent": "explore",
+      "target_verticals": [
+        "game",
+        "movie",
+        "tv"
+      ],
+      "query_type": "cross_vertical",
+      "filters": {
+        "genre": "mystery, thriller",
+        "mood": "null"
+      }
+    },
+    "anchor_entity_found": {
+      "name": "Nullstar: Solus",
+      "entity_id": "Game:385535",
+      "vertical": "game",
+      "match_type": "prefix"
+    },
+    "results": [
+      {
+        "rank": 1,
+        "name": "TetherGeist",
+        "vertical": "game",
+        "final_score": 0.1838,
+        "vector_score": 0.1014,
+        "bm25_score": 0.0429,
+        "shared_keywords": [
+          "adventure",
+          "indie",
+          "platform",
+          "precision platformer"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 2,
+        "name": "ReSetna",
+        "vertical": "game",
+        "final_score": 0.1824,
+        "vector_score": 0.0938,
+        "bm25_score": 0.0558,
+        "shared_keywords": [
+          "adventure",
+          "indie",
+          "platform",
+          "ruins"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 3,
+        "name": "Super Meat Boy 3D",
+        "vertical": "game",
+        "final_score": 0.173,
+        "vector_score": 0.0661,
+        "bm25_score": 0.0893,
+        "shared_keywords": [
+          "arcade",
+          "indie",
+          "platform",
+          "precision platformer"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 4,
+        "name": "Star Overdrive",
+        "vertical": "game",
+        "final_score": 0.1637,
+        "vector_score": 0.0766,
+        "bm25_score": 0.0336,
+        "shared_keywords": [
+          "adventure",
+          "arcade",
+          "indie",
+          "speed"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 5,
+        "name": "Mio: Memories in Orbit",
+        "vertical": "game",
+        "final_score": 0.1358,
+        "vector_score": 0.194,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "arcade",
+          "indie",
+          "platform"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 6,
+        "name": "Shotgun Cop Man",
+        "vertical": "game",
+        "final_score": 0.1343,
+        "vector_score": 0.0107,
+        "bm25_score": 0.0893,
+        "shared_keywords": [
+          "arcade",
+          "indie",
+          "platform",
+          "precision platformer"
+        ],
+        "in_both_sets": true
+      },
+      {
+        "rank": 7,
+        "name": "Toree Saturn",
+        "vertical": "game",
+        "final_score": 0.1279,
+        "vector_score": 0.1827,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "arcade",
+          "platform"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 8,
+        "name": "Possessor(s)",
+        "vertical": "game",
+        "final_score": 0.1276,
+        "vector_score": 0.1824,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "indie",
+          "platform"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 9,
+        "name": "Transporter",
+        "vertical": "game",
+        "final_score": 0.0953,
+        "vector_score": 0.1362,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "arcade",
+          "platform"
+        ],
+        "in_both_sets": false
+      },
+      {
+        "rank": 10,
+        "name": "Haste",
+        "vertical": "game",
+        "final_score": 0.0916,
+        "vector_score": 0.1309,
+        "bm25_score": 0.0,
+        "shared_keywords": [
+          "adventure",
+          "indie",
+          "platform"
+        ],
+        "in_both_sets": false
+      }
+    ],
+    "debug": {
+      "vec_results_count": 20,
+      "bm25_results_count": 20,
+      "merged_count": 34,
+      "dual_signal_count": 6,
+      "vec_top5": [
+        [
+          "Nullstar: Solus",
+          "game",
+          "1.0000"
+        ],
+        [
+          "Mio: Memories in Orbit",
+          "game",
+          "0.6714"
+        ],
+        [
+          "Toree Saturn",
+          "game",
+          "0.6668"
+        ],
+        [
+          "Possessor(s)",
+          "game",
+          "0.6666"
+        ],
+        [
+          "Transporter",
+          "game",
+          "0.6478"
+        ]
+      ],
+      "bm25_top5": [
+        [
+          "Nullstar: Solus",
+          "game",
+          "59.6081"
+        ],
+        [
+          "Korean Drone Flying Tour Sogeumgang",
+          "game",
+          "14.7861"
+        ],
+        [
+          "Shotgun Cop Man",
+          "game",
+          "11.9234"
+        ],
+        [
+          "Super Meat Boy 3D",
+          "game",
+          "11.9234"
+        ],
+        [
+          "ReSetna",
+          "game",
+          "10.1734"
+        ]
+      ]
+    },
+    "timings": {
+      "nlu_ms": 450.78587532043457,
+      "retrieval_ms": 49.371957778930664,
+      "rerank_ms": 0.07176399230957031,
+      "total_ms": 500.2295970916748
+    },
+    "status": "success"
+  }
+}

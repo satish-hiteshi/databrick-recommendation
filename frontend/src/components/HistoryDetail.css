@@ -1,0 +1,76 @@
+.hd-page {
+  padding: 24px 32px;
+  overflow-y: auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+.hd-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  color: var(--primary); font-weight: 500; font-size: 13px;
+  transition: all 150ms ease; align-self: flex-start;
+}
+.hd-back:hover { background: var(--primary-light); }
+
+.hd-loading { text-align: center; padding: 40px; color: var(--text-secondary); }
+
+.hd-bubble-wrap { display: flex; justify-content: flex-end; }
+.hd-bubble {
+  background: #4361EE; color: white;
+  padding: 10px 16px; border-radius: 12px 12px 0 12px;
+  max-width: 70%; font-weight: 500; white-space: pre-wrap;
+}
+
+.hd-nlu-toggle {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: #F8FAFC;
+  border: 1px solid #F1F5F9; border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 13px; font-weight: 500;
+  transition: all 150ms ease; width: 100%;
+}
+.hd-nlu-toggle:hover { background: #F1F5F9; }
+.hd-mode-pill {
+  color: white; font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: var(--radius-pill);
+  text-transform: uppercase; margin-left: auto;
+}
+
+.hd-nlu-body {
+  background: #F8FAFC; border: 1px solid #F1F5F9;
+  border-radius: var(--radius-sm); padding: 14px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;
+  margin-top: -8px;
+}
+.hd-nlu-row { display: flex; flex-direction: column; gap: 2px; }
+.hd-nlu-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+.hd-nlu-value { font-size: 13px; color: var(--text); }
+
+.hd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hd-chip {
+  font-size: 12px; padding: 3px 10px; border-radius: var(--radius-pill);
+  font-weight: 500;
+}
+.hd-chip.pos { background: #10B981; color: white; }
+.hd-chip.neg { background: #EF4444; color: white; }
+
+.hd-vert-section { margin-top: 4px; }
+.hd-vert-title {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+}
+.hd-vert-count {
+  font-size: 11px; background: #F1F5F9; padding: 1px 7px;
+  border-radius: var(--radius-pill); color: var(--text-secondary); font-weight: 500;
+}
+
+.hd-results { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+
+.hd-latency {
+  font-size: 11px; color: #94A3B8; padding-top: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.hd-latency-detail { opacity: 0.6; }

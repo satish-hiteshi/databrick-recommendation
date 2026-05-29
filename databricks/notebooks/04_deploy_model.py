@@ -74,8 +74,15 @@ mlflow.set_experiment("/Shared/feedsai-experiments")
 import importlib, mlflow_model as _mm
 importlib.reload(_mm)
 from mlflow_model import FeedsAIModel
+from mlflow.models.signature import ModelSignature
+from mlflow.types.schema import Schema, ColSpec
 
 pipeline_pkg = os.path.join(DATABRICKS_PKG, "pipeline")
+
+signature = ModelSignature(
+    inputs=Schema([ColSpec("string", "query")]),
+    outputs=Schema([ColSpec("string", "result")]),
+)
 
 pip_deps = [
     "voyageai>=0.3", "rank-bm25>=0.2.2", "numpy>=1.24",
@@ -89,6 +96,7 @@ with mlflow.start_run(run_name="feedsai-v1") as run:
         python_model=FeedsAIModel(),
         artifacts={"entities_meta": ENTITIES_META_PATH},
         code_paths=[pipeline_pkg],
+        signature=signature,
         pip_requirements=pip_deps,
         registered_model_name=REGISTERED_MODEL,
     )

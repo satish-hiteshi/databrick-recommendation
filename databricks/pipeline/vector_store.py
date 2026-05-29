@@ -11,8 +11,6 @@ from rank_bm25 import BM25Okapi
 from databricks.vector_search.client import VectorSearchClient
 
 from pipeline.config import (
-    DATABRICKS_HOST,
-    DATABRICKS_TOKEN,
     VS_ENDPOINT,
     VS_INDEX,
     TOP_K_RETRIEVAL,
@@ -32,11 +30,10 @@ _bm25_entities: list = []
 def _get_vs_index():
     global _vs_index
     if _vs_index is None:
-        client = VectorSearchClient(
-            workspace_url=DATABRICKS_HOST,
-            personal_access_token=DATABRICKS_TOKEN,
-            disable_notice=True,
-        )
+        # No-arg initialisation uses Databricks automatic workspace credentials.
+        # This works in both Model Serving and notebooks without needing an
+        # explicit PAT, and avoids token-expiry issues at runtime.
+        client = VectorSearchClient(disable_notice=True)
         _vs_index = client.get_index(
             endpoint_name=VS_ENDPOINT,
             index_name=VS_INDEX,

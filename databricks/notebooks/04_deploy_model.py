@@ -39,34 +39,57 @@ VS_INDEX       = f"{ENTITIES_TABLE}_vs_index"
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Step 1 — Store secrets
+# MAGIC ## Step 1 — Create secret scope & store secrets
 # MAGIC
-# MAGIC Run the cells below (or use the Databricks CLI / UI) to store API keys once.
-# MAGIC The secrets are injected as environment variables in the Model Serving endpoint.
+# MAGIC **IMPORTANT:** `dbutils.secrets` is read-only — you cannot write secrets from a notebook.
+# MAGIC Use the Databricks SDK cell below (run once), or the CLI:
+# MAGIC ```
+# MAGIC databricks secrets create-scope feedsai-secrets
+# MAGIC databricks secrets put-secret feedsai-secrets VOYAGE_API_KEY
+# MAGIC ```
+# MAGIC
+# MAGIC For `DATABRICKS_TOKEN`: use a **long-lived Personal Access Token** (PAT) from
+# MAGIC your Databricks profile → Settings → Developer → Access tokens → Generate new token.
+# MAGIC Do NOT use the notebook context token — it is short-lived and will expire.
 
 # COMMAND ----------
 
-# ── Uncomment and fill in your keys, then run once ───────────────────
-# import subprocess, json
-#
-# keys = {
-#     "VOYAGE_API_KEY":        "vk-...",    # ← only external key needed
-#     "DATABRICKS_HOST":       dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get(),
-#     "DATABRICKS_TOKEN":      dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get(),
-#     "FEEDSAI_CATALOG":       CATALOG,
-#     "FEEDSAI_SCHEMA":        SCHEMA,
-#     "FEEDSAI_VS_ENDPOINT":   VS_ENDPOINT,
-#     "FEEDSAI_SQL_HTTP_PATH": "/sql/1.0/warehouses/<YOUR_WAREHOUSE_ID>",
-# }
-#
-# for key, value in keys.items():
-#     dbutils.secrets.put(scope=SECRET_SCOPE, key=key, string_value=value)
-# print("Secrets stored.")
+# ── Run this cell once to create the scope and store all secrets ──────
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.iam import CreateCredentialsScopeEncryptionKey
+
+w = WorkspaceClient()
+
+# Create scope (skip if it already exists)
+try:
+    w.secrets.create_scope(scope=SECRET_SCOPE)
+    print(f"Scope '{SECRET_SCOPE}' created.")
+except Exception as e:
+    print(f"Scope note: {e}")
+
+# ── Fill in your values before running ───────────────────────────────
+host = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()
+
+secrets_to_store = {
+    "VOYAGE_API_KEY":        "vk-...",                                   # ← fill in
+    "DATABRICKS_HOST":       host,
+    "DATABRICKS_TOKEN":      "<YOUR_LONG_LIVED_PAT>",                    # ← fill in (NOT notebook token)
+    "FEEDSAI_CATALOG":       CATALOG,
+    "FEEDSAI_SCHEMA":        SCHEMA,
+    "FEEDSAI_VS_ENDPOINT":   VS_ENDPOINT,
+    "FEEDSAI_SQL_HTTP_PATH": "/sql/1.0/warehouses/<YOUR_WAREHOUSE_ID>",  # ← fill in
+}
+
+for key, value in secrets_to_store.items():
+    w.secrets.put_secret(scope=SECRET_SCOPE, key=key, string_value=value)
+    print(f"  Stored: {key}")
+
+print("All secrets stored.")
 
 # COMMAND ----------
 
 # ── Install pipeline dependencies on the cluster (run once) ──────────
-# %pip install voyageai groq rank-bm25 databricks-vectorsearch databricks-sql-connector
+# %pip install voyageai rank-bm25 databricks-vectorsearch databricks-sql-connector
 
 # COMMAND ----------
 
@@ -141,22 +164,16 @@ print(f"Deploying version {latest_version} of {REGISTERED_MODEL}")
 
 # COMMAND ----------
 
-# Build the environment variable dict from Databricks Secrets
-# These are injected into the serving endpoint container at runtime.
-env_vars = {
-    key: {"type": "mlflow_experiment_tag"}  # placeholder — real secrets below
-    for key in []
-}
-
+# Read secrets and inject them as env vars into the serving endpoint container.
 secret_keys = [
-    "VOYAGE_API_KEY",        # external — Voyage AI for query-time embeddings
-    "DATABRICKS_HOST",       # auto-filled from notebook context
-    "DATABRICKS_TOKEN",      # auto-filled from notebook context
+    "VOYAGE_API_KEY",        # Voyage AI — only external dependency
+    "DATABRICKS_HOST",       # workspace URL (e.g. https://adb-xxx.azuredatabricks.net)
+    "DATABRICKS_TOKEN",      # must be a long-lived PAT — NOT the notebook session token
     "FEEDSAI_CATALOG",
     "FEEDSAI_SCHEMA",
     "FEEDSAI_VS_ENDPOINT",
     "FEEDSAI_SQL_HTTP_PATH",
-    # LLM (Llama 3.3 70B) and embeddings (GTE) run on Databricks FMAPI — no key needed
+    # Llama 3.3 70B (NLU) runs on Databricks FMAPI — no external key needed
 ]
 
 env_vars_for_endpoint = [

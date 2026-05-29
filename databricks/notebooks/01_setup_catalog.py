@@ -58,14 +58,17 @@ print(f"Table ready: {CATALOG}.{SCHEMA}.entities")
 
 spark.sql(f"""
 CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.query_history (
-    id           BIGINT GENERATED ALWAYS AS IDENTITY,
-    query_text   STRING  NOT NULL,
+    id            BIGINT GENERATED ALWAYS AS IDENTITY,
+    query_text    STRING NOT NULL,
     parsed_intent STRING,
-    results      STRING,
-    latency_ms   DOUBLE,
-    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+    results       STRING,
+    latency_ms    DOUBLE,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 )
 USING DELTA
+TBLPROPERTIES (
+    'delta.feature.allowColumnDefaults' = 'supported'
+)
 """)
 print(f"Table ready: {CATALOG}.{SCHEMA}.query_history")
 

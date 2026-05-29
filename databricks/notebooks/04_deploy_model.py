@@ -56,7 +56,6 @@ VS_INDEX       = f"{ENTITIES_TABLE}_vs_index"
 
 # ── Run this cell once to create the scope and store all secrets ──────
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.iam import CreateCredentialsScopeEncryptionKey
 
 w = WorkspaceClient()
 

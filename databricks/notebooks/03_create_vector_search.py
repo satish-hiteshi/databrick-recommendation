@@ -7,14 +7,17 @@
 # MAGIC **Prerequisites:**
 # MAGIC - Notebook 02 done (entities Delta table is populated).
 # MAGIC - Your workspace has the Vector Search service enabled (Premium/Enterprise).
-# MAGIC - The cluster running this notebook must have the `databricks-vectorsearch` library installed.
-# MAGIC   Install via: Cluster → Libraries → PyPI → `databricks-vectorsearch`.
+# MAGIC - Works on both Serverless and traditional clusters — `%pip install` below handles dependencies.
 # MAGIC
 # MAGIC What this notebook does:
 # MAGIC 1. Creates a Vector Search endpoint named `feedsai-vs-endpoint` (if it doesn't exist).
 # MAGIC 2. Creates a Delta Sync Index on the `embedding` column of the entities table.
 # MAGIC 3. Triggers the initial sync and waits for it to finish.
 # MAGIC 4. Runs a test similarity search to confirm the index is working.
+
+# COMMAND ----------
+
+%pip install databricks-vectorsearch --quiet
 
 # COMMAND ----------
 

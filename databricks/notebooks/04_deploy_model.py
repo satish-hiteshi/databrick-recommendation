@@ -88,8 +88,7 @@ print("All secrets stored.")
 
 # COMMAND ----------
 
-# ── Install pipeline dependencies on the cluster (run once) ──────────
-# %pip install voyageai rank-bm25 databricks-vectorsearch databricks-sql-connector
+%pip install voyageai rank-bm25 databricks-vectorsearch databricks-sql-connector --quiet
 
 # COMMAND ----------
 

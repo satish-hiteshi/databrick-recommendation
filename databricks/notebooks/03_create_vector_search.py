@@ -84,24 +84,48 @@ else:
 
 # COMMAND ----------
 
-# ── 3. Wait for initial sync to complete ─────────────────────────────
-index = client.get_index(endpoint_name=VS_ENDPOINT, index_name=VS_INDEX)
+# ── 3. Wait for index structure, trigger sync, wait for data ──────────
+#
+# TRIGGERED pipeline lifecycle:
+#   create_delta_sync_index() → index structure provisioned (no data yet)
+#   index.sync()              → starts loading data from Delta
+#   poll indexed_row_count    → wait until all 1,757 rows are indexed
+#
+# Expected time: 5–15 minutes for 1,757 entities.
 
-print("Waiting for index to become ONLINE ...")
-for _ in range(120):
-    status = client.get_index(
-        endpoint_name=VS_ENDPOINT, index_name=VS_INDEX
-    ).describe().get("status", {}).get("ready")
-    print(f"  Index ready: {status}")
-    if status:
+# Step A: wait for index structure to be provisioned (usually < 2 min)
+print("Step A — Waiting for index structure to be provisioned ...")
+for i in range(60):  # up to 10 minutes
+    desc   = client.get_index(endpoint_name=VS_ENDPOINT, index_name=VS_INDEX).describe()
+    status = desc.get("status", {})
+    msg    = status.get("message", "provisioning...")
+    ready  = status.get("ready", False)
+    print(f"  [{i*10}s]  ready={ready}  message={msg}")
+    if ready:
         break
     time.sleep(10)
 
-# Trigger the initial data sync
+# Step B: trigger the initial data sync
+print("\nStep B — Triggering initial data sync ...")
+index = client.get_index(endpoint_name=VS_ENDPOINT, index_name=VS_INDEX)
 index.sync()
-print("Sync triggered. Waiting for completion ...")
-time.sleep(30)  # Allow first sync to run
-print("Initial sync complete.")
+print("Sync started. This takes 5–15 minutes for 1,757 entities.\n")
+
+# Step C: poll until all rows are indexed
+print("Step C — Waiting for data to be indexed ...")
+for i in range(80):  # up to ~20 minutes
+    desc   = client.get_index(endpoint_name=VS_ENDPOINT, index_name=VS_INDEX).describe()
+    status = desc.get("status", {})
+    count  = status.get("indexed_row_count", 0)
+    ready  = status.get("ready", False)
+    msg    = status.get("message", "")
+    print(f"  [{i*15}s]  rows_indexed={count}/1757  ready={ready}  {msg}")
+    if ready and count > 0:
+        print(f"\nSync complete — {count} rows indexed and ready.")
+        break
+    time.sleep(15)
+else:
+    print("Timed out waiting. Check Compute → Vector Search in Databricks UI for live status.")
 
 # COMMAND ----------
 

@@ -170,13 +170,19 @@ response = requests.post(
 print(f"Status: {response.status_code}")
 
 if response.status_code == 200:
-    result = json.loads(response.json()["predictions"][0]["result"])
-    print(f"Query: {result['query']}  |  mode={result['query_mode']}  |  status={result['status']}")
-    for r in result.get("results", [])[:5]:
-        print(f"  {r['rank']}. {r['name']} [{r['vertical']}]  {r['final_score']}")
-    for vert, items in result.get("results_by_vertical", {}).items():
-        print(f"\n  {vert.upper()}")
-        for r in items[:3]:
-            print(f"    {r['rank']}. {r['name']}  {r['final_score']}")
+    raw    = response.json()["predictions"][0]["result"]
+    result = json.loads(raw)
+
+    # Print full result first so any error is visible
+    if result.get("error"):
+        print(f"Pipeline error: {result['error']}")
+    else:
+        print(f"Query: {result.get('query')}  |  mode={result.get('query_mode')}  |  status={result.get('status')}")
+        for r in result.get("results", [])[:5]:
+            print(f"  {r.get('rank')}. {r.get('name')} [{r.get('vertical')}]  {r.get('final_score')}")
+        for vert, items in result.get("results_by_vertical", {}).items():
+            print(f"\n  {vert.upper()}")
+            for r in items[:3]:
+                print(f"    {r.get('rank')}. {r.get('name')}  {r.get('final_score')}")
 else:
-    print(response.text)
+    print(f"HTTP {response.status_code}: {response.text}")

@@ -144,7 +144,7 @@ results = index.similarity_search(
     num_results=5,
 )
 
-col_names = results["result"]["column_names"]
+col_names = [col["name"] for col in results["manifest"]["columns"]]
 print(f"\nTop-5 results for '{sample['name']}':")
 for row in results["result"]["data_array"]:
     score = row[-1]

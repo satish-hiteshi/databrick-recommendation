@@ -66,10 +66,10 @@ def vector_search(
         num_results=top_k,
     )
 
-    # Response shape: {"result": {"column_names": [...], "data_array": [[...], ...]}}
-    result_block = response.get("result", {})
-    col_names    = result_block.get("column_names", [])
-    rows         = result_block.get("data_array", [])
+    # Response shape: {"manifest": {"columns": [{"name": ...}, ...]},
+    #                  "result":   {"data_array": [[...], ...]}}
+    col_names = [col["name"] for col in response.get("manifest", {}).get("columns", [])]
+    rows      = response.get("result", {}).get("data_array", [])
 
     # The VS SDK appends score as the final column
     try:
@@ -77,7 +77,6 @@ def vector_search(
         name_idx = col_names.index("name")
         vert_idx = col_names.index("vertical")
     except ValueError:
-        # Fallback: assume order [entity_id, name, vertical, ..., score]
         eid_idx, name_idx, vert_idx = 0, 1, 2
 
     results = []

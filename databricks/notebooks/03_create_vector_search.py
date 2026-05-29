@@ -21,6 +21,10 @@
 
 # COMMAND ----------
 
+dbutils.library.restartPython()
+
+# COMMAND ----------
+
 from databricks.vector_search.client import VectorSearchClient
 import time
 

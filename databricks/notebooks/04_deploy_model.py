@@ -92,6 +92,10 @@ print("All secrets stored.")
 
 # COMMAND ----------
 
+dbutils.library.restartPython()
+
+# COMMAND ----------
+
 import sys, os
 import mlflow
 

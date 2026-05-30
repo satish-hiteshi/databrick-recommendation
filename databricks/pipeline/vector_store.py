@@ -29,7 +29,7 @@ def vector_search(query_embedding, target_verticals=None, top_k=TOP_K_RETRIEVAL,
 
     response  = index.similarity_search(
         query_vector=vec,
-        columns=["entity_id", "name", "vertical", "release_date"],
+        columns=["entity_id", "name", "vertical"],
         filters=filters,
         num_results=fetch_k,
     )
@@ -40,14 +40,15 @@ def vector_search(query_embedding, target_verticals=None, top_k=TOP_K_RETRIEVAL,
         eid_idx  = col_names.index("entity_id")
         name_idx = col_names.index("name")
         vert_idx = col_names.index("vertical")
-        rd_idx   = col_names.index("release_date")
     except ValueError:
-        eid_idx, name_idx, vert_idx, rd_idx = 0, 1, 2, 3
+        eid_idx, name_idx, vert_idx = 0, 1, 2
 
     results = []
     for row in rows:
-        rd = row[rd_idx] if rd_idx < len(row) - 1 else None
         if date_start or date_end:
+            # release_date comes from entity_store (in-memory) — not from VS index
+            e = entity_store.get_by_id(row[eid_idx])
+            rd = e.get("release_date") if e else None
             if not rd:
                 continue
             if date_start and rd < date_start:

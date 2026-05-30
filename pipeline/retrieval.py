@@ -19,14 +19,17 @@ MISSING_RANK = 1000       # Rank for documents not in a list
 
 # ── Ranked list collection ────────────────────────────────────────────
 
-def _collect_ranked_lists(embedding, keywords, verticals_set, top_k, source_label):
+def _collect_ranked_lists(embedding, keywords, verticals_set, top_k, source_label,
+                          date_start=None, date_end=None):
     """
     Run vector + BM25 search for one source. Returns two ranked lists
     (vector_list, bm25_list) and metadata for each entity seen.
     Each ranked list is: [(entity_id, rank_position), ...]
     """
-    vec_results = vector_search(embedding, verticals_set, top_k)
-    bm25_results = keyword_search(keywords, verticals_set, top_k)
+    vec_results = vector_search(embedding, verticals_set, top_k,
+                                 date_start=date_start, date_end=date_end)
+    bm25_results = keyword_search(keywords, verticals_set, top_k,
+                                   date_start=date_start, date_end=date_end)
 
     # Build metadata lookup
     meta = {}
@@ -147,6 +150,8 @@ def retrieve(nlu_output: dict):
     desc_kw = nlu_output.get("description_derived_keywords", [])
     target_verts = nlu_output.get("target_verticals", ["game", "movie", "tv"])
     verticals_set = set(target_verts) if target_verts else None
+    date_start = nlu_output.get("date_filter_start")
+    date_end = nlu_output.get("date_filter_end")
 
     # Resolve positive entities via SQL
     resolved_pos = []
@@ -173,7 +178,8 @@ def retrieve(nlu_output: dict):
 
     def _add_source(embedding, keywords, verticals, top_k, label, source_idx):
         vec_ranked, bm25_ranked, meta, dbg = _collect_ranked_lists(
-            embedding, keywords, verticals, top_k, label
+            embedding, keywords, verticals, top_k, label,
+            date_start=date_start, date_end=date_end
         )
         all_debug.append(dbg)
         meta_pool.update(meta)
@@ -210,13 +216,22 @@ def retrieve(nlu_output: dict):
     elif mode in ("theme_based", "descriptive"):
         all_keywords = add_kw + desc_kw
         if not all_keywords:
-            return _empty_result(mode, resolved_pos, resolved_neg,
-                                 error="No keywords extracted for theme/descriptive search",
-                                 unresolved_neg_kw=unresolved_neg_keywords)
-        search_text = " ".join(all_keywords)
-        query_emb = np.array(embed_query_text(search_text), dtype=np.float32)
-        _add_source(query_emb, all_keywords,
-                    verticals_set, TOP_K_RETRIEVAL, f"theme:{search_text[:40]}", 0)
+            # Date-only query: use verticals as broad search terms
+            if date_start or date_end:
+                vert_terms = list(target_verts) if target_verts else ["entertainment"]
+                search_text = " ".join(vert_terms)
+                query_emb = np.array(embed_query_text(search_text), dtype=np.float32)
+                _add_source(query_emb, vert_terms,
+                            verticals_set, TOP_K_RETRIEVAL, f"browse:{search_text[:40]}", 0)
+            else:
+                return _empty_result(mode, resolved_pos, resolved_neg,
+                                     error="No keywords extracted for theme/descriptive search",
+                                     unresolved_neg_kw=unresolved_neg_keywords)
+        else:
+            search_text = " ".join(all_keywords)
+            query_emb = np.array(embed_query_text(search_text), dtype=np.float32)
+            _add_source(query_emb, all_keywords,
+                        verticals_set, TOP_K_RETRIEVAL, f"theme:{search_text[:40]}", 0)
 
     # ── mixed ─────────────────────────────────────────────────────
     elif mode == "mixed":

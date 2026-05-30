@@ -13,6 +13,14 @@ function pctColor(pct: number): string {
   return "#EF4444";
 }
 
+function formatDate(d: string): { text: string; upcoming: boolean } {
+  const date = new Date(d + "T00:00:00");
+  const now = new Date();
+  const upcoming = date > now;
+  const text = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return { text, upcoming };
+}
+
 interface Props {
   entity: SelectedEntity | null;
   onClose: () => void;
@@ -28,34 +36,30 @@ export default function DetailPanel({ entity, onClose }: Props) {
       setDetail(null);
       return;
     }
-
     if (entity.detail) {
       setDetail(entity.detail);
       return;
     }
-
     if (entity.result) {
-      // We need to look up entity_id from the entities table by name
       setLoading(true);
-      // Search by name
       import("../api/client").then(({ getEntities }) => {
         getEntities({ search: entity.result!.name, page_size: 1 }).then((res) => {
-          if (res.entities.length > 0) {
-            setDetail(res.entities[0]);
-          }
+          if (res.entities.length > 0) setDetail(res.entities[0]);
           setLoading(false);
         }).catch(() => setLoading(false));
       });
     }
   }, [entity]);
 
+  const rd = (entity?.result?.release_date || detail?.release_date)
+    ? formatDate((entity?.result?.release_date || detail?.release_date)!)
+    : null;
+
   return (
     <>
       {open && <div className="detail-overlay" onClick={onClose} />}
       <aside className={`detail-panel ${open ? "open" : ""}`}>
-        <button className="detail-close" onClick={onClose}>
-          <FiX size={20} />
-        </button>
+        <button className="detail-close" onClick={onClose}><FiX size={20} /></button>
 
         {loading && <div className="detail-loading">Loading entity details...</div>}
 
@@ -72,8 +76,20 @@ export default function DetailPanel({ entity, onClose }: Props) {
               {detail.vertical}
             </span>
 
+            {rd && (
+              <span className={`detail-release-date ${rd.upcoming ? "upcoming" : ""}`}>
+                {rd.upcoming ? "Upcoming: " : "Released: "}{rd.text}
+              </span>
+            )}
+
             {detail.description && (
               <p className="detail-desc">{detail.description}</p>
+            )}
+
+            {entity?.result?.reasoning_long && (
+              <Section title="Why This Was Recommended">
+                <div className="detail-reasoning">{entity.result.reasoning_long}</div>
+              </Section>
             )}
 
             {detail.canonical_genres?.length > 0 && (
@@ -128,17 +144,13 @@ export default function DetailPanel({ entity, onClose }: Props) {
                     background: entity.result.appeared_in_vector ? "#DBEAFE" : "#F1F5F9",
                     color: entity.result.appeared_in_vector ? "#1E40AF" : "#94A3B8",
                   }}>
-                    Vector {entity.result.appeared_in_vector
-                      ? `#${entity.result.vector_rank} \u2713`
-                      : "\u2717"}
+                    Vector {entity.result.appeared_in_vector ? `#${entity.result.vector_rank} \u2713` : "\u2717"}
                   </span>
                   <span className="detail-chip" style={{
                     background: entity.result.appeared_in_bm25 ? "#EDE9FE" : "#F1F5F9",
                     color: entity.result.appeared_in_bm25 ? "#6D28D9" : "#94A3B8",
                   }}>
-                    BM25 {entity.result.appeared_in_bm25
-                      ? `#${entity.result.bm25_rank} \u2713`
-                      : "\u2717"}
+                    BM25 {entity.result.appeared_in_bm25 ? `#${entity.result.bm25_rank} \u2713` : "\u2717"}
                   </span>
                 </div>
               </Section>

@@ -135,6 +135,20 @@
   font-size: 12px;
   color: var(--text-secondary);
 }
+.date-filter-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: #FEF3C7;
+  color: #92400E;
+  white-space: nowrap;
+  animation: fadeInReason 200ms ease;
+}
+@keyframes fadeInReason {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 /* Resolved entity chips — green pills */
 .resolved-chips {

@@ -78,7 +78,8 @@ def create_table():
             publisher       VARCHAR,
             canonical_genres TEXT[],
             themes          TEXT[],
-            keywords        TEXT[]
+            keywords        TEXT[],
+            release_date    DATE
         );
     """)
     conn.commit()
@@ -95,6 +96,7 @@ def create_indexes():
         CREATE INDEX IF NOT EXISTS idx_entities_name_lower ON entities (LOWER(name));
         CREATE INDEX IF NOT EXISTS idx_entities_vertical ON entities (vertical);
         CREATE INDEX IF NOT EXISTS idx_entities_franchise ON entities (franchise);
+        CREATE INDEX IF NOT EXISTS idx_entities_release_date ON entities (release_date);
     """)
     conn.commit()
     print("Indexes created (name_lower, vertical, franchise).")
@@ -181,11 +183,12 @@ def insert_entities():
             INSERT INTO entities
                 (entity_id, name, vertical, description, composed_text,
                  embedding, bm25_keywords, franchise, developer, publisher,
-                 canonical_genres, themes, keywords)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 canonical_genres, themes, keywords, release_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (entity_id) DO UPDATE SET
                 name = EXCLUDED.name,
-                embedding = EXCLUDED.embedding;
+                embedding = EXCLUDED.embedding,
+                release_date = EXCLUDED.release_date;
         """, (
             eid,
             e["name"],
@@ -200,6 +203,7 @@ def insert_entities():
             e.get("canonical_genres", []),
             e.get("themes", []),
             e.get("keywords") if e.get("keywords") else [],
+            e.get("release_date"),
         ))
 
     conn.commit()

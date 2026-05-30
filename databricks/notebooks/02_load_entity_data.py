@@ -15,15 +15,15 @@ ARTIFACT_DIR = f"/Volumes/{CATALOG}/{SCHEMA}/artifacts"
 
 dbutils.fs.mkdirs(ARTIFACT_DIR)
 
-with open(f"{DATA_DIR}/all_compositions.json") as f:
+with open(f"{DATA_DIR}/all_compositions_v2.json") as f:
     compositions = json.load(f)
 
-with open(f"{DATA_DIR}/entity_profiles_final.json") as f:
+with open(f"{DATA_DIR}/entity_profiles_v2.json") as f:
     profiles = json.load(f)
 
-emb_array = np.load(f"{DATA_DIR}/embeddings.npy")
+emb_array = np.load(f"{DATA_DIR}/embeddings_v2.npy")
 
-with open(f"{DATA_DIR}/embeddings_ids.json") as f:
+with open(f"{DATA_DIR}/embeddings_ids_v2.json") as f:
     emb_ids = json.load(f)
 
 print(f"compositions={len(compositions)}  profiles={len(profiles)}  embeddings={emb_array.shape}")
@@ -53,6 +53,7 @@ for comp in compositions:
         "directors":        profile.get("directors", []),
         "cast_members":     profile.get("cast", []),
         "embedding":        emb.tolist() if emb is not None else None,
+        "release_date":     profile.get("release_date"),
     })
 
 print(f"Merged: {len(entities)} entities")
@@ -64,7 +65,7 @@ rows = [
         e["entity_id"], e["name"], e["vertical"], e["description"],
         e["composed_text"], e["bm25_keywords"], e["canonical_genres"],
         e["themes"], e["franchise"], e["developer"], e["publisher"],
-        e["directors"], e["cast_members"], e["embedding"],
+        e["directors"], e["cast_members"], e["embedding"], e["release_date"],
     )
     for e in entities
 ]
@@ -84,6 +85,7 @@ schema = StructType([
     StructField("directors",        ArrayType(StringType()), True),
     StructField("cast_members",     ArrayType(StringType()), True),
     StructField("embedding",        ArrayType(FloatType()),  True),
+    StructField("release_date",     StringType(),            True),
 ])
 
 df = spark.createDataFrame(rows, schema=schema)

@@ -38,6 +38,7 @@ def _load_and_merge():
             "publisher": profile.get("publisher"),
             "directors": profile.get("directors", []),
             "cast": profile.get("cast", []),
+            "release_date": profile.get("release_date"),
         }
         entities.append(entity)
 

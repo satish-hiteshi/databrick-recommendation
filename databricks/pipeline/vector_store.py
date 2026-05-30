@@ -18,21 +18,47 @@ def _get_vs_index():
     return _vs_index
 
 
-def vector_search(query_embedding, target_verticals=None, top_k=TOP_K_RETRIEVAL):
+def vector_search(query_embedding, target_verticals=None, top_k=TOP_K_RETRIEVAL,
+                  date_start=None, date_end=None):
     index   = _get_vs_index()
     vec     = query_embedding.tolist() if isinstance(query_embedding, np.ndarray) else query_embedding
     filters = {"vertical": tuple(target_verticals)} if target_verticals else None
 
-    response  = index.similarity_search(query_vector=vec, columns=["entity_id", "name", "vertical"], filters=filters, num_results=top_k)
+    # Fetch extra results to compensate for date post-filtering
+    fetch_k = top_k * 3 if (date_start or date_end) else top_k
+
+    response  = index.similarity_search(
+        query_vector=vec,
+        columns=["entity_id", "name", "vertical", "release_date"],
+        filters=filters,
+        num_results=fetch_k,
+    )
     col_names = [col["name"] for col in response.get("manifest", {}).get("columns", [])]
     rows      = response.get("result", {}).get("data_array", [])
 
     try:
-        eid_idx, name_idx, vert_idx = col_names.index("entity_id"), col_names.index("name"), col_names.index("vertical")
+        eid_idx  = col_names.index("entity_id")
+        name_idx = col_names.index("name")
+        vert_idx = col_names.index("vertical")
+        rd_idx   = col_names.index("release_date")
     except ValueError:
-        eid_idx, name_idx, vert_idx = 0, 1, 2
+        eid_idx, name_idx, vert_idx, rd_idx = 0, 1, 2, 3
 
-    return [(row[eid_idx], row[name_idx], row[vert_idx], float(row[-1])) for row in rows]
+    results = []
+    for row in rows:
+        rd = row[rd_idx] if rd_idx < len(row) - 1 else None
+        if date_start or date_end:
+            if not rd:
+                continue
+            if date_start and rd < date_start:
+                continue
+            if date_end and rd > date_end:
+                continue
+        results.append((row[eid_idx], row[name_idx], row[vert_idx], float(row[-1])))
+        if len(results) == top_k:
+            break
+
+    return results
 
 
 def _build_bm25_index():
@@ -43,16 +69,26 @@ def _build_bm25_index():
     _bm25_entities = entities
 
 
-def keyword_search(anchor_keywords, target_verticals=None, top_k=TOP_K_RETRIEVAL):
+def keyword_search(anchor_keywords, target_verticals=None, top_k=TOP_K_RETRIEVAL,
+                   date_start=None, date_end=None):
     if _bm25_index is None:
         _build_bm25_index()
 
     scores = _bm25_index.get_scores([kw.lower() for kw in anchor_keywords])
-    scored = [
-        (e["entity_id"], e["name"], e["vertical"], float(s))
-        for e, s in zip(_bm25_entities, scores)
-        if not target_verticals or e["vertical"] in target_verticals
-    ]
+    scored = []
+    for e, s in zip(_bm25_entities, scores):
+        if target_verticals and e["vertical"] not in target_verticals:
+            continue
+        if date_start or date_end:
+            rd = e.get("release_date")
+            if not rd:
+                continue
+            if date_start and rd < date_start:
+                continue
+            if date_end and rd > date_end:
+                continue
+        scored.append((e["entity_id"], e["name"], e["vertical"], float(s)))
+
     scored.sort(key=lambda x: x[3], reverse=True)
     return scored[:top_k]
 

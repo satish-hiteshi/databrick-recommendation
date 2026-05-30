@@ -8,6 +8,7 @@ from collections import Counter
 from pipeline.config import TOP_K_RESULTS
 from pipeline.data_loader import get_all_entities
 from pipeline.entity_resolver import batch_fetch_entities
+from pipeline.reasoning import attach_reasoning
 
 
 # ── Cached lookups ────────────────────────────────────────────────────
@@ -157,21 +158,22 @@ def rerank(candidates, positive_entities, nlu_output, query_mode, top_k=TOP_K_RE
         for vert in target_verticals:
             vert_results = [c for c in results if c["vertical"] == vert]
             if len(vert_results) >= 3:
-                # 7. Franchise diversity: cap 3 per franchise within each vertical
                 vert_results = _enforce_franchise_diversity(vert_results, debug)
-                per_vertical[vert] = vert_results[:top_k]
+                final_vert = vert_results[:top_k]
+                attach_reasoning(final_vert, positive_entities, nlu_output)
+                per_vertical[vert] = final_vert
 
         return {"results": per_vertical, "debug": debug, "split_by_vertical": True}
     else:
-        # Single vertical
         single_vert = target_verticals[0] if target_verticals else None
         if single_vert:
             results = [c for c in results if c["vertical"] == single_vert]
 
-        # 7. Franchise diversity
         results = _enforce_franchise_diversity(results, debug)
+        final_results = results[:top_k]
+        attach_reasoning(final_results, positive_entities, nlu_output)
 
-        return {"results": results[:top_k], "debug": debug, "split_by_vertical": False}
+        return {"results": final_results, "debug": debug, "split_by_vertical": False}
 
 
 def _enforce_franchise_diversity(results, debug):

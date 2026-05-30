@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { QueryResult } from "../types";
 import "./ResultCard.css";
 
@@ -15,22 +16,39 @@ function barColor(pct: number): string {
   return "#EF4444";
 }
 
+function formatDate(d: string): { text: string; upcoming: boolean } {
+  const date = new Date(d + "T00:00:00");
+  const now = new Date();
+  const upcoming = date > now;
+  const text = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return { text, upcoming };
+}
+
 interface Props {
   result: QueryResult;
   onClick: () => void;
 }
 
 export default function ResultCard({ result, onClick }: Props) {
+  const [showTooltip, setShowTooltip] = useState(false);
   const vert = VERT_COLORS[result.vertical] || { bg: "#f3f4f6", text: "#374151", accent: "#6b7280" };
   const pct = result.similarity_percentage ?? 0;
   const color = barColor(pct);
+  const rd = result.release_date ? formatDate(result.release_date) : null;
 
   return (
     <div className="result-card" data-vertical={result.vertical} onClick={onClick}>
       <div className="result-rank">{result.rank}</div>
       <div className="result-body">
         <div className="result-top">
-          <span className="result-name">{result.name}</span>
+          <div className="result-name-col">
+            <span className="result-name">{result.name}</span>
+            {rd && (
+              <span className={`result-date ${rd.upcoming ? "upcoming" : ""}`}>
+                {rd.upcoming ? "Upcoming: " : ""}{rd.text}
+              </span>
+            )}
+          </div>
           <span className="vert-badge" style={{ background: vert.bg, color: vert.text }}>
             {result.vertical}
           </span>
@@ -38,14 +56,12 @@ export default function ResultCard({ result, onClick }: Props) {
           <span className="match-pct" style={{ color }}>{pct}% Match</span>
         </div>
 
-        {/* Similarity bar */}
         <div className="score-bar-row">
           <div className="score-track">
             <div className="score-fill" style={{ width: `${pct}%`, background: color }} />
           </div>
         </div>
 
-        {/* Small details row */}
         <div className="signal-row">
           <span className="rrf-text">RRF: {(result.rrf_score ?? result.final_score).toFixed(4)}</span>
           <span className={`signal-indicator ${result.appeared_in_vector ? "sig-vec" : "sig-miss"}`}>
@@ -64,6 +80,20 @@ export default function ResultCard({ result, onClick }: Props) {
             {result.shared_keywords.slice(0, 6).map((kw) => (
               <span key={kw} className="kw-chip">{kw}</span>
             ))}
+          </div>
+        )}
+
+        {result.reasoning_short && (
+          <div
+            className="reasoning-box"
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+          >
+            <span className="reasoning-icon">&#128161;</span>
+            <span className="reasoning-text">{result.reasoning_short}</span>
+            {showTooltip && result.reasoning_long && result.reasoning_long !== result.reasoning_short && (
+              <div className="reasoning-tooltip">{result.reasoning_long}</div>
+            )}
           </div>
         )}
       </div>

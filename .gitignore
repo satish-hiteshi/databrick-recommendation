@@ -30,3 +30,4 @@ Thumbs.db
 # Large data / embedding files — upload directly to Databricks Volume
 data/embeddings.npy
 data/embeddings_cache.json
+data_v2/embeddings_v2.npy

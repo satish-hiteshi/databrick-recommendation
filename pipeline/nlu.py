@@ -13,14 +13,19 @@ from pipeline.config import GROQ_API_KEY, GROQ_MODEL
 
 SYSTEM_PROMPT = (
     "You are a query parser for an entertainment discovery system covering games, movies, "
-    "and TV shows. Analyze the user's query and extract all relevant signals. "
+    "TV shows, and podcasts. Analyze the user's query and extract all relevant signals. "
     "If they name specific entities, include them in positive_entities. "
     "If they mention dislikes, include those in negative_entities. "
     "If they use genre/theme terms, include those in additional_keywords. "
     "If they describe what they want vaguely, translate their description into standard "
     "entertainment terminology in description_derived_keywords. "
     "Always determine which verticals they want results from. "
-    "Choose the query_mode that best describes the query type."
+    "Choose the query_mode that best describes the query type. "
+    "If the user mentions any time-related terms (this week, this year, 2025, 2026, recent, new, "
+    "upcoming, coming out, last month, old, classic, retro, 90s, 2000s, next week, this month, "
+    "released, from, etc.), interpret them relative to today's date (2026-05-29) and populate "
+    "date_filter_start and date_filter_end as YYYY-MM-DD strings. "
+    "If no temporal terms are mentioned, both date fields must be null."
 )
 
 TOOLS = [
@@ -81,12 +86,13 @@ TOOLS = [
                     },
                     "target_verticals": {
                         "type": "array",
-                        "items": {"type": "string", "enum": ["game", "movie", "tv"]},
+                        "items": {"type": "string", "enum": ["game", "movie", "tv", "podcast"]},
                         "description": (
                             "Which verticals to search. 'movies' or 'films' = ['movie']. "
                             "'shows' or 'TV shows' or 'series' = ['tv']. 'games' = ['game']. "
+                            "'podcasts' = ['podcast']. "
                             "If user says 'content' or 'something' or doesn't specify, "
-                            "return all three: ['game', 'movie', 'tv']."
+                            "return all four: ['game', 'movie', 'tv', 'podcast']."
                         ),
                     },
                     "query_type": {
@@ -96,6 +102,30 @@ TOOLS = [
                             "within_vertical if user wants same type as their reference "
                             "(games like a game). cross_vertical if they want different types "
                             "(movies based on a game they like) or all types."
+                        ),
+                    },
+                    "date_filter_start": {
+                        "type": ["string", "null"],
+                        "description": (
+                            "Start date in YYYY-MM-DD format. Convert natural language: "
+                            "'this year' or '2026' = 2026-01-01, 'last year' or '2025' = 2025-01-01, "
+                            "'recent' or 'new' = 2025-11-29, 'upcoming' or 'coming out' = 2026-05-29, "
+                            "'last month' = 2026-04-01, 'this month' = 2026-05-01, "
+                            "'last 6 months' = 2025-11-29, 'last year' = 2025-01-01, "
+                            "'classic' = 1900-01-01, '90s' = 1990-01-01, '2000s' = 2000-01-01. "
+                            "Null if no temporal reference in query."
+                        ),
+                    },
+                    "date_filter_end": {
+                        "type": ["string", "null"],
+                        "description": (
+                            "End date in YYYY-MM-DD format. Convert: "
+                            "'this year' or '2026' = 2026-12-31, 'last year' or '2025' = 2025-12-31, "
+                            "'recent' or 'new' = 2026-05-29, 'upcoming' = 2026-12-31, "
+                            "'coming out this month' = 2026-05-31, 'this month' = 2026-05-31, "
+                            "'last month' = 2026-04-30, 'classic' = 2000-12-31, "
+                            "'90s' = 1999-12-31, '2000s' = 2009-12-31. "
+                            "Null if no temporal reference."
                         ),
                     },
                 },
@@ -152,8 +182,10 @@ def parse_query(user_query: str, max_retries: int = 2) -> dict:
                 "negative_entities": _safe_list(args.get("negative_entities")),
                 "additional_keywords": _safe_list(args.get("additional_keywords")),
                 "description_derived_keywords": _safe_list(args.get("description_derived_keywords")),
-                "target_verticals": _safe_list(args.get("target_verticals")) or ["game", "movie", "tv"],
+                "target_verticals": _safe_list(args.get("target_verticals")) or ["game", "movie", "tv", "podcast"],
                 "query_type": args.get("query_type", "cross_vertical"),
+                "date_filter_start": args.get("date_filter_start") or None,
+                "date_filter_end": args.get("date_filter_end") or None,
                 "raw_response": args,
             }
 

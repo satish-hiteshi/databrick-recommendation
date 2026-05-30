@@ -20,9 +20,9 @@ from pipeline.config import (
 )
 from pipeline.data_loader import get_all_entities, get_entity_by_name
 
-EMBEDDINGS_CACHE_JSON = os.path.join(DATA_DIR, "embeddings_cache.json")
-EMBEDDINGS_CACHE_NPY = os.path.join(DATA_DIR, "embeddings.npy")
-EMBEDDINGS_IDS_JSON = os.path.join(DATA_DIR, "embeddings_ids.json")
+EMBEDDINGS_CACHE_JSON = os.path.join(DATA_DIR, "embeddings_cache_v2.json")
+EMBEDDINGS_CACHE_NPY = os.path.join(DATA_DIR, "embeddings_v2.npy")
+EMBEDDINGS_IDS_JSON = os.path.join(DATA_DIR, "embeddings_ids_v2.json")
 
 BATCH_SIZE = 50
 

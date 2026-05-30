@@ -1,10 +1,3 @@
-"""
-Retrieval for Feeds.ai pipeline.
-Uses Reciprocal Rank Fusion (RRF) across vector + BM25 ranked lists.
-Handles all 5 query modes: entity_single, entity_multi, theme_based, descriptive, mixed.
-Unchanged in logic from the original — only imports point to the Databricks modules.
-"""
-
 import numpy as np
 
 from pipeline.config import TOP_K_RETRIEVAL
@@ -12,17 +5,17 @@ from pipeline.entity_resolver import resolve_entity
 from pipeline.vector_store import vector_search, keyword_search
 from pipeline.embedding_generator import embed_query_text
 
-RRF_K            = 60
+RRF_K             = 60
 DUAL_SIGNAL_BONUS = 0.005
 OVERLAP_BONUS     = 0.003
-MISSING_RANK      = 1000
 
 
-# ── Ranked list collection ────────────────────────────────────────────
-
-def _collect_ranked_lists(embedding, keywords, verticals_set, top_k, source_label):
-    vec_results  = vector_search(embedding, verticals_set, top_k)
-    bm25_results = keyword_search(keywords, verticals_set, top_k)
+def _collect_ranked_lists(embedding, keywords, verticals_set, top_k, source_label,
+                          date_start=None, date_end=None):
+    vec_results  = vector_search(embedding, verticals_set, top_k,
+                                 date_start=date_start, date_end=date_end)
+    bm25_results = keyword_search(keywords, verticals_set, top_k,
+                                  date_start=date_start, date_end=date_end)
 
     meta = {}
     for eid, name, vert, _ in vec_results:
@@ -43,8 +36,6 @@ def _collect_ranked_lists(embedding, keywords, verticals_set, top_k, source_labe
     }
     return vec_ranked, bm25_ranked, meta, debug
 
-
-# ── RRF Fusion ────────────────────────────────────────────────────────
 
 def _rrf_fuse(all_ranked_lists, all_list_types, all_source_indices, meta_pool):
     candidates = {}
@@ -102,16 +93,16 @@ def _rrf_fuse(all_ranked_lists, all_list_types, all_source_indices, meta_pool):
     return sorted(candidates.values(), key=lambda x: x["rrf_score"], reverse=True)
 
 
-# ── Main retrieve function ────────────────────────────────────────────
-
 def retrieve(nlu_output: dict):
-    mode      = nlu_output["query_mode"]
-    pos_names = nlu_output.get("positive_entities", [])
-    neg_names = nlu_output.get("negative_entities", [])
-    add_kw    = nlu_output.get("additional_keywords", [])
-    desc_kw   = nlu_output.get("description_derived_keywords", [])
-    target_verts  = nlu_output.get("target_verticals", ["game", "movie", "tv"])
+    mode         = nlu_output["query_mode"]
+    pos_names    = nlu_output.get("positive_entities", [])
+    neg_names    = nlu_output.get("negative_entities", [])
+    add_kw       = nlu_output.get("additional_keywords", [])
+    desc_kw      = nlu_output.get("description_derived_keywords", [])
+    target_verts = nlu_output.get("target_verticals", ["game", "movie", "tv", "podcast"])
     verticals_set = set(target_verts) if target_verts else None
+    date_start   = nlu_output.get("date_filter_start")
+    date_end     = nlu_output.get("date_filter_end")
 
     resolved_pos = [r for name in pos_names if (r := resolve_entity(name)) is not None]
     resolved_neg = []
@@ -131,7 +122,8 @@ def retrieve(nlu_output: dict):
 
     def _add_source(embedding, keywords, verticals, top_k, label, source_idx):
         vec_ranked, bm25_ranked, meta, dbg = _collect_ranked_lists(
-            embedding, keywords, verticals, top_k, label
+            embedding, keywords, verticals, top_k, label,
+            date_start=date_start, date_end=date_end
         )
         all_debug.append(dbg)
         meta_pool.update(meta)
@@ -160,13 +152,21 @@ def retrieve(nlu_output: dict):
     elif mode in ("theme_based", "descriptive"):
         all_keywords = add_kw + desc_kw
         if not all_keywords:
-            return _empty(mode, resolved_pos, resolved_neg,
-                          error="No keywords extracted for theme/descriptive search",
-                          unresolved_neg_kw=unresolved_neg_keywords)
-        search_text = " ".join(all_keywords)
-        query_emb   = np.array(embed_query_text(search_text), dtype=np.float32)
-        _add_source(query_emb, all_keywords,
-                    verticals_set, TOP_K_RETRIEVAL, f"theme:{search_text[:40]}", 0)
+            if date_start or date_end:
+                vert_terms  = list(target_verts) if target_verts else ["entertainment"]
+                search_text = " ".join(vert_terms)
+                query_emb   = np.array(embed_query_text(search_text), dtype=np.float32)
+                _add_source(query_emb, vert_terms,
+                            verticals_set, TOP_K_RETRIEVAL, f"browse:{search_text[:40]}", 0)
+            else:
+                return _empty(mode, resolved_pos, resolved_neg,
+                              error="No keywords extracted for theme/descriptive search",
+                              unresolved_neg_kw=unresolved_neg_keywords)
+        else:
+            search_text = " ".join(all_keywords)
+            query_emb   = np.array(embed_query_text(search_text), dtype=np.float32)
+            _add_source(query_emb, all_keywords,
+                        verticals_set, TOP_K_RETRIEVAL, f"theme:{search_text[:40]}", 0)
 
     elif mode == "mixed":
         for i, ent in enumerate(resolved_pos):
@@ -192,12 +192,12 @@ def retrieve(nlu_output: dict):
                                   all_source_indices, meta_pool)
 
     return {
-        "candidates":         sorted_candidates,
-        "resolved_positive":  resolved_pos,
-        "resolved_negative":  resolved_neg,
+        "candidates":              sorted_candidates,
+        "resolved_positive":       resolved_pos,
+        "resolved_negative":       resolved_neg,
         "unresolved_neg_keywords": unresolved_neg_keywords,
-        "query_mode":         mode,
-        "debug":              all_debug,
+        "query_mode":              mode,
+        "debug":                   all_debug,
     }
 
 

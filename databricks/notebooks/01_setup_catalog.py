@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.entities (
     publisher        STRING,
     directors        ARRAY<STRING>,
     cast_members     ARRAY<STRING>,
-    embedding        ARRAY<FLOAT>
+    embedding        ARRAY<FLOAT>,
+    release_date     STRING
 )
 USING DELTA
 TBLPROPERTIES (

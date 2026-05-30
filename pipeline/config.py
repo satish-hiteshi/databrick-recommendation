@@ -25,9 +25,9 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 QDRANT_COLLECTION = "feedsai_entities"
 
 # --- Data Paths ---
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-COMPOSITIONS_PATH = os.path.join(DATA_DIR, "all_compositions.json")
-PROFILES_PATH = os.path.join(DATA_DIR, "entity_profiles_final.json")
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data_v2")
+COMPOSITIONS_PATH = os.path.join(DATA_DIR, "all_compositions_v2.json")
+PROFILES_PATH = os.path.join(DATA_DIR, "entity_profiles_v2.json")
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "results")
 
 # --- Hybrid Scoring Weights ---
@@ -39,4 +39,4 @@ TOP_K_RETRIEVAL = 20
 TOP_K_RESULTS = 10
 
 # --- Verticals ---
-VALID_VERTICALS = {"game", "movie", "tv_show"}
+VALID_VERTICALS = {"game", "movie", "tv", "podcast"}

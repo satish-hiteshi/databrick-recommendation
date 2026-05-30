@@ -185,6 +185,11 @@ function SystemResponse({
           )}
           {" | "}Target: {intent.target_verticals?.join(", ")}
         </span>
+        {response.date_filter_applied && response.date_filter_description && (
+          <span className="date-filter-badge">
+            &#128197; Filtered: {response.date_filter_description}
+          </span>
+        )}
       </div>
 
       {response.anchor_entities_resolved?.length > 0 && (

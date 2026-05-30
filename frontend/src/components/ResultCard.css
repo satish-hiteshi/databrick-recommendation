@@ -139,6 +139,64 @@
   color: #92400E;
 }
 
+/* Name + date column */
+.result-name-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.result-date {
+  font-size: 11px;
+  color: #6B7280;
+}
+.result-date.upcoming {
+  color: #059669;
+  font-weight: 500;
+}
+
+/* Reasoning box */
+.reasoning-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: #F0F4FF;
+  padding: 8px 10px;
+  border-radius: 8px;
+  position: relative;
+  animation: fadeInReason 200ms ease;
+}
+@keyframes fadeInReason {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reasoning-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+.reasoning-text {
+  font-size: 12.5px;
+  color: #1E3A5F;
+  font-style: italic;
+  line-height: 1.4;
+}
+.reasoning-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #1E293B;
+  color: #F1F5F9;
+  font-size: 12px;
+  font-style: italic;
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.5;
+  z-index: 20;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  animation: fadeInReason 150ms ease;
+}
+
 /* Keywords */
 .result-keywords {
   display: flex;

@@ -13,6 +13,9 @@ export interface QueryResult {
   appeared_in_searches: number;
   negative_penalty: number;
   similarity_percentage: number;
+  reasoning_short?: string;
+  reasoning_long?: string;
+  release_date?: string | null;
 }
 
 export interface ParsedIntent {
@@ -23,6 +26,8 @@ export interface ParsedIntent {
   description_derived_keywords: string[];
   target_verticals: string[];
   query_type: string;
+  date_filter_start?: string | null;
+  date_filter_end?: string | null;
 }
 
 export interface Timings {
@@ -46,6 +51,10 @@ export interface QueryResponse {
   status: string;
   error?: string;
   history_id?: number;
+  date_filter_applied?: boolean;
+  date_filter_start?: string | null;
+  date_filter_end?: string | null;
+  date_filter_description?: string;
 }
 
 export interface EntityDetail {
@@ -61,6 +70,7 @@ export interface EntityDetail {
   canonical_genres: string[];
   themes: string[];
   keywords: string[];
+  release_date?: string | null;
 }
 
 export interface ChatMessage {

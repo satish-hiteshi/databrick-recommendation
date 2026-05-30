@@ -78,6 +78,11 @@ export default function HistoryDetail({ onEntitySelect }: Props) {
             </div>
           )}
 
+          {/* Date filter badge */}
+          {data.date_filter_applied && data.date_filter_description && (
+            <span className="hd-date-badge">&#128197; Filtered: {data.date_filter_description}</span>
+          )}
+
           {/* Resolved entities */}
           {data.anchor_entities_resolved?.length > 0 && (
             <div className="hd-chips">

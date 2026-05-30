@@ -21,4 +21,4 @@ SQL_WAREHOUSE_HTTP_PATH = os.getenv("FEEDSAI_SQL_HTTP_PATH", "")
 
 TOP_K_RETRIEVAL = 20
 TOP_K_RESULTS   = 10
-VALID_VERTICALS = {"game", "movie", "tv"}
+VALID_VERTICALS = {"game", "movie", "tv", "podcast"}

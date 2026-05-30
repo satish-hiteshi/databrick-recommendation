@@ -11,6 +11,7 @@ from qdrant_client.models import (
     Filter,
     MatchAny,
     PointStruct,
+    Range,
     VectorParams,
 )
 from rank_bm25 import BM25Okapi
@@ -79,6 +80,8 @@ def upload_vectors():
                 "bm25_keywords": e["bm25_keywords"],
                 "franchise": e.get("franchise"),
                 "composed_text_preview": e["composed_text"][:200],
+                "release_date_int": int(e["release_date"].replace("-", "")) if e.get("release_date") else None,
+                "release_date": e.get("release_date"),
             },
         ))
 
@@ -95,18 +98,30 @@ def upload_vectors():
     return count
 
 
-def vector_search(query_embedding, target_verticals=None, top_k=TOP_K_RETRIEVAL):
+def vector_search(query_embedding, target_verticals=None, top_k=TOP_K_RETRIEVAL,
+                   date_start=None, date_end=None):
     """
     Search Qdrant by embedding vector.
     Returns list of (entity_id, name, vertical, score) tuples.
     """
     client = get_client()
 
-    query_filter = None
+    must_conditions = []
     if target_verticals:
-        query_filter = Filter(
-            must=[FieldCondition(key="vertical", match=MatchAny(any=list(target_verticals)))]
+        must_conditions.append(
+            FieldCondition(key="vertical", match=MatchAny(any=list(target_verticals)))
         )
+    if date_start or date_end:
+        ds_int = int(date_start.replace("-", "")) if date_start else None
+        de_int = int(date_end.replace("-", "")) if date_end else None
+        must_conditions.append(
+            FieldCondition(
+                key="release_date_int",
+                range=Range(gte=ds_int, lte=de_int),
+            )
+        )
+
+    query_filter = Filter(must=must_conditions) if must_conditions else None
 
     vec = query_embedding.tolist() if isinstance(query_embedding, np.ndarray) else query_embedding
 
@@ -136,7 +151,8 @@ def _build_bm25_index():
     _bm25_entities = entities
 
 
-def keyword_search(anchor_keywords, target_verticals=None, top_k=TOP_K_RETRIEVAL):
+def keyword_search(anchor_keywords, target_verticals=None, top_k=TOP_K_RETRIEVAL,
+                    date_start=None, date_end=None):
     """
     BM25 keyword search across all entities.
     anchor_keywords: list of keyword strings from the anchor entity.
@@ -154,6 +170,15 @@ def keyword_search(anchor_keywords, target_verticals=None, top_k=TOP_K_RETRIEVAL
         e = _bm25_entities[idx]
         if target_verticals and e["vertical"] not in target_verticals:
             continue
+        # Date filter on BM25 results
+        if date_start or date_end:
+            rd = e.get("release_date")
+            if not rd:
+                continue  # exclude entities without release_date when filter is active
+            if date_start and rd < date_start:
+                continue
+            if date_end and rd > date_end:
+                continue
         scored.append((e["entity_id"], e["name"], e["vertical"], float(score)))
 
     # Sort descending by score, return top_k

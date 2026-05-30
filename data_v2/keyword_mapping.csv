@@ -1,0 +1,296 @@
+source_id;source_name;schema_table;media_source_id;media_source_name;feeds_id;feeds_name
+5888;agriculture;core_keyword_ids;6;TMDB;21;Simulation & Real Life
+9951;alien;core_keyword_ids;6;TMDB;4;Sci-Fi & Space
+3;aliens;core_keywords;1;IGDB;4;Sci-Fi & Space
+579;american football;core_keyword_ids;6;TMDB;11;Sports & Competition
+32;american football;core_keywords;1;IGDB;11;Sports & Competition
+421;ancient egypt;core_keywords;1;IGDB;10;History & War
+34;ancient greece;core_keywords;1;IGDB;10;History & War
+3711;animal species;core_keyword_ids;6;TMDB;15;Animals & Nature
+153;animals;core_keywords;1;IGDB;15;Animals & Nature
+701;archery;core_keywords;1;IGDB;11;Sports & Competition
+310;artificial intelligence (a.i.);core_keyword_ids;6;TMDB;4;Sci-Fi & Space
+11695;automobile;core_keyword_ids;6;TMDB;13;Cars & Racing
+10040;automotive;core_keyword_ids;6;TMDB;13;Cars & Racing
+1009;baby;core_keyword_ids;6;TMDB;20;Kids & Family
+759;baking;core_keywords;1;IGDB;14;Food & Cooking
+5731;barbecue (bbq);core_keyword_ids;6;TMDB;14;Food & Cooking
+1480;baseball;core_keyword_ids;6;TMDB;11;Sports & Competition
+20;baseball;core_keywords;1;IGDB;11;Sports & Competition
+15101;based on children's book;core_keyword_ids;6;TMDB;20;Kids & Family
+6496;basketball;core_keyword_ids;6;TMDB;11;Sports & Competition
+58;basketball;core_keywords;1;IGDB;11;Sports & Competition
+14643;battle;core_keyword_ids;6;TMDB;1;Action & Combat
+4933;battle for power;core_keyword_ids;6;TMDB;22;Strategy & Tactics
+9928;bereavement;core_keyword_ids;6;TMDB;9;Drama & Emotional
+6016;biology;core_keyword_ids;6;TMDB;16;Education & Knowledge
+5732;birthday party;core_keyword_ids;6;TMDB;25;Social & Party
+299;bowling;core_keywords;1;IGDB;11;Sports & Competition
+632;boxing;core_keywords;1;IGDB;11;Sports & Competition
+830;car race;core_keyword_ids;6;TMDB;13;Cars & Racing
+155;cars;core_keywords;1;IGDB;13;Cars & Racing
+11085;castaway;core_keyword_ids;6;TMDB;2;Adventure & Exploration
+11085;castaway;core_keyword_ids;6;TMDB;24;Survival & Crafting
+18293;chef;core_keyword_ids;6;TMDB;14;Food & Cooking
+380;chess;core_keywords;1;IGDB;23;Puzzle & Brain Games
+3650;child hero;core_keyword_ids;6;TMDB;20;Kids & Family
+4098;civil rights;core_keyword_ids;6;TMDB;17;Politics & Society
+393;civil war;core_keyword_ids;6;TMDB;10;History & War
+6098;clothing;core_keyword_ids;6;TMDB;19;Fashion & Beauty
+9;Co-op;steam_categories;5;Steam;25;Social & Party
+2106;cold war;core_keyword_ids;6;TMDB;10;History & War
+8;cold war;core_keywords;1;IGDB;10;History & War
+10683;coming of age;core_keyword_ids;6;TMDB;9;Drama & Emotional
+15248;commando;core_keyword_ids;6;TMDB;1;Action & Combat
+271;competition;core_keyword_ids;6;TMDB;11;Sports & Competition
+286;competitive;core_keywords;1;IGDB;11;Sports & Competition
+8469;computer simulation;core_keyword_ids;6;TMDB;21;Simulation & Real Life
+4850;computer war;core_keyword_ids;6;TMDB;22;Strategy & Tactics
+6029;concert;core_keyword_ids;6;TMDB;12;Music & Performance
+11836;contest;core_keyword_ids;6;TMDB;11;Sports & Competition
+1918;cooking;core_keyword_ids;6;TMDB;14;Food & Cooking
+758;cooking;core_keywords;1;IGDB;14;Food & Cooking
+1634;couch co-op;core_keywords;1;IGDB;25;Social & Party
+510;crafting;core_keywords;1;IGDB;24;Survival & Crafting
+1669;crime;core_keywords;1;IGDB;6;Mystery & Crime
+244;crime solving;core_keywords;1;IGDB;6;Mystery & Crime
+106;cybernetics;core_keywords;1;IGDB;4;Sci-Fi & Space
+12190;cyberpunk;core_keyword_ids;6;TMDB;4;Sci-Fi & Space
+103;cyberpunk;core_keywords;1;IGDB;4;Sci-Fi & Space
+10123;dark comedy;core_keyword_ids;6;TMDB;8;Comedy & Humor
+537;dark fantasy;core_keywords;1;IGDB;3;Fantasy & Magic
+13043;dating;core_keyword_ids;6;TMDB;7;Romance & Relationships
+358;dating;core_keywords;1;IGDB;7;Romance & Relationships
+175;demon;core_keywords;1;IGDB;5;Horror & Supernatural
+703;detective;core_keyword_ids;6;TMDB;6;Mystery & Crime
+215;detective;core_keywords;1;IGDB;6;Mystery & Crime
+87;dinosaurs;core_keywords;1;IGDB;15;Animals & Nature
+159;disease;core_keywords;1;IGDB;18;Health & Wellness
+12554;dragon;core_keyword_ids;6;TMDB;3;Fantasy & Magic
+332;dragons;core_keywords;1;IGDB;3;Fantasy & Magic
+429;dystopian;core_keywords;1;IGDB;4;Sci-Fi & Space
+3681;economy;core_keyword_ids;6;TMDB;17;Politics & Society
+2470;education;core_keyword_ids;6;TMDB;16;Education & Knowledge
+18257;educational;core_keyword_ids;6;TMDB;16;Education & Knowledge
+6085;election campaign;core_keyword_ids;6;TMDB;17;Politics & Society
+33577;environment;core_keyword_ids;6;TMDB;15;Animals & Nature
+1655;esports;core_keywords;1;IGDB;11;Sports & Competition
+33611;exercise;core_keyword_ids;6;TMDB;18;Health & Wellness
+642;exercise;core_keywords;1;IGDB;18;Health & Wellness
+1963;expedition;core_keyword_ids;6;TMDB;2;Adventure & Exploration
+4759;exploration;core_keyword_ids;6;TMDB;2;Adventure & Exploration
+72;exploration;core_keywords;1;IGDB;2;Adventure & Exploration
+3205;fairy tale;core_keyword_ids;6;TMDB;3;Fantasy & Magic
+18035;family;core_keyword_ids;6;TMDB;20;Kids & Family
+10235;family relationships;core_keyword_ids;6;TMDB;7;Romance & Relationships
+4932;farm;core_keyword_ids;6;TMDB;21;Simulation & Real Life
+15479;fashion;core_keyword_ids;6;TMDB;19;Fashion & Beauty
+793;fashion;core_keywords;1;IGDB;19;Fashion & Beauty
+7024;fashion designer;core_keyword_ids;6;TMDB;19;Fashion & Beauty
+3486;fashion journal;core_keyword_ids;6;TMDB;19;Fashion & Beauty
+6805;fashion photographer;core_keyword_ids;6;TMDB;19;Fashion & Beauty
+1721;fight;core_keyword_ids;6;TMDB;1;Action & Combat
+14955;fighting;core_keyword_ids;6;TMDB;1;Action & Combat
+453;first person shooter;core_keywords;1;IGDB;1;Action & Combat
+509;fishing;core_keywords;1;IGDB;15;Animals & Nature
+777;fitness;core_keywords;1;IGDB;18;Health & Wellness
+56;flight simulator;core_keywords;1;IGDB;21;Simulation & Real Life
+10637;food;core_keyword_ids;6;TMDB;14;Food & Cooking
+160021;food issues;core_keyword_ids;6;TMDB;14;Food & Cooking
+27;football;core_keywords;1;IGDB;11;Sports & Competition
+5774;forest;core_keyword_ids;6;TMDB;15;Animals & Nature
+70;futuristic warfare;core_keywords;1;IGDB;4;Sci-Fi & Space
+4325;game show;core_keyword_ids;6;TMDB;11;Sports & Competition
+16;ghosts;core_keywords;1;IGDB;5;Horror & Supernatural
+280;go-kart;core_keywords;1;IGDB;13;Cars & Racing
+2702;golf;core_keyword_ids;6;TMDB;11;Sports & Competition
+30;golf;core_keywords;1;IGDB;11;Sports & Competition
+423;gothic;core_keywords;1;IGDB;5;Horror & Supernatural
+15032;gothic horror;core_keyword_ids;6;TMDB;5;Horror & Supernatural
+6086;government;core_keyword_ids;6;TMDB;17;Politics & Society
+149;grand strategy;core_keywords;1;IGDB;22;Strategy & Tactics
+2036;greek mythology;core_keyword_ids;6;TMDB;3;Fantasy & Magic
+35;greek mythology;core_keywords;1;IGDB;3;Fantasy & Magic
+9872;grief;core_keyword_ids;6;TMDB;9;Drama & Emotional
+953;guitar;core_keyword_ids;6;TMDB;12;Music & Performance
+488;guitar playing;core_keywords;1;IGDB;12;Music & Performance
+1419;gun;core_keyword_ids;6;TMDB;1;Action & Combat
+650;gymnastics;core_keyword_ids;6;TMDB;11;Sports & Competition
+523;harry potter;core_keywords;1;IGDB;3;Fantasy & Magic
+3358;haunted house;core_keyword_ids;6;TMDB;5;Horror & Supernatural
+198;haunted house;core_keywords;1;IGDB;5;Horror & Supernatural
+49755;healing;core_keyword_ids;6;TMDB;9;Drama & Emotional
+3721;health;core_keyword_ids;6;TMDB;18;Health & Wellness
+10051;heist;core_keyword_ids;6;TMDB;6;Mystery & Crime
+243;heist;core_keywords;1;IGDB;6;Mystery & Crime
+6270;high school;core_keyword_ids;6;TMDB;20;Kids & Family
+15126;historical;core_keyword_ids;6;TMDB;10;History & War
+18339;human rights;core_keyword_ids;6;TMDB;17;Politics & Society
+64;hunting;core_keywords;1;IGDB;15;Animals & Nature
+44;ice hockey;core_keywords;1;IGDB;11;Sports & Competition
+161;infection;core_keywords;1;IGDB;5;Horror & Supernatural
+5340;investigation;core_keyword_ids;6;TMDB;6;Mystery & Crime
+225;investigation;core_keywords;1;IGDB;6;Mystery & Crime
+5973;journey around the world;core_keyword_ids;6;TMDB;2;Adventure & Exploration
+105;knights;core_keywords;1;IGDB;3;Fantasy & Magic
+48;LAN Co-op;steam_categories;5;Steam;25;Social & Party
+47;LAN PvP;steam_categories;5;Steam;11;Sports & Competition
+43;life simulation;core_keywords;1;IGDB;21;Simulation & Real Life
+1635;local co-op;core_keywords;1;IGDB;25;Social & Party
+9673;love;core_keyword_ids;6;TMDB;7;Romance & Relationships
+10391;mafia;core_keyword_ids;6;TMDB;6;Mystery & Crime
+2343;magic;core_keyword_ids;6;TMDB;3;Fantasy & Magic
+226;magic;core_keywords;1;IGDB;3;Fantasy & Magic
+17974;makeup;core_keyword_ids;6;TMDB;19;Fashion & Beauty
+5756;man woman relationship;core_keyword_ids;6;TMDB;7;Romance & Relationships
+6038;marriage;core_keyword_ids;6;TMDB;7;Romance & Relationships
+779;martial arts;core_keyword_ids;6;TMDB;1;Action & Combat
+61;martial arts;core_keywords;1;IGDB;1;Action & Combat
+6009;mathematics;core_keyword_ids;6;TMDB;16;Education & Knowledge
+167;mech;core_keywords;1;IGDB;4;Sci-Fi & Space
+1279;medicine;core_keyword_ids;6;TMDB;18;Health & Wellness
+151;medieval;core_keywords;1;IGDB;10;History & War
+4232;melancholy;core_keyword_ids;6;TMDB;9;Drama & Emotional
+159315;mental health;core_keyword_ids;6;TMDB;18;Health & Wellness
+41329;mental illness;core_keyword_ids;6;TMDB;18;Health & Wellness
+563;military;core_keywords;1;IGDB;10;History & War
+20;MMO;steam_categories;5;Steam;25;Social & Party
+1;modern warfare;core_keywords;1;IGDB;10;History & War
+98;monsters;core_keywords;1;IGDB;5;Horror & Supernatural
+59;motocross;core_keywords;1;IGDB;13;Cars & Racing
+14735;motorcycle;core_keyword_ids;6;TMDB;13;Cars & Racing
+57;motorcycle;core_keywords;1;IGDB;13;Cars & Racing
+1;Multi-player;steam_categories;5;Steam;25;Social & Party
+9826;murder;core_keyword_ids;6;TMDB;6;Mystery & Crime
+221;murder;core_keywords;1;IGDB;6;Mystery & Crime
+1687;music based;core_keywords;1;IGDB;12;Music & Performance
+4344;musical;core_keyword_ids;6;TMDB;12;Music & Performance
+4048;musician;core_keyword_ids;6;TMDB;12;Music & Performance
+2035;mythology;core_keyword_ids;6;TMDB;3;Fantasy & Magic
+18330;nature;core_keyword_ids;6;TMDB;15;Animals & Nature
+1111;nature;core_keywords;1;IGDB;15;Animals & Nature
+809;nba;core_keywords;1;IGDB;11;Sports & Competition
+33;nfl;core_keywords;1;IGDB;11;Sports & Competition
+164;ninja;core_keywords;1;IGDB;1;Action & Combat
+367;norse mythology;core_keywords;1;IGDB;3;Fantasy & Magic
+270;ocean;core_keyword_ids;6;TMDB;15;Animals & Nature
+988;online co-op;core_keywords;1;IGDB;25;Social & Party
+38;Online Co-op;steam_categories;5;Steam;25;Social & Party
+36;Online PvP;steam_categories;5;Steam;11;Sports & Competition
+96;orcs;core_keywords;1;IGDB;3;Fantasy & Magic
+284;organized crime;core_keywords;1;IGDB;6;Mystery & Crime
+9853;paranormal;core_keyword_ids;6;TMDB;5;Horror & Supernatural
+135;paranormal;core_keywords;1;IGDB;5;Horror & Supernatural
+9755;parody;core_keyword_ids;6;TMDB;8;Comedy & Humor
+413;parody;core_keywords;1;IGDB;8;Comedy & Humor
+816;pets;core_keywords;1;IGDB;15;Animals & Nature
+6012;physics;core_keyword_ids;6;TMDB;16;Education & Knowledge
+3097;picture puzzle;core_keyword_ids;6;TMDB;23;Puzzle & Brain Games
+4;pirates;core_keywords;1;IGDB;2;Adventure & Exploration
+4812;plan;core_keyword_ids;6;TMDB;22;Strategy & Tactics
+159334;planning;core_keyword_ids;6;TMDB;22;Strategy & Tactics
+427;police;core_keywords;1;IGDB;6;Mystery & Crime
+6078;politics;core_keyword_ids;6;TMDB;17;Politics & Society
+214;politics;core_keywords;1;IGDB;17;Politics & Society
+54;pool;core_keywords;1;IGDB;11;Sports & Competition
+69;post-apocalyptic;core_keywords;1;IGDB;24;Survival & Crafting
+131;psychological horror;core_keywords;1;IGDB;5;Horror & Supernatural
+134;psychological thriller;core_keywords;1;IGDB;6;Mystery & Crime
+9228;puzzle;core_keyword_ids;6;TMDB;23;Puzzle & Brain Games
+9228;puzzle;core_keyword_ids;6;TMDB;23;Puzzle & Brain Games
+546;pvp;core_keywords;1;IGDB;25;Social & Party
+49;PvP;steam_categories;5;Steam;11;Sports & Competition
+6784;quiz;core_keyword_ids;6;TMDB;23;Puzzle & Brain Games
+10039;racing;core_keyword_ids;6;TMDB;13;Cars & Racing
+895;racing simulator;core_keywords;1;IGDB;13;Cars & Racing
+28;rally;core_keywords;1;IGDB;13;Cars & Racing
+155410;reading;core_keyword_ids;6;TMDB;16;Education & Knowledge
+606;resource management;core_keywords;1;IGDB;22;Strategy & Tactics
+1946;restaurant;core_keyword_ids;6;TMDB;14;Food & Cooking
+483;riddle;core_keyword_ids;6;TMDB;23;Puzzle & Brain Games
+7312;road trip;core_keyword_ids;6;TMDB;2;Adventure & Exploration
+642;robbery;core_keyword_ids;6;TMDB;6;Mystery & Crime
+575;robots;core_keywords;1;IGDB;4;Sci-Fi & Space
+578;rock 'n' roll;core_keyword_ids;6;TMDB;12;Music & Performance
+9840;romance;core_keyword_ids;6;TMDB;7;Romance & Relationships
+313;rugby;core_keywords;1;IGDB;11;Sports & Competition
+253;samurai;core_keywords;1;IGDB;1;Action & Combat
+8201;satire;core_keyword_ids;6;TMDB;8;Comedy & Humor
+10873;school;core_keyword_ids;6;TMDB;20;Kids & Family
+41;secret agent;core_keywords;1;IGDB;6;Mystery & Crime
+140;serial killer;core_keywords;1;IGDB;6;Mystery & Crime
+24;Shared/Split Screen;steam_categories;5;Steam;25;Social & Party
+39;Shared/Split Screen Co-op;steam_categories;5;Steam;25;Social & Party
+37;Shared/Split Screen PvP;steam_categories;5;Steam;11;Sports & Competition
+256;sherlock holmes;core_keywords;1;IGDB;6;Mystery & Crime
+63;ship simulator;core_keywords;1;IGDB;21;Simulation & Real Life
+706;shooting;core_keywords;1;IGDB;1;Action & Combat
+3972;simulated reality;core_keyword_ids;6;TMDB;21;Simulation & Real Life
+66;simulated reality;core_keywords;1;IGDB;21;Simulation & Real Life
+2423;simulation;core_keyword_ids;6;TMDB;21;Simulation & Real Life
+1148;simulation;core_keywords;1;IGDB;21;Simulation & Real Life
+1615;simulator;core_keyword_ids;6;TMDB;21;Simulation & Real Life
+12990;singing;core_keyword_ids;6;TMDB;12;Music & Performance
+156203;sketch comedy;core_keyword_ids;6;TMDB;8;Comedy & Humor
+9253;slapstick comedy;core_keyword_ids;6;TMDB;8;Comedy & Humor
+300;snooker;core_keywords;1;IGDB;11;Sports & Competition
+26;soccer;core_keywords;1;IGDB;11;Sports & Competition
+9882;space;core_keyword_ids;6;TMDB;4;Sci-Fi & Space
+24;space combat;core_keywords;1;IGDB;4;Sci-Fi & Space
+165;space mining;core_keywords;1;IGDB;4;Sci-Fi & Space
+23;space simulation;core_keywords;1;IGDB;4;Sci-Fi & Space
+201;space station;core_keywords;1;IGDB;4;Sci-Fi & Space
+51;space strategy;core_keywords;1;IGDB;22;Strategy & Tactics
+3801;space travel;core_keyword_ids;6;TMDB;4;Sci-Fi & Space
+6075;sports;core_keyword_ids;6;TMDB;11;Sports & Competition
+18063;sports bar;core_keyword_ids;6;TMDB;11;Sports & Competition
+999;sports car;core_keyword_ids;6;TMDB;13;Cars & Racing
+40;spy;core_keywords;1;IGDB;6;Mystery & Crime
+9716;stand-up comedy;core_keyword_ids;6;TMDB;8;Comedy & Humor
+283;story driven;core_keywords;1;IGDB;9;Drama & Emotional
+9743;stranded;core_keyword_ids;6;TMDB;24;Survival & Crafting
+158470;strategy;core_keyword_ids;6;TMDB;22;Strategy & Tactics
+441;street fighting;core_keywords;1;IGDB;1;Action & Combat
+15354;struggle for survival;core_keyword_ids;6;TMDB;24;Survival & Crafting
+14;super hero;core_keywords;1;IGDB;1;Action & Combat
+6152;supernatural;core_keyword_ids;6;TMDB;5;Horror & Supernatural
+1105;supernatural;core_keywords;1;IGDB;5;Horror & Supernatural
+10349;survival;core_keyword_ids;6;TMDB;24;Survival & Crafting
+10349;survival;core_keyword_ids;6;TMDB;24;Survival & Crafting
+1836;survival horror;core_keywords;1;IGDB;5;Horror & Supernatural
+1836;survival horror;core_keywords;1;IGDB;24;Survival & Crafting
+10833;survivalist;core_keyword_ids;6;TMDB;24;Survival & Crafting
+48;tank simulator;core_keywords;1;IGDB;21;Simulation & Real Life
+311;tennis;core_keywords;1;IGDB;11;Sports & Competition
+170;time travel;core_keywords;1;IGDB;4;Sci-Fi & Space
+12380;tournament;core_keyword_ids;6;TMDB;11;Sports & Competition
+77;tower defense;core_keywords;1;IGDB;22;Strategy & Tactics
+10614;tragedy;core_keyword_ids;6;TMDB;9;Drama & Emotional
+45;train simulator;core_keywords;1;IGDB;21;Simulation & Real Life
+9935;travel;core_keyword_ids;6;TMDB;2;Adventure & Exploration
+160311;trivia;core_keyword_ids;6;TMDB;23;Puzzle & Brain Games
+3133;vampire;core_keyword_ids;6;TMDB;5;Horror & Supernatural
+211;vampire;core_keywords;1;IGDB;5;Horror & Supernatural
+304;vehicle simulation;core_keywords;1;IGDB;21;Simulation & Real Life
+25;vehicular combat;core_keywords;1;IGDB;1;Action & Combat
+634;vietnam war;core_keywords;1;IGDB;10;History & War
+487;viking mythology;core_keywords;1;IGDB;3;Fantasy & Magic
+4563;virtual reality;core_keyword_ids;6;TMDB;4;Sci-Fi & Space
+654;volleyball;core_keywords;1;IGDB;11;Sports & Competition
+1107;war;core_keywords;1;IGDB;10;History & War
+3078;war strategy;core_keyword_ids;6;TMDB;22;Strategy & Tactics
+33638;warfare;core_keyword_ids;6;TMDB;10;History & War
+5409;wellness;core_keyword_ids;6;TMDB;18;Health & Wellness
+9;western;core_keywords;1;IGDB;10;History & War
+9902;wildlife;core_keyword_ids;6;TMDB;15;Animals & Nature
+1431;wildlife;core_keywords;1;IGDB;15;Animals & Nature
+667;winter sports;core_keywords;1;IGDB;11;Sports & Competition
+616;witch;core_keyword_ids;6;TMDB;3;Fantasy & Magic
+147;wizards;core_keywords;1;IGDB;3;Fantasy & Magic
+2504;world war i;core_keyword_ids;6;TMDB;10;History & War
+29;world war i - ww1;core_keywords;1;IGDB;10;History & War
+1956;world war ii;core_keyword_ids;6;TMDB;10;History & War
+19;world war ii - ww2;core_keywords;1;IGDB;10;History & War
+234;wrestling;core_keywords;1;IGDB;11;Sports & Competition
+12377;zombie;core_keyword_ids;6;TMDB;5;Horror & Supernatural
+5;zombies;core_keywords;1;IGDB;5;Horror & Supernatural

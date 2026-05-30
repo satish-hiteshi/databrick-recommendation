@@ -1,9 +1,3 @@
-"""
-Natural Language Understanding for Feeds.ai pipeline.
-Uses Llama 3.3 70B via Databricks Foundation Model API (no external key needed).
-Supports 5 query modes: entity_single, entity_multi, theme_based, descriptive, mixed.
-"""
-
 import json
 import time
 
@@ -11,14 +5,19 @@ from pipeline.config import LLM_ENDPOINT
 
 SYSTEM_PROMPT = (
     "You are a query parser for an entertainment discovery system covering games, movies, "
-    "and TV shows. Analyze the user's query and extract all relevant signals. "
+    "TV shows, and podcasts. Analyze the user's query and extract all relevant signals. "
     "If they name specific entities, include them in positive_entities. "
     "If they mention dislikes, include those in negative_entities. "
     "If they use genre/theme terms, include those in additional_keywords. "
     "If they describe what they want vaguely, translate their description into standard "
     "entertainment terminology in description_derived_keywords. "
     "Always determine which verticals they want results from. "
-    "Choose the query_mode that best describes the query type."
+    "Choose the query_mode that best describes the query type. "
+    "If the user mentions any time-related terms (this week, this year, 2025, 2026, recent, new, "
+    "upcoming, coming out, last month, old, classic, retro, 90s, 2000s, next week, this month, "
+    "released, from, etc.), interpret them relative to today's date (2026-05-29) and populate "
+    "date_filter_start and date_filter_end as YYYY-MM-DD strings. "
+    "If no temporal terms are mentioned, both date fields must be null."
 )
 
 TOOLS = [
@@ -54,7 +53,6 @@ TOOLS = [
                         "items": {"type": "string"},
                         "description": (
                             "Entities the user explicitly dislikes or wants to avoid. "
-                            "Look for phrases like 'I dont like', 'not like', 'hate', 'except', 'but not'. "
                             "Empty array if none."
                         ),
                     },
@@ -63,7 +61,6 @@ TOOLS = [
                         "items": {"type": "string"},
                         "description": (
                             "Explicit genre, theme, or mood terms from the query. "
-                            "Examples: 'horror', 'dark fantasy', 'challenging', 'sci-fi', 'comedy'. "
                             "Only include terms the user actually used."
                         ),
                     },
@@ -71,17 +68,18 @@ TOOLS = [
                         "type": "array",
                         "items": {"type": "string"},
                         "description": (
-                            "When the user describes what they want vaguely, translate their description "
-                            "into standard entertainment terms. Empty if user used standard terms."
+                            "When the user describes what they want vaguely, translate into "
+                            "standard entertainment terms. Empty if user used standard terms."
                         ),
                     },
                     "target_verticals": {
                         "type": "array",
-                        "items": {"type": "string", "enum": ["game", "movie", "tv"]},
+                        "items": {"type": "string", "enum": ["game", "movie", "tv", "podcast"]},
                         "description": (
-                            "Which verticals to search. 'movies' or 'films' = ['movie']. "
-                            "'shows' or 'TV shows' or 'series' = ['tv']. 'games' = ['game']. "
-                            "If user says 'content' or doesn't specify, return all three."
+                            "Which verticals to search. 'movies' = ['movie']. "
+                            "'shows'/'TV shows'/'series' = ['tv']. 'games' = ['game']. "
+                            "'podcasts' = ['podcast']. "
+                            "If user doesn't specify, return all four: ['game', 'movie', 'tv', 'podcast']."
                         ),
                     },
                     "query_type": {
@@ -90,6 +88,26 @@ TOOLS = [
                         "description": (
                             "within_vertical if user wants same type as their reference. "
                             "cross_vertical if they want different types or all types."
+                        ),
+                    },
+                    "date_filter_start": {
+                        "type": ["string", "null"],
+                        "description": (
+                            "Start date YYYY-MM-DD. 'this year'/'2026'=2026-01-01, "
+                            "'last year'/'2025'=2025-01-01, 'recent'/'new'=2025-11-29, "
+                            "'upcoming'=2026-05-29, 'last month'=2026-04-01, "
+                            "'this month'=2026-05-01, '90s'=1990-01-01, '2000s'=2000-01-01. "
+                            "Null if no temporal reference."
+                        ),
+                    },
+                    "date_filter_end": {
+                        "type": ["string", "null"],
+                        "description": (
+                            "End date YYYY-MM-DD. 'this year'/'2026'=2026-12-31, "
+                            "'last year'/'2025'=2025-12-31, 'recent'/'new'=2026-05-29, "
+                            "'upcoming'=2026-12-31, 'last month'=2026-04-30, "
+                            "'this month'=2026-05-31, '90s'=1999-12-31, '2000s'=2009-12-31. "
+                            "Null if no temporal reference."
                         ),
                     },
                 },
@@ -103,8 +121,6 @@ TOOLS = [
     }
 ]
 
-
-# Lazy-initialised client (one instance per serving container)
 _client = None
 
 
@@ -125,10 +141,6 @@ def _safe_list(val):
 
 
 def parse_query(user_query: str, max_retries: int = 2) -> dict:
-    """
-    Parse a user query into structured intent using Llama 3.3 70B on Databricks FMAPI.
-    Returns dict with query_mode, positive_entities, negative_entities, etc.
-    """
     client = _get_client()
 
     for attempt in range(max_retries + 1):
@@ -146,7 +158,6 @@ def parse_query(user_query: str, max_retries: int = 2) -> dict:
                 },
             )
 
-            # FMAPI returns a plain dict in OpenAI chat-completion format
             tool_call = response["choices"][0]["message"]["tool_calls"][0]
             args = json.loads(tool_call["function"]["arguments"])
 
@@ -156,8 +167,10 @@ def parse_query(user_query: str, max_retries: int = 2) -> dict:
                 "negative_entities":            _safe_list(args.get("negative_entities")),
                 "additional_keywords":          _safe_list(args.get("additional_keywords")),
                 "description_derived_keywords": _safe_list(args.get("description_derived_keywords")),
-                "target_verticals":             _safe_list(args.get("target_verticals")) or ["game", "movie", "tv"],
+                "target_verticals":             _safe_list(args.get("target_verticals")) or ["game", "movie", "tv", "podcast"],
                 "query_type":                   args.get("query_type", "cross_vertical"),
+                "date_filter_start":            args.get("date_filter_start") or None,
+                "date_filter_end":              args.get("date_filter_end") or None,
                 "raw_response":                 args,
             }
 

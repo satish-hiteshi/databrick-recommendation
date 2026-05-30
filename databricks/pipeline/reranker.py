@@ -8,6 +8,7 @@ from collections import Counter
 
 from pipeline.config import TOP_K_RESULTS
 from pipeline import entity_store
+from pipeline.reasoning import attach_reasoning
 
 
 # ── Cached per-session lookups ────────────────────────────────────────
@@ -128,14 +129,18 @@ def rerank(candidates, positive_entities, nlu_output, query_mode, top_k=TOP_K_RE
             vert_results = [c for c in results if c["vertical"] == vert]
             if len(vert_results) >= 3:
                 vert_results = _enforce_franchise_diversity(vert_results, debug)
-                per_vertical[vert] = vert_results[:top_k]
+                final_vert   = vert_results[:top_k]
+                attach_reasoning(final_vert, positive_entities, nlu_output)
+                per_vertical[vert] = final_vert
         return {"results": per_vertical, "debug": debug, "split_by_vertical": True}
     else:
         single_vert = target_verticals[0] if target_verticals else None
         if single_vert:
             results = [c for c in results if c["vertical"] == single_vert]
-        results = _enforce_franchise_diversity(results, debug)
-        return {"results": results[:top_k], "debug": debug, "split_by_vertical": False}
+        results        = _enforce_franchise_diversity(results, debug)
+        final_results  = results[:top_k]
+        attach_reasoning(final_results, positive_entities, nlu_output)
+        return {"results": final_results, "debug": debug, "split_by_vertical": False}
 
 
 def _enforce_franchise_diversity(results, debug):

@@ -1,0 +1,73 @@
+source_id;source_name;schema_table;media_source_id;media_source_name;feeds_id;feeds_name
+1;Action;app_genres;5;Steam;1;Action
+1;Action;config_genres;2;Watchmode_Movies;1;Action
+1;Action;core_themes;1;IGDB;1;Action
+39;Action & Adventure;config_genres;2;Watchmode_Movies;1;Action
+39;Action & Adventure;config_genres;2;Watchmode_Movies;2;Adventure
+31;Adventure;core_genres;1;IGDB;2;Adventure
+25;Adventure;app_genres;5;Steam;2;Adventure
+2;Adventure;config_genres;2;Watchmode_Movies;2;Adventure
+3;Animation;config_genres;2;Watchmode_Movies;3;Animation
+33;Anime;config_genres;2;Watchmode_Movies;3;Animation
+31;Biography;config_genres;2;Watchmode_Movies;4;Biography
+35;Card & Board Game;core_genres;1;IGDB;17;Puzzle & Trivia
+4;Casual;app_genres;5;Steam;5;Casual / Arcade
+4;Comedy;config_genres;2;Watchmode_Movies;6;Comedy
+27;Comedy;core_themes;1;IGDB;6;Comedy
+5;Crime;config_genres;2;Watchmode_Movies;7;Crime
+6;Documentary;config_genres;2;Watchmode_Movies;8;Documentary
+7;Drama;config_genres;2;Watchmode_Movies;9;Drama
+31;Drama;core_themes;1;IGDB;9;Drama
+8;Family;config_genres;2;Watchmode_Movies;10;Family
+9;Fantasy;config_genres;2;Watchmode_Movies;11;Fantasy
+17;Fantasy;core_themes;1;IGDB;11;Fantasy
+4;Fighting;core_genres;1;IGDB;1;Action
+34;Food;config_genres;2;Watchmode_Movies;8;Documentary
+28;Game Show;config_genres;2;Watchmode_Movies;18;Reality / Unscripted
+25;Hack and slash / Beat ’em up;core_genres;1;IGDB;1;Action
+11;Horror;config_genres;2;Watchmode_Movies;12;Horror
+19;Horror;core_themes;1;IGDB;12;Horror
+21;Kids;config_genres;2;Watchmode_Movies;13;Kids
+35;Kids;core_themes;1;IGDB;13;Kids
+7;Music;core_genres;1;IGDB;14;Music
+12;Music;config_genres;2;Watchmode_Movies;14;Music
+32;Musical;config_genres;2;Watchmode_Movies;14;Music
+43;Mystery;core_themes;1;IGDB;15;Mystery
+36;Nature;config_genres;2;Watchmode_Movies;8;Documentary
+38;News;config_genres;2;Watchmode_Movies;16;News & Information
+32;Non-fiction;core_themes;1;IGDB;8;Documentary
+30;Pinball;core_genres;1;IGDB;5;Casual / Arcade
+9;Puzzle;core_genres;1;IGDB;17;Puzzle & Trivia
+26;Quiz/Trivia;core_genres;1;IGDB;17;Puzzle & Trivia
+10;Racing;core_genres;1;IGDB;22;Simulation
+9;Racing;app_genres;5;Steam;22;Simulation
+11;Real Time Strategy (RTS);core_genres;1;IGDB;24;Strategy
+23;Reality;config_genres;2;Watchmode_Movies;18;Reality / Unscripted
+12;Role-playing (RPG);core_genres;1;IGDB;19;Role-Playing
+14;Romance;config_genres;2;Watchmode_Movies;20;Romance
+44;Romance;core_themes;1;IGDB;20;Romance
+3;RPG;app_genres;5;Steam;19;Role-Playing
+40;Sci-Fi & Fantasy;config_genres;2;Watchmode_Movies;11;Fantasy
+40;Sci-Fi & Fantasy;config_genres;2;Watchmode_Movies;21;Science Fiction
+15;Science Fiction;config_genres;2;Watchmode_Movies;21;Science Fiction
+18;Science fiction;core_themes;1;IGDB;21;Science Fiction
+5;Shooter;core_genres;1;IGDB;1;Action
+28;Simulation;app_genres;5;Steam;22;Simulation
+13;Simulator;core_genres;1;IGDB;22;Simulation
+14;Sport;core_genres;1;IGDB;23;Sports
+18;Sports;app_genres;5;Steam;23;Sports
+29;Sports;config_genres;2;Watchmode_Movies;23;Sports
+15;Strategy;core_genres;1;IGDB;24;Strategy
+2;Strategy;app_genres;5;Steam;24;Strategy
+37;Supernatural;config_genres;2;Watchmode_Movies;25;Supernatural
+24;Tactical;core_genres;1;IGDB;24;Strategy
+26;Talk;config_genres;2;Watchmode_Movies;18;Reality / Unscripted
+17;Thriller;config_genres;2;Watchmode_Movies;26;Thriller
+20;Thriller;core_themes;1;IGDB;26;Thriller
+35;Travel;config_genres;2;Watchmode_Movies;8;Documentary
+16;Turn-based strategy (TBS);core_genres;1;IGDB;24;Strategy
+18;War;config_genres;2;Watchmode_Movies;27;War
+41;War & Politics;config_genres;2;Watchmode_Movies;7;Crime
+41;War & Politics;config_genres;2;Watchmode_Movies;27;War
+39;Warfare;core_themes;1;IGDB;27;War
+19;Western;config_genres;2;Watchmode_Movies;28;Western

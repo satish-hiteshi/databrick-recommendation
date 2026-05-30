@@ -57,6 +57,13 @@
 .hd-chip.pos { background: #10B981; color: white; }
 .hd-chip.neg { background: #EF4444; color: white; }
 
+.hd-date-badge {
+  display: inline-block;
+  font-size: 11px; font-weight: 600;
+  padding: 3px 10px; border-radius: var(--radius-pill);
+  background: #FEF3C7; color: #92400E;
+}
+
 .hd-vert-section { margin-top: 4px; }
 .hd-vert-title {
   font-size: 14px; font-weight: 600; color: var(--text);

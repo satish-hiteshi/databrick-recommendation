@@ -1,15 +1,19 @@
-"""
-Query engine for Feeds.ai pipeline on Databricks.
-Orchestrates: NLU → Retrieval → Negative Filter → Reranker.
-Logic unchanged from original; imports point to the Databricks pipeline modules.
-"""
-
 import time
 
 from pipeline.nlu import parse_query
 from pipeline.retrieval import retrieve
 from pipeline.negative_filter import apply_negative_filter
 from pipeline.reranker import rerank
+from pipeline import entity_store
+
+_release_dates = None
+
+
+def _get_release_date(entity_id):
+    global _release_dates
+    if _release_dates is None:
+        _release_dates = {e["entity_id"]: e.get("release_date") for e in entity_store.get_all()}
+    return _release_dates.get(entity_id)
 
 
 def _format_result(rank, c):
@@ -27,6 +31,9 @@ def _format_result(rank, c):
         "shared_keywords":    c.get("shared_keywords", []),
         "appeared_in_searches": c.get("appeared_in_searches", 1),
         "negative_penalty":   c.get("negative_penalty", 0),
+        "reasoning_short":    c.get("reasoning_short", ""),
+        "reasoning_long":     c.get("reasoning_long", ""),
+        "release_date":       _get_release_date(c.get("entity_id")) or c.get("release_date"),
     }
 
 
@@ -39,7 +46,6 @@ def _add_similarity_pct(results):
 
 
 def process_query(user_query: str) -> dict:
-    """End-to-end query processing. Returns structured result dict."""
     timings = {}
 
     t0 = time.time()
@@ -55,6 +61,9 @@ def process_query(user_query: str) -> dict:
     resolved_neg  = ret["resolved_negative"]
     unresolved_neg_kw = ret.get("unresolved_neg_keywords", [])
 
+    ds = nlu.get("date_filter_start")
+    de = nlu.get("date_filter_end")
+
     if not candidates:
         timings["total_ms"] = timings["nlu_ms"] + timings["retrieval_ms"]
         error_msgs = [d.get("error", "") for d in ret.get("debug", []) if d.get("error")]
@@ -68,6 +77,10 @@ def process_query(user_query: str) -> dict:
             "results": [],
             "timings": timings,
             "status":  "no_results",
+            "date_filter_applied":     bool(ds or de),
+            "date_filter_start":       ds,
+            "date_filter_end":         de,
+            "date_filter_description": f"{ds} to {de}" if ds and de else "",
         }
 
     t0 = time.time()
@@ -88,6 +101,14 @@ def process_query(user_query: str) -> dict:
     if unresolved_neg_kw:
         neg_strs += [f"[keyword: {kw}]" for kw in unresolved_neg_kw]
 
+    date_applied = bool(ds or de)
+    if date_applied:
+        if ds and de:   date_desc = f"{ds} to {de}"
+        elif ds:        date_desc = f"After {ds}"
+        else:           date_desc = f"Before {de}"
+    else:
+        date_desc = ""
+
     base = {
         "query":                      user_query,
         "parsed_intent":              nlu,
@@ -100,6 +121,10 @@ def process_query(user_query: str) -> dict:
         "status":                     "success",
         "retrieval_candidate_count":  len(ret["candidates"]),
         "post_filter_count":          len(candidates),
+        "date_filter_applied":        date_applied,
+        "date_filter_start":          ds,
+        "date_filter_end":            de,
+        "date_filter_description":    date_desc,
     }
 
     if reranked.get("split_by_vertical"):
@@ -114,7 +139,7 @@ def process_query(user_query: str) -> dict:
         final     = reranked["results"]
         formatted = [_format_result(i, c) for i, c in enumerate(final, 1)]
         _add_similarity_pct(formatted)
-        base["results"]              = formatted
-        base["results_by_vertical"]  = {}
+        base["results"]             = formatted
+        base["results_by_vertical"] = {}
 
     return base

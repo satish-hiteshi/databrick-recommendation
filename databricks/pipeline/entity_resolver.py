@@ -52,12 +52,22 @@ def resolve_entity(entity_name: str) -> dict | None:
         return None
 
     entity_id, name, vertical, bm25_keywords, franchise = row
+
+    # bm25_keywords is ARRAY<STRING> from Delta — convert to plain Python list
+    # regardless of whether the SQL connector returns it as list, numpy array, or None
+    if bm25_keywords is None:
+        kw_list = []
+    elif isinstance(bm25_keywords, list):
+        kw_list = bm25_keywords
+    else:
+        kw_list = list(bm25_keywords)
+
     return {
         "entity_id":     entity_id,
         "name":          name,
         "vertical":      vertical,
         "embedding":     entity_store.get_embedding(entity_id),
-        "bm25_keywords": bm25_keywords or [],
+        "bm25_keywords": kw_list,
         "franchise":     franchise,
         "match_type":    match_type,
     }

@@ -2,7 +2,7 @@
 
 # COMMAND ----------
 
-%pip install voyageai rank-bm25 databricks-vectorsearch databricks-sql-connector --quiet
+%pip install voyageai rank-bm25 databricks-vectorsearch databricks-sql-connector mlflow --quiet
 
 # COMMAND ----------
 

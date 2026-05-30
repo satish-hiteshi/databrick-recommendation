@@ -1,20 +1,26 @@
 import json, os, pickle
-import mlflow
-import mlflow.pyfunc
 import pandas as pd
 import numpy as np
 
+# mlflow is the serving framework — it is available in the notebook environment
+# but may not be importable inside the serving container's user Python env.
+# Use a graceful fallback so FeedsAIModel can be imported either way.
+try:
+    from mlflow.pyfunc import PythonModel
+except ImportError:
+    PythonModel = object  # serving container: MLflow calls load_context/predict directly
+
 
 def _sanitize(obj):
-    if isinstance(obj, dict):  return {k: _sanitize(v) for k, v in obj.items()}
-    if isinstance(obj, list):  return [_sanitize(v) for v in obj]
+    if isinstance(obj, dict):      return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):      return [_sanitize(v) for v in obj]
     if isinstance(obj, np.integer):  return int(obj)
     if isinstance(obj, np.floating): return float(obj)
     if isinstance(obj, np.ndarray):  return obj.tolist()
     return obj
 
 
-class FeedsAIModel(mlflow.pyfunc.PythonModel):
+class FeedsAIModel(PythonModel):
 
     def load_context(self, context):
         with open(context.artifacts["entities_meta"], "rb") as f:
@@ -50,6 +56,9 @@ class FeedsAIModel(mlflow.pyfunc.PythonModel):
 
 
 def log_model(entities_meta_path, pipeline_src_dir, run_name="feedsai", registered_model_name=None):
+    import mlflow
+    import mlflow.pyfunc
+
     pip_deps = [
         "voyageai>=0.3", "rank-bm25>=0.2.2", "numpy>=1.24",
         "databricks-vectorsearch>=0.40", "databricks-sql-connector>=3.0",

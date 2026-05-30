@@ -53,7 +53,7 @@ def log_model(entities_meta_path, pipeline_src_dir, run_name="feedsai", register
     pip_deps = [
         "voyageai>=0.3", "rank-bm25>=0.2.2", "numpy>=1.24",
         "databricks-vectorsearch>=0.40", "databricks-sql-connector>=3.0",
-        "pandas>=2.0", "mlflow>=2.14",
+        "pandas>=2.0",
     ]
     with mlflow.start_run(run_name=run_name) as run:
         mlflow.pyfunc.log_model(

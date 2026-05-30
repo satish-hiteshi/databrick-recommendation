@@ -88,7 +88,7 @@ signature = ModelSignature(
 pip_deps = [
     "voyageai>=0.3", "rank-bm25>=0.2.2", "numpy>=1.24",
     "databricks-vectorsearch>=0.40", "databricks-sql-connector>=3.0",
-    "pandas>=2.0", "mlflow>=2.14",
+    "pandas>=2.0",
 ]
 
 with mlflow.start_run(run_name="feedsai-v1") as run:

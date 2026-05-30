@@ -20,21 +20,28 @@ def _close(conn, cur):
     except Exception: pass
 
 
+def _esc(s: str) -> str:
+    """Escape single quotes for safe SQL string literals."""
+    return s.replace("'", "''")
+
+
 def resolve_entity(entity_name: str) -> dict | None:
     conn, cur = _get_cursor()
     row, match_type = None, None
+    n = _esc(entity_name.lower())
+
     try:
-        cur.execute(f"{_SELECT} WHERE LOWER(name) = %s LIMIT 1", (entity_name.lower(),))
+        cur.execute(f"{_SELECT} WHERE LOWER(name) = '{n}' LIMIT 1")
         row = cur.fetchone()
         if row: match_type = "exact"
 
         if row is None:
-            cur.execute(f"{_SELECT} WHERE LOWER(name) LIKE %s LIMIT 1", (entity_name.lower() + "%",))
+            cur.execute(f"{_SELECT} WHERE LOWER(name) LIKE '{n}%' LIMIT 1")
             row = cur.fetchone()
             if row: match_type = "prefix"
 
         if row is None:
-            cur.execute(f"{_SELECT} WHERE LOWER(name) LIKE %s ORDER BY LENGTH(name) LIMIT 1", ("%" + entity_name.lower() + "%",))
+            cur.execute(f"{_SELECT} WHERE LOWER(name) LIKE '%{n}%' ORDER BY LENGTH(name) LIMIT 1")
             row = cur.fetchone()
             if row: match_type = "contains"
     finally:

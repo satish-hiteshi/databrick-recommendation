@@ -31,3 +31,13 @@ Thumbs.db
 data/embeddings.npy
 data/embeddings_cache.json
 data_v2/embeddings_v2.npy
+
+# Local-only folders (not part of Databricks deployment)
+pipeline/
+frontend/
+results/
+data/
+SYSTEM_DOCUMENTATION.md
+requirements.txt
+CLAUDE.md
+.env.example

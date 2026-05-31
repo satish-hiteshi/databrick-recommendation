@@ -20,6 +20,38 @@ def _sanitize(obj):
     return obj
 
 
+def _save_history(result: dict) -> None:
+    try:
+        from databricks import sql as dbsql
+
+        host       = os.getenv("DATABRICKS_HOST", "").replace("https://", "").replace("http://", "")
+        token      = os.getenv("DATABRICKS_TOKEN", "")
+        http_path  = os.getenv("FEEDSAI_SQL_HTTP_PATH", "")
+        catalog    = os.getenv("FEEDSAI_CATALOG", "dev_feeds_silver_infotech")
+        schema     = os.getenv("FEEDSAI_SCHEMA", "feedsai")
+
+        def _esc(s: str) -> str:
+            return s.replace("'", "''")
+
+        query_text     = _esc(result.get("query", ""))
+        parsed_intent  = _esc(json.dumps(_sanitize(result.get("parsed_intent", {}))))
+        results_json   = _esc(json.dumps(_sanitize(result)))
+        latency_ms     = result.get("timings", {}).get("total_ms", 0)
+
+        conn = dbsql.connect(server_hostname=host, http_path=http_path, access_token=token)
+        cur  = conn.cursor()
+        cur.execute(
+            f"INSERT INTO {catalog}.{schema}.query_history "
+            f"(query_text, parsed_intent, results, latency_ms) "
+            f"VALUES ('{query_text}', '{parsed_intent}', '{results_json}', {latency_ms})"
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"History save failed (non-critical): {e}")
+
+
 class FeedsAIModel(PythonModel):
 
     def load_context(self, context):
@@ -48,7 +80,9 @@ class FeedsAIModel(PythonModel):
         results = []
         for q in queries:
             try:
-                results.append(json.dumps(_sanitize(process_query(q))))
+                result = process_query(q)
+                _save_history(result)
+                results.append(json.dumps(_sanitize(result)))
             except Exception as e:
                 results.append(json.dumps({"error": str(e), "query": q}))
 

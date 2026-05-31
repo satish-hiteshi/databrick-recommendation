@@ -37,6 +37,7 @@ pipeline/
 frontend/
 results/
 data/
+data_v2/
 SYSTEM_DOCUMENTATION.md
 requirements.txt
 CLAUDE.md

@@ -33,12 +33,12 @@ data/embeddings_cache.json
 data_v2/embeddings_v2.npy
 
 # Local-only folders (not part of Databricks deployment)
-pipeline/
-frontend/
-results/
-data/
-data_v2/
-SYSTEM_DOCUMENTATION.md
-requirements.txt
-CLAUDE.md
-.env.example
+/pipeline/
+/frontend/
+/results/
+/data/
+/data_v2/
+/SYSTEM_DOCUMENTATION.md
+/requirements.txt
+/CLAUDE.md
+/.env.example

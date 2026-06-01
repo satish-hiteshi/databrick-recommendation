@@ -127,7 +127,7 @@ def rerank(candidates, positive_entities, nlu_output, query_mode, top_k=TOP_K_RE
         per_vertical = {}
         for vert in target_verticals:
             vert_results = [c for c in results if c["vertical"] == vert]
-            if len(vert_results) >= 3:
+            if len(vert_results) >= 1:
                 vert_results = _enforce_franchise_diversity(vert_results, debug)
                 final_vert   = vert_results[:top_k]
                 attach_reasoning(final_vert, positive_entities, nlu_output)

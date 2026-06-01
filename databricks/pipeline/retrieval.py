@@ -156,8 +156,13 @@ def retrieve(nlu_output: dict):
                 vert_terms  = list(target_verts) if target_verts else ["entertainment"]
                 search_text = " ".join(vert_terms)
                 query_emb   = np.array(embed_query_text(search_text), dtype=np.float32)
-                _add_source(query_emb, vert_terms,
-                            verticals_set, TOP_K_RETRIEVAL, f"browse:{search_text[:40]}", 0)
+                if verticals_set and len(verticals_set) > 1:
+                    for i, v in enumerate(sorted(verticals_set)):
+                        _add_source(query_emb, vert_terms,
+                                    {v}, TOP_K_RETRIEVAL, f"browse:{v}", i)
+                else:
+                    _add_source(query_emb, vert_terms,
+                                verticals_set, TOP_K_RETRIEVAL, f"browse:{search_text[:40]}", 0)
             else:
                 return _empty(mode, resolved_pos, resolved_neg,
                               error="No keywords extracted for theme/descriptive search",
@@ -165,8 +170,14 @@ def retrieve(nlu_output: dict):
         else:
             search_text = " ".join(all_keywords)
             query_emb   = np.array(embed_query_text(search_text), dtype=np.float32)
-            _add_source(query_emb, all_keywords,
-                        verticals_set, TOP_K_RETRIEVAL, f"theme:{search_text[:40]}", 0)
+            # Multi-vertical: run per-vertical so each gets fair top-k
+            if verticals_set and len(verticals_set) > 1:
+                for i, v in enumerate(sorted(verticals_set)):
+                    _add_source(query_emb, all_keywords,
+                                {v}, TOP_K_RETRIEVAL, f"theme:{search_text[:30]}:{v}", i)
+            else:
+                _add_source(query_emb, all_keywords,
+                            verticals_set, TOP_K_RETRIEVAL, f"theme:{search_text[:40]}", 0)
 
     elif mode == "mixed":
         for i, ent in enumerate(resolved_pos):
@@ -176,9 +187,15 @@ def retrieve(nlu_output: dict):
         if all_keywords:
             search_text = " ".join(all_keywords)
             query_emb   = np.array(embed_query_text(search_text), dtype=np.float32)
-            _add_source(query_emb, all_keywords,
-                        verticals_set, TOP_K_RETRIEVAL,
-                        f"theme:{search_text[:40]}", len(resolved_pos))
+            if verticals_set and len(verticals_set) > 1:
+                for j, v in enumerate(sorted(verticals_set)):
+                    _add_source(query_emb, all_keywords,
+                                {v}, TOP_K_RETRIEVAL,
+                                f"theme:{search_text[:30]}:{v}", len(resolved_pos) + j)
+            else:
+                _add_source(query_emb, all_keywords,
+                            verticals_set, TOP_K_RETRIEVAL,
+                            f"theme:{search_text[:40]}", len(resolved_pos))
         if not all_ranked_lists:
             return _empty(mode, resolved_pos, resolved_neg,
                           error="No entities resolved and no keywords for mixed search",

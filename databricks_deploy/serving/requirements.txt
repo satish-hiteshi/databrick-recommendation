@@ -1,0 +1,24 @@
+# Serving deps for the COLLAPSED router pyfunc (parrot-api-hitashi-dev v3).
+# Pin these to your local .venv versions before registering so the serving image matches dev.
+#
+# NOTE: several modules import heavy deps at module top even though the collapsed router never uses
+# that code path — they must still be installed or the import fails:
+#   qdrant-client   ← vector_store.py top-level import (Vector Search replaces it at runtime)
+#   psycopg2-binary ← entity_resolver.py top-level import (in-memory resolver replaces it at runtime)
+#   graphdatascience← connection.py top-level import (serve-time graph uses the plain neo4j driver)
+# fastapi / uvicorn are intentionally OMITTED: the collapse imports the engine *functions*, not the
+# FastAPI apps.
+
+mlflow>=2.12
+httpx>=0.27
+python-dotenv>=1.0
+pydantic>=2.0
+numpy
+voyageai
+neo4j
+databricks-vectorsearch
+qdrant-client
+rank-bm25
+tqdm
+psycopg2-binary
+graphdatascience

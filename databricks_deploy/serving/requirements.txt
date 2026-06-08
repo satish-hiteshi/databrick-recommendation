@@ -22,3 +22,4 @@ rank-bm25
 tqdm
 psycopg2-binary
 graphdatascience
+pyarrow

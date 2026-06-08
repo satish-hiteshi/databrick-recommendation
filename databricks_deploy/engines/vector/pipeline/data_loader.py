@@ -76,6 +76,27 @@ def get_entities_by_vertical(vertical):
     return [e for e in _ensure_loaded() if e["vertical"].lower() == vertical_lower]
 
 
+# ── Backend switch (deployment): serve the corpus from the 57k embeddings parquet (no JSON in the
+# bundle). DATA_BACKEND=parquet → get_all_entities() returns inmemory_store.all_records() (powers BM25
+# keyword_search + any get_all_entities consumer). Loaded by file path like the other env-gates. ──
+import os as _os
+
+if _os.getenv("DATA_BACKEND", "").lower() == "parquet":
+    try:
+        from inmemory_store import all_records as _all_records
+    except ImportError:
+        import sys as _sys
+        _d = _os.path.join(
+            _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))),
+            "databricks_deploy", "serving")
+        if _d not in _sys.path:
+            _sys.path.insert(0, _d)
+        from inmemory_store import all_records as _all_records
+
+    def get_all_entities():  # noqa: F811
+        return _all_records()
+
+
 if __name__ == "__main__":
     entities = get_all_entities()
 

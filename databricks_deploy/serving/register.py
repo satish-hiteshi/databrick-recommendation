@@ -60,10 +60,14 @@ def _stage():
     _copy_py(os.path.join(_ENG, "vector", "pipeline"), os.path.join(s, "vector", "pipeline"))
     _copy_py(os.path.join(_ENG, "graph_src"), os.path.join(s, "graph_src"))
 
+    # 57k embeddings parquet — staged from a VOLUME (not git; it's ~291 MB). Powers the bundle's
+    # in-memory resolver + score_set/neighbors + BM25 corpus (inmemory_store / data_loader).
     data_dst = os.path.join(s, "vector", "data_v2")
     os.makedirs(data_dst)
-    for fn in _DATA_FILES:
-        shutil.copy(os.path.join(_ENG, "vector", "data_v2", fn), data_dst)
+    parquet_src = os.getenv("EMBEDDINGS_PARQUET_SRC",
+                            "/Volumes/dev_feeds_silver/ml/feedsai_src/embeddings_voyage_57k.parquet")
+    shutil.copy(parquet_src, os.path.join(data_dst, "embeddings_voyage_57k.parquet"))
+    print(f"staged parquet from {parquet_src}")
     return s
 
 

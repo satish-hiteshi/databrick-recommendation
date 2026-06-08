@@ -65,11 +65,12 @@ def _vec_retrieve(body):
 
 def _vec_score_set(body):
     """/api/score_set — cosine(phrase, stored vector) for a FIXED id set; no retrieval."""
-    from pipeline.embedding_generator import cosine_similarity, embed_query_text, load_embeddings
+    from pipeline.embedding_generator import cosine_similarity, embed_query_text
+    import inmemory_store
     phrase = body["phrase"]
     ids = body.get("entity_ids", [])
     pv = embed_query_text(phrase)
-    emb = load_embeddings() or {}
+    emb = inmemory_store.embeddings()                 # 57k corpus vectors (parquet-backed)
     scored, missing = [], []
     for eid in ids:
         v = emb.get(eid)
@@ -84,15 +85,15 @@ def _vec_score_set(body):
 
 def _vec_neighbors(body):
     """/api/neighbors — nearest neighbors OF anchor entities (search with each anchor's stored vector)."""
-    from pipeline.embedding_generator import load_embeddings
     from pipeline.vector_store import vector_search
+    import inmemory_store
     anchor_ids = body.get("anchor_ids", [])
     exclude = set(body.get("exclude_ids") or []) | set(anchor_ids)
     vertical = body.get("vertical")
     top_k = body.get("top_k", 20)
     per_anchor = body.get("per_anchor", 25)
     verts = {vertical} if (vertical and vertical != "any") else None
-    emb = load_embeddings() or {}
+    emb = inmemory_store.embeddings()                 # 57k corpus vectors (parquet-backed)
     best = {}
     for aid in anchor_ids:
         v = emb.get(aid)

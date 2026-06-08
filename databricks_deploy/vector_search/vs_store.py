@@ -44,10 +44,9 @@ def vector_search(query_embedding, target_verticals=None, top_k=20,
     filters = {}
     if target_verticals:
         filters["vertical"] = list(target_verticals)
-    if date_start:
-        filters["release_date_int >="] = int(str(date_start).replace("-", ""))
-    if date_end:
-        filters["release_date_int <="] = int(str(date_end).replace("-", ""))
+    # date filters skipped: the 57k entities table (built from the parquet) has no release_date column.
+    # (re-add by joining entity_profiles for release_date_int if date-bounded queries become needed.)
+    _ = (date_start, date_end)
 
     res = _index().similarity_search(
         query_vector=vec,

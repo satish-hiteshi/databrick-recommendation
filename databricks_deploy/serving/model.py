@@ -31,7 +31,8 @@ import parrot_adapter
 _ENGINE_ENV = {
     "ROUTER_ENGINE_MODE": "inprocess",   # blocks._post/_get → in-process dispatch (no engine servers)
     "VECTOR_BACKEND": "databricks",       # dense ANN via Databricks Vector Search
-    "ENTITY_BACKEND": "memory",           # Postgres-free entity resolution
+    "ENTITY_BACKEND": "memory",           # Postgres-free entity resolution (parquet-backed)
+    "DATA_BACKEND": "parquet",            # get_all_entities() ← 57k embeddings parquet (BM25 corpus)
 }
 
 

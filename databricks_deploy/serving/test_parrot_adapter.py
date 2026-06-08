@@ -20,7 +20,8 @@ def _check_envelope(pred, expected_query):
     assert set(pred) == {"query", "routed_to", "response"}, f"top-level keys: {set(pred)}"
     assert pred["query"] == expected_query
     assert pred["routed_to"] == PA.ROUTED_TO
-    inner = json.loads(pred["response"])                     # response MUST be a JSON string
+    resp = pred["response"]                                  # response is a nested JSON object
+    inner = json.loads(resp) if isinstance(resp, str) else resp
     assert inner["routed_to"] == PA.ROUTED_TO
     assert inner["entity_type"] == PA.ENTITY_TYPE
     assert inner["count"] == len(inner["results"])
@@ -93,7 +94,7 @@ def test_fallback_and_request_parsing():
 
     # empty query → shape-preserving error envelope (never a 500)
     err = PA.error_response("missing or empty 'query'")
-    assert json.loads(err["response"])["error"] == "missing or empty 'query'"
+    assert err["response"]["error"] == "missing or empty 'query'"
     print("ok  fallback + request-parsing + error envelope")
 
 

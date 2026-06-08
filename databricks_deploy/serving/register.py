@@ -31,9 +31,8 @@ _SIGNATURE = ModelSignature(
     inputs=Schema([ColSpec("string", "user_id"),
                    ColSpec("string", "query"),
                    ColSpec("string", "requesting_agent")]),
-    outputs=Schema([ColSpec("string", "query"),
-                    ColSpec("string", "routed_to"),
-                    ColSpec("string", "response")]),
+    # outputs intentionally omitted: `response` is a nested JSON object, not a typed column —
+    # an output schema of string would coerce it back to a stringified blob.
 )
 _INPUT_EXAMPLE = {"dataframe_records": [
     {"user_id": "12345", "query": "pokemon", "requesting_agent": "morgan"}]}
@@ -86,7 +85,6 @@ def main():
                     os.path.join(s, "graph_src"),
                 ],
                 signature=_SIGNATURE,
-                input_example=_INPUT_EXAMPLE,
                 pip_requirements=os.path.join(_HERE, "requirements.txt"),
                 registered_model_name=MODEL_NAME,
             )

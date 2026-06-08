@@ -134,7 +134,7 @@ def to_parrot_response(route_out: Dict[str, Any], *, routed_to: str = ROUTED_TO)
     return {
         "query": route_out.get("query", ""),
         "routed_to": routed_to,
-        "response": json.dumps(inner, ensure_ascii=False),
+        "response": inner,
     }
 
 
@@ -142,4 +142,4 @@ def error_response(message: str, query: str = "") -> Dict[str, Any]:
     """Shape-preserving error payload (so callers always get the same envelope, never a 500 body)."""
     inner = {"routed_to": ROUTED_TO, "entity_type": ENTITY_TYPE,
              "results": [], "count": 0, "error": message}
-    return {"query": query, "routed_to": ROUTED_TO, "response": json.dumps(inner, ensure_ascii=False)}
+    return {"query": query, "routed_to": ROUTED_TO, "response": inner}

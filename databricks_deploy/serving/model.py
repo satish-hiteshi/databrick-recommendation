@@ -45,32 +45,28 @@ def _bootstrap_paths():
     vector is namespaced under `pipeline`), so order only needs router before graph for safety.
     """
     here = os.path.dirname(os.path.abspath(__file__))
-    roots = []
-    for base in (here, os.path.dirname(here)):
-        roots.append(base)
-        try:
-            roots += [os.path.join(base, n) for n in os.listdir(base)
-                      if os.path.isdir(os.path.join(base, n))]
-        except OSError:
-            pass
-
-    found = {"router": None, "vector": None, "graph": None}
-    for r in roots:
-        if not found["router"] and os.path.isfile(os.path.join(r, "route.py")) \
-                and os.path.isfile(os.path.join(r, "assembler.py")):
-            found["router"] = r
-        if not found["vector"] and os.path.isfile(os.path.join(r, "pipeline", "data_loader.py")):
-            found["vector"] = r
-        if not found["graph"] and os.path.isfile(os.path.join(r, "query.py")) \
-                and os.path.isfile(os.path.join(r, "connection.py")):
-            found["graph"] = r
+    found = {"router": None, "vector": None, "graph": None, "serving": None}
+    for dirpath, dirnames, filenames in os.walk(here):       # walk the model dir, NEVER the fs root
+        if dirpath[len(here):].count(os.sep) > 5:            # depth guard (artifact is shallow)
+            dirnames[:] = []
+            continue
+        f = set(filenames)
+        if not found["router"] and {"route.py", "assembler.py"} <= f:
+            found["router"] = dirpath
+        if not found["graph"] and {"query.py", "connection.py"} <= f:
+            found["graph"] = dirpath
+        if not found["serving"] and {"inprocess_engines.py", "parrot_adapter.py"} <= f:
+            found["serving"] = dirpath
+        if not found["vector"] and "data_loader.py" in f and os.path.basename(dirpath) == "pipeline":
+            found["vector"] = os.path.dirname(dirpath)       # the dir CONTAINING pipeline/
 
     missing = [k for k, v in found.items() if v is None]
     if missing:
-        raise ImportError(f"bundled sources not found: {missing} (roots scanned: {roots})")
+        listing = sorted(os.listdir(here)) if os.path.isdir(here) else "?"
+        raise ImportError(f"bundled sources not found: {missing} (here={here}, contents={listing})")
 
-    for d in (found["graph"], found["vector"], found["router"], here):   # router ends up ahead of graph
-        if d not in sys.path:
+    for d in (found["graph"], found["vector"], found["router"], found["serving"], here):
+        if d and d not in sys.path:
             sys.path.insert(0, d)
 
 

@@ -32,7 +32,10 @@ from typing import Any, Dict, List
 # Preserved from the existing (v2) contract so M2M callers that key off `routed_to` are unaffected.
 # (If routing should vary per request/requesting_agent rather than being constant, make this dynamic.)
 ROUTED_TO = "agent-recs"
-ENTITY_TYPE = "entertainment"
+# feeds-api types results by id-prefix (`game:`/`property:` → property) and DROPS non-property on
+# hydration. Our `Movie:`/`Tv:`/`Podcast:` prefixes aren't recognized → they'd fall back to this outer
+# type. So it MUST be "property" (not "entertainment") or every non-game result is dropped client-side.
+ENTITY_TYPE = "property"
 DEFAULT_TOP_K = 10
 
 
@@ -98,6 +101,7 @@ def _to_parrot_result(it: Dict[str, Any]) -> Dict[str, Any]:
     out = {
         "entity_id": it.get("entity_id"),
         "score": round(float(score), 6) if isinstance(score, (int, float)) else score,
+        "entity_type": "property",   # feeds-api keeps only `property` candidates on hydration (per-item)
         # ── additive feeds.ai fields (M2M callers ignore unknown keys) ──
         "name": it.get("name"),
         "vertical": it.get("vertical"),
@@ -110,9 +114,35 @@ def _to_parrot_result(it: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+def _interleave_by_vertical(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Round-robin results across verticals so a multivertical answer LEADS WITH A MIX (game, movie, tv,
+    podcast, …) instead of one vertical stacked first. Order within each vertical is preserved; no-op
+    when only one vertical is present."""
+    groups: Dict[Any, List[Dict[str, Any]]] = {}
+    order: List[Any] = []
+    for r in results:
+        v = r.get("vertical")
+        if v not in groups:
+            groups[v] = []
+            order.append(v)
+        groups[v].append(r)
+    if len(order) <= 1:
+        return results
+    cols = [groups[v] for v in order]
+    out, i = [], 0
+    while any(i < len(c) for c in cols):
+        for c in cols:
+            if i < len(c):
+                out.append(c[i])
+        i += 1
+    return out
+
+
 def to_parrot_response(route_out: Dict[str, Any], *, routed_to: str = ROUTED_TO) -> Dict[str, Any]:
-    """route() output → one parrot prediction dict: {query, routed_to, response(JSON string)}."""
+    """route() output → one parrot prediction dict: {query, routed_to, response object}."""
     results = [_to_parrot_result(it) for it in _result_items(route_out)]
+    if str(route_out.get("path_taken", "")).startswith("MULTIVERTICAL"):
+        results = _interleave_by_vertical(results)   # mix verticals at the top, not stacked game-first
     inner = {
         "routed_to": routed_to,
         "entity_type": ENTITY_TYPE,

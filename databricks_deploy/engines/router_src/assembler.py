@@ -346,15 +346,26 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     }
 
 
+def _parallel_assemble(jobs):
+    """Run several assemble() sub-plans CONCURRENTLY — they're I/O-bound on the engines (Voyage + Vector
+    Search + Neo4j), so wall-clock ≈ the SLOWEST sub-plan, not the sum. Input order is preserved. A
+    single job runs inline (no thread overhead)."""
+    if len(jobs) <= 1:
+        return [assemble(*j) for j in jobs]
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=min(len(jobs), 4)) as ex:
+        return list(ex.map(lambda j: assemble(*j), jobs))
+
+
 def assemble_multi(intents, top_k: int = 10, backfill_threshold: int = BACKFILL_THRESHOLD) -> dict:
     """Independent multi-intent (CONTEXT §7) — the RARE case where extraction emits >1 intent object
     (two genuinely independent universes, e.g. 'horror games AND cozy podcasts'). Run each as its own
     establish→refine sub-plan and MERGE into clearly-grouped sections. Distinct from the default
     single-universe path."""
+    subs = _parallel_assemble([(it, top_k, backfill_threshold) for it in intents])
     groups, merged = [], []
     seen_labels = {}
-    for i, intent in enumerate(intents):
-        sub = assemble(intent, top_k=top_k, backfill_threshold=backfill_threshold)
+    for i, (intent, sub) in enumerate(zip(intents, subs)):
         label = VLABEL.get(intent.vertical, (intent.vertical or "Group").title())
         seen_labels[label] = seen_labels.get(label, 0) + 1
         if seen_labels[label] > 1:               # disambiguate two intents of the same vertical
@@ -389,9 +400,11 @@ def assemble_multivertical(intent: Intent, top_k: int = 10,
     sub-plan PER requested vertical (so every vertical is represented, instead of one blended universe the
     largest seed-group dominates), merged into vertical-grouped sections. Reuses the MULTI_INTENT merge
     shape."""
+    verticals = list(intent.verticals)
+    subs = _parallel_assemble(
+        [(_vertical_subintent(intent, v), top_k, backfill_threshold) for v in verticals])
     groups, merged = [], []
-    for v in intent.verticals:
-        sub = assemble(_vertical_subintent(intent, v), top_k=top_k, backfill_threshold=backfill_threshold)
+    for v, sub in zip(verticals, subs):
         label = VLABEL.get(v, v.title())
         groups.append({"group": label, "vertical": v, "path_taken": sub["path_taken"],
                        "universe_establisher": sub["universe_establisher"],

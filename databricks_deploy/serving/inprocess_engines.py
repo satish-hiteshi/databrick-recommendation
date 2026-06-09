@@ -19,6 +19,7 @@ Heavy modules are imported lazily inside handlers so an env/dep problem surfaces
 endpoint: VS_* (Vector Search), VOYAGE_API_KEY, DATABRICKS_* (FM endpoint), NEO4J_* (Aura).
 """
 
+import time
 from urllib.parse import urlsplit
 
 import numpy as np
@@ -31,9 +32,27 @@ _DRIVER = None
 def _driver():
     global _DRIVER
     if _DRIVER is None:
-        from connection import get_driver
-        _DRIVER = get_driver()
+        from neo4j import GraphDatabase
+        from connection import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
+        # Fail-fast timeouts (under the feeds-api ~3s budget) + recycle connections BEFORE Aura drops
+        # idle ones — that idle-drop is the usual cause of intermittent "empty". Connects lazily (no
+        # verify_connectivity round-trip / failure point at init).
+        _DRIVER = GraphDatabase.driver(
+            NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD),
+            max_connection_lifetime=180, connection_acquisition_timeout=5,
+            connection_timeout=5, keep_alive=True)
     return _DRIVER
+
+
+def _reset_driver():
+    """Drop the cached driver so the next call reconnects (after a stale-connection error)."""
+    global _DRIVER
+    try:
+        if _DRIVER is not None:
+            _DRIVER.close()
+    except Exception:
+        pass
+    _DRIVER = None
 
 
 def _db():
@@ -276,11 +295,41 @@ _ROUTES = {
 }
 
 
+_TRANSIENT = ("timeout", "timed out", "429", "rate limit", "ratelimit", "503", "502", "500",
+              "service unavailable", "serviceunavailable", "temporarily unavailable",
+              "connection reset", "connection refused", "sessionexpired", "session expired",
+              "defunct", "unable to retrieve routing", "connection acquisition")
+
+
+def _is_transient(e):
+    s = (type(e).__name__ + " " + str(e)).lower()
+    return any(m in s for m in _TRANSIENT)
+
+
+def _is_neo4j_conn(e):
+    s = (type(e).__name__ + " " + str(e)).lower()
+    return any(m in s for m in ("sessionexpired", "session expired", "defunct", "serviceunavailable",
+                                "service unavailable", "routing", "connection"))
+
+
 def dispatch(method, url, payload):
-    """Answer a blocks.py engine call in-process. `url` is the original engine URL (only its path is
-    used to pick the handler); `payload` is the POST body or GET params dict."""
+    """Answer a blocks.py engine call in-process, with SHORT retries on TRANSIENT engine errors
+    (Voyage / Vector Search rate-limits or 5xx, Neo4j Aura idle-connection drops). Non-transient errors
+    raise immediately. `url`'s path picks the handler; `payload` is the POST body or GET params dict."""
     path = urlsplit(url).path
     fn = _ROUTES.get((method.upper(), path))
     if fn is None:
         raise ValueError(f"no in-process engine handler for {method} {path}")
-    return fn(payload or {})
+    payload = payload or {}
+    last = None
+    for attempt in range(3):                         # 1 try + 2 retries (0.15s, 0.30s backoff)
+        try:
+            return fn(payload)
+        except Exception as e:
+            last = e
+            if not _is_transient(e):
+                raise
+            if _is_neo4j_conn(e):                     # stale Aura connection → reconnect next attempt
+                _reset_driver()
+            time.sleep(0.15 * (2 ** attempt))
+    raise last

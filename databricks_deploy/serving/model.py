@@ -78,9 +78,25 @@ class RouterModel(mlflow.pyfunc.PythonModel):
         _bootstrap_paths()
         import route                                         # noqa: E402  (paths + env set above)
         self._route = route.route
+        # Pre-warm heavy singletons (57k embeddings + BM25) so the first — possibly parallel
+        # multivertical — query doesn't race/duplicate-load them. Best-effort: must not block load.
+        try:
+            import inmemory_store
+            inmemory_store.embeddings()                      # load the 57k parquet once
+        except Exception as e:
+            print(f"[parrot] warm-up embeddings failed: {e}", flush=True)
+        try:
+            from pipeline.vector_store import setup_qdrant
+            setup_qdrant()                                   # build BM25 (Qdrant skipped on databricks backend)
+        except Exception as e:
+            print(f"[parrot] warm-up bm25 failed: {e}", flush=True)
 
     def predict(self, context, model_input, params=None):
-        rows = parrot_adapter.parse_request(model_input)
+        try:
+            rows = parrot_adapter.parse_request(model_input)
+        except Exception as e:                               # malformed body → empty envelope, never 5xx
+            print(f"[parrot] bad request: {type(e).__name__}: {e}", flush=True)
+            return [parrot_adapter.error_response(f"bad request: {type(e).__name__}: {e}")]
         preds = []
         for row in rows:
             if not row["query"]:
@@ -89,6 +105,7 @@ class RouterModel(mlflow.pyfunc.PythonModel):
             try:
                 out = self._route(row["query"], top_k=row["top_k"])
             except Exception as e:                           # never leak a 500 body to M2M callers
+                print(f"[parrot] route failed for {row['query']!r}: {type(e).__name__}: {e}", flush=True)
                 preds.append(parrot_adapter.error_response(
                     f"{type(e).__name__}: {e}", query=row["query"]))
                 continue

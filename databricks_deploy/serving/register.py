@@ -21,6 +21,12 @@ import mlflow
 from mlflow.models.signature import ModelSignature
 from mlflow.types.schema import ColSpec, Schema
 
+try:                                        # UC requires an output signature; `response` is a nested
+    from mlflow.types.schema import AnyType  # JSON object → type it AnyType so it isn't coerced to a
+    _RESPONSE_TYPE = AnyType()               # stringified blob. Falls back to string on older MLflow.
+except ImportError:
+    _RESPONSE_TYPE = "string"
+
 MODEL_NAME = os.getenv("UC_MODEL_NAME", "dev_feeds_silver.ml.parrot-api-hitashi-dev")
 
 _HERE = os.path.dirname(os.path.abspath(__file__))          # databricks_deploy/serving
@@ -31,8 +37,9 @@ _SIGNATURE = ModelSignature(
     inputs=Schema([ColSpec("string", "user_id"),
                    ColSpec("string", "query"),
                    ColSpec("string", "requesting_agent")]),
-    # outputs intentionally omitted: `response` is a nested JSON object, not a typed column —
-    # an output schema of string would coerce it back to a stringified blob.
+    outputs=Schema([ColSpec("string", "query"),
+                    ColSpec("string", "routed_to"),
+                    ColSpec(_RESPONSE_TYPE, "response")]),
 )
 _INPUT_EXAMPLE = {"dataframe_records": [
     {"user_id": "12345", "query": "pokemon", "requesting_agent": "morgan"}]}

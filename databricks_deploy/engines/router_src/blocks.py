@@ -221,6 +221,16 @@ def vector_constrain(semantic_core: str, vertical: Optional[str] = None, top_n: 
         out.append(it)
         if len(out) >= top_n:
             break
+    # ESTABLISHER SAFETY: an establisher must NEVER zero a POPULATED universe. The NLU pipeline can yield
+    # nothing for `vert` on a SPARSE phrase — it re-targets "co-op, not too competitive" across verticals
+    # and the vertical post-filter above then drops every row. Fall back to pure embedding recall
+    # (/api/retrieve), which returns nearest neighbors for any phrase the vertical can answer, so a
+    # legitimate game query never returns EMPTY just because the NLU spread it thin.
+    if not out and phrase:
+        data = _post(f"{VECTOR}/api/retrieve", {"phrase": phrase, "vertical": vert, "top_k": top_n})
+        out = [_item(r.get("entity_id"), r["name"], r["vertical"], r.get("score"),
+                     f"semantic match '{semantic_core}' (recall fallback)", "vector(retrieve-fallback)")
+               for r in data.get("results", [])]
     return out
 
 

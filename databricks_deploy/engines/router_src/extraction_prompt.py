@@ -31,8 +31,10 @@ Each intent object has ALL of these fields (use null / [] / {} when absent — n
     "franchise": null,         // e.g. "Final Fantasy"
     "developer_relation": null,// relational, e.g. {"also_made": "RPG"}  (a dev/studio relationship)
     "structural": {},          // other REQUIRED exact attributes, e.g. {"mode": "co-op"}, {"developer": "Capcom"}
-    "semantic_core": null,     // set ONLY when a HARD requirement is itself semantic/mood and is the
-                               // DEFINING ask (e.g. "cozy atmospheric" with no other hard constraint)
+    "semantic_core": null,     // set when a HARD requirement is itself semantic and is the DEFINING
+                               // ask, with no other hard constraint: a mood/feel ("cozy atmospheric")
+                               // OR a SUBJECT/TOPIC that is not a structured genre tag — e.g. a podcast
+                               // topic like "business", "true crime", "history", "comedy", "technology"
     "negations": [],           // must NOT have, e.g. ["sports"], ["slasher"], ["comedy"]
     "temporal": null           // release window, e.g. {"from": 2024, "to": 2025} or {"year": 2026}
   },
@@ -93,6 +95,24 @@ THE DECISIVE RULE — classify each requirement as HARD (must-satisfy) vs SOFT (
   "challenging", "gritty", "relaxing", "atmospheric", ...) MUST appear in soft.semantic (or semantic_core
   if it is the sole defining ask) -- even when the query is dense with structural constraints
   (seeds + negation + temporal). Do not omit them.
+- NEVER DROP the defining SUBJECT/TOPIC. The core thing the user is asking ABOUT — especially a podcast
+  topic ("business", "true crime", "history", "comedy", "news", "sports", "technology", "science",
+  "finance", "politics", "health", "education") — MUST always be captured: put it in hard.concepts if it
+  is a recognised genre tag, otherwise in semantic_core (it defines the universe). A topic is the subject
+  matter, not a mood. NEVER reduce a query to just its vertical: "business podcasts" must become a podcast
+  intent WITH semantic_core="business", NOT a bare "podcast" intent.
+- A topic and a mood can BOTH be present: the topic still goes in concepts/semantic_core (it defines the
+  universe) and the accompanying mood/quality refinement — including "not too X" softeners ("not too dark",
+  "lighthearted", "in depth") — goes in soft.semantic. The mood NEVER displaces, replaces, or causes you
+  to drop the topic. E.g. "True crime, not too dark" -> semantic_core="true crime",
+  soft.semantic="not too dark" (NOT soft-only with the topic dropped, and NOT negations=["dark"]).
+- TRANSLATE implicit audience/occasion/context cues into an explicit semantic descriptor — never treat
+  them as "no constraint". "to watch/listen with parents" or "with the family" -> "family-friendly,
+  broadly appealing"; "with kids" / "for children" -> "kid-friendly, wholesome, all-ages"; "for a date" /
+  "date night" -> "romantic"; "to fall asleep to" / "background" -> "calm, low-key, easy background";
+  "for a workout" / "to focus" -> the implied vibe. When such a cue is the sole defining ask it becomes
+  semantic_core (e.g. "Show to watch with parents" -> semantic_core="family-friendly, broadly appealing"),
+  otherwise soft.semantic. An occasion/audience query is NEVER a bare-vertical intent with no constraints.
 
 ABSOLUTE RULES:
 - Never invent constraints not present in the query.
@@ -106,6 +126,15 @@ Query: "Final Fantasy games"
 
 Query: "Something cozy for a rainy evening"
 {"intents":[{"verticals":["game","movie","tv","podcast"],"vertical":"any","hard_constraints":{"concepts":[],"franchise":null,"developer_relation":null,"structural":{},"semantic_core":"cozy, relaxing for a rainy evening","negations":[],"temporal":null},"soft_intent":{"semantic":null,"structural_prefs":{}},"seed_entities":[],"raw_query":"Something cozy for a rainy evening","notes":"pure semantic universe across all verticals"}]}
+
+Query: "Business podcast, under 20 min"
+{"intents":[{"verticals":["podcast"],"vertical":"podcast","hard_constraints":{"concepts":[],"franchise":null,"developer_relation":null,"structural":{},"semantic_core":"business","negations":[],"temporal":null},"soft_intent":{"semantic":null,"structural_prefs":{}},"seed_entities":[],"raw_query":"Business podcast, under 20 min","notes":"podcast topic=business is the defining subject -> semantic_core; episode duration is not a release window -> temporal stays null"}]}
+
+Query: "True crime, not too dark"
+{"intents":[{"verticals":["podcast"],"vertical":"podcast","hard_constraints":{"concepts":[],"franchise":null,"developer_relation":null,"structural":{},"semantic_core":"true crime","negations":[],"temporal":null},"soft_intent":{"semantic":"not too dark","structural_prefs":{}},"seed_entities":[],"raw_query":"True crime, not too dark","notes":"topic=true crime defines the universe -> semantic_core; 'not too dark' is a mood softener -> soft.semantic (not a negation, topic NOT dropped)"}]}
+
+Query: "Show to watch with parents"
+{"intents":[{"verticals":["movie","tv"],"vertical":"any","hard_constraints":{"concepts":[],"franchise":null,"developer_relation":null,"structural":{},"semantic_core":"family-friendly, broadly appealing, suitable to watch with parents","negations":[],"temporal":null},"soft_intent":{"semantic":null,"structural_prefs":{}},"seed_entities":[],"raw_query":"Show to watch with parents","notes":"implicit occasion 'with parents' -> family-friendly defining semantic; movie+tv for a 'show to watch'"}]}
 
 Query: "Horror games by a developer that also makes RPGs, that feel atmospheric and dread-soaked"
 {"intents":[{"verticals":["game"],"vertical":"game","hard_constraints":{"concepts":["horror"],"franchise":null,"developer_relation":{"also_made":"RPG"},"structural":{},"semantic_core":null,"negations":[],"temporal":null},"soft_intent":{"semantic":"atmospheric, dread-soaked","structural_prefs":{}},"seed_entities":[],"raw_query":"Horror games by a developer that also makes RPGs, that feel atmospheric and dread-soaked","notes":"structural universe (horror + dev-relation), semantic refinement"}]}

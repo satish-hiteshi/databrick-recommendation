@@ -18,7 +18,23 @@ from pipeline.llm import databricks_complete
 SYSTEM_PROMPT = (
     "You are a query parser for an entertainment discovery system covering games, movies, "
     "TV shows, and podcasts. Analyze the user's query and extract all relevant signals. "
-    "If they name specific entities, include them in positive_entities. "
+    "If they name a SPECIFIC, REAL title they already know (e.g. 'Elden Ring', 'The Last of Us', "
+    "'Stardew Valley'), include it in positive_entities. "
+    "CRITICAL: a genre, theme, mood, gameplay feature, audience, or generic noun-phrase is NOT a "
+    "named entity. Phrases like 'horror games', 'co-op', 'couch co-op', 'open world rpg', "
+    "'scary games', 'split-screen', 'multiplayer', 'something relaxing', 'party games' describe a "
+    "TYPE of content, not a specific title — they must NEVER go in positive_entities. Put such genre/"
+    "theme/feature/mood terms in additional_keywords (if explicit terms) or "
+    "description_derived_keywords (if vague), and choose query_mode theme_based or descriptive. "
+    "The test is proper-noun vs common-noun: a SPECIFIC TITLE is the proper name of one particular "
+    "work (usually capitalised — 'Elden Ring', 'Resident Evil', 'Silent Hill', 'Stranger Things') "
+    "and ALWAYS goes in positive_entities, EVEN when embedded in a longer descriptive sentence "
+    "(e.g. 'movies for someone who loved Resident Evil and Silent Hill games' → "
+    "positive_entities ['Resident Evil','Silent Hill']; 'I love Elden Ring and Dark Souls, recommend "
+    "movies' → positive_entities ['Elden Ring','Dark Souls']). A common-noun genre/feature phrase "
+    "('horror games', 'co-op', 'rpg') is NOT a title and must never go in positive_entities. Only the "
+    "ambiguity between a generic category and nothing collapses to theme_based/descriptive — a real "
+    "named title is NEVER dropped. "
     "If they mention dislikes, include those in negative_entities. "
     "If they use genre/theme terms, include those in additional_keywords. "
     "If they describe what they want vaguely, translate their description into standard "
@@ -33,10 +49,19 @@ SYSTEM_PROMPT = (
     "Return ONLY a strict JSON object (no prose, no markdown) with EXACTLY these fields:\n"
     '{\n'
     '  "query_mode": one of ["entity_single","entity_multi","theme_based","descriptive","mixed"] '
-    "— entity_single: exactly one named entity; entity_multi: 2+ named entities the user likes; "
-    "theme_based: genres/themes without named entities; descriptive: vague natural-language wants; "
-    "mixed: named entities combined with themes or dislikes.\n"
-    '  "positive_entities": [exact names of entities the user likes / wants similar to], [] if none.\n'
+    "— entity_single: the query names EXACTLY ONE specific real title "
+    "(e.g. 'games like Elden Ring'); entity_multi: TWO OR MORE specific real titles the user "
+    "names/likes (if positive_entities has 2+ items the mode MUST be entity_multi or mixed, NEVER "
+    "entity_single); "
+    "theme_based: genre/theme/feature terms with NO specific named title (e.g. 'horror games', "
+    "'co-op games', 'open world rpg', 'sci-fi'); descriptive: vague natural-language wants with no "
+    "named title (e.g. 'something relaxing for a rainy night', 'a co-op game to play with my "
+    "girlfriend'); mixed: a specific named title combined with extra themes or dislikes. "
+    "If the query names no specific real title, you MUST choose theme_based or descriptive (never an "
+    "entity_* mode), and positive_entities MUST be [].\n"
+    '  "positive_entities": [exact names of SPECIFIC REAL titles the user likes / wants similar to], '
+    "[] if none. NEVER put a genre/theme/feature/mood/descriptor phrase here "
+    "('horror games', 'co-op', 'rpg', 'relaxing', 'couch co-op') — those are keywords, not entities.\n"
     '  "negative_entities": [entities the user dislikes/avoids — "don\'t like","not like","hate",'
     '"except","but not"], [] if none.\n'
     '  "additional_keywords": [explicit genre/theme/mood terms the user actually used, e.g. "horror",'
@@ -92,7 +117,7 @@ def parse_query(user_query: str, max_retries: int = 2) -> dict:
             raw = databricks_complete(SYSTEM_PROMPT, user_query, json_mode=True, temperature=0)
             args = _loads(raw)
             return {
-                "query_mode": args.get("query_mode", "entity_single"),
+                "query_mode": args.get("query_mode", "descriptive"),
                 "positive_entities": _safe_list(args.get("positive_entities")),
                 "negative_entities": _safe_list(args.get("negative_entities")),
                 "additional_keywords": _safe_list(args.get("additional_keywords")),

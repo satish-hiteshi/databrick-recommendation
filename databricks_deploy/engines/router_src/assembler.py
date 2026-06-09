@@ -54,6 +54,26 @@ def _has_structural(h) -> bool:
     return bool(h.concepts or h.franchise or (h.developer_relation or {}).get("also_made") or h.structural)
 
 
+# vertical words + trivial framing words to strip when testing whether a raw query carries a topic the
+# LLM may have dropped (safety net for the bare-vertical establish path).
+_VERTICAL_FILLER = {
+    "game", "games", "gaming", "movie", "movies", "film", "films", "tv", "show", "shows", "series",
+    "podcast", "podcasts", "content", "something", "anything", "stuff", "recommend", "recommendation",
+    "recommendations", "suggest", "suggestion", "suggestions", "show", "find", "want", "looking", "for",
+    "me", "some", "any", "a", "an", "the", "give", "get", "please", "i", "to", "of", "on", "in",
+}
+
+
+def _has_signal_beyond_vertical(raw_query: str, vertical: Optional[str]) -> bool:
+    """True if the raw query carries retrievable content beyond the bare vertical word + trivial framing
+    filler. Used to salvage a topic the LLM dropped (e.g. 'business podcasts' extracted as only
+    verticals=[podcast]) — establish on the raw query instead of the meaningless bare vertical word."""
+    toks = re.findall(r"[a-z0-9']+", (raw_query or "").lower())
+    stop = _VERTICAL_FILLER | {(vertical or "").lower()}
+    content = [t for t in toks if t not in stop and len(t) > 1]
+    return len(content) >= 1
+
+
 def _split_seeds(seed_entity) -> List[str]:
     """A seed_entity string may name MULTIPLE entities ('Hades II, Hollow Knight', 'X and Y').
     NOTE: do NOT split on '&' — it appears inside single titles ('Dungeons & Dragons')."""
@@ -177,6 +197,15 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     # SEMANTIC-only phrase for reranking a structural/seed set (concepts already hold in the set).
     sem_only = ", ".join(dict.fromkeys([t for t in (h.semantic_core, soft_semantic) if t]))
 
+    # TEMPORAL handling: /api/query has no date parameter — the vector engine derives the date window from
+    # the query TEXT (its NLU has the correct "today"). When a release-window constraint is present we must
+    # NOT strip the date words: establish on the RAW QUERY so they survive and the vector NLU applies the
+    # filter. This delegates date math to the one engine that owns it (the router's own date arithmetic has
+    # no today-anchor and is unused). Graph is date-free, so this only affects the vector-establish path.
+    temporal_present = bool(h.temporal)
+    def _est_phrase(clean):
+        return intent.raw_query if (temporal_present and intent.raw_query) else clean
+
     # ════════ 1. ESTABLISHER SELECTION — VECTOR-PRIMARY, graph for the structural niche ════════
     if seeds:
         # SEED / MULTI-SEED. For a SPECIFIC target vertical (incl. single cross-vertical "game→movie"),
@@ -229,13 +258,27 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     elif positive_phrase:
         # DEFAULT (most queries): vector establishes the semantic/thematic/descriptive universe — already
         # semantically ranked, so no extra vector rerank. graph refines (prefs / negations) within.
-        established = _vconstrain(positive_phrase, vertical=vertical)
+        # When a temporal window is present, establish on the raw query (date words intact) so the vector
+        # NLU applies the date filter — otherwise the stripped phrase loses the date (e.g. "thriller from
+        # the last 2 years" → "thriller" → no date → 1980s results).
+        established = _vconstrain(_est_phrase(positive_phrase), vertical=vertical)
         establisher = "vector_constrain"
+        if temporal_present and intent.raw_query:
+            refinements.append("temporal present → established on raw query (vector applies the date filter)")
 
     elif vertical and vertical != "any":
-        # bare "show me <vertical>" with zero other signal → vector on the vertical word, else graph.
-        established = _vconstrain(vertical, vertical=vertical)
-        establisher = "vector_constrain"
+        # bare "<vertical>" — BUT the LLM may have dropped a topic/subject (e.g. "business podcasts" →
+        # only verticals=[podcast], no concept/semantic). If the raw query carries content beyond the
+        # vertical word, establish on the RAW QUERY so the dropped topic still drives retrieval; only
+        # fall back to the bare vertical word when there is genuinely no other signal.
+        rawq = (intent.raw_query or "").strip()
+        if rawq and _has_signal_beyond_vertical(rawq, vertical):
+            established = _vconstrain(rawq, vertical=vertical)
+            establisher = "vector_constrain"
+            refinements.append("bare-vertical safety net: established on raw query (topic beyond vertical word)")
+        else:
+            established = _vconstrain(vertical, vertical=vertical)
+            establisher = "vector_constrain"
         if not established:
             established = _gconstrain({"vertical": vertical}, vertical=vertical)
             establisher = "graph_vertical"

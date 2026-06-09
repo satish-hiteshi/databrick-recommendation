@@ -192,25 +192,52 @@ def retrieve(nlu_output: dict):
         all_list_types.append("bm25")
         all_source_indices.append(source_idx)
 
+    def _kw_search(keywords, label_prefix, base_idx=0):
+        """Keyword + semantic search over `keywords` (mirrors the theme_based path). Used as the
+        graceful fallback when an entity-mode query resolves NO real entity — so a misclassified
+        descriptive/genre/feature phrase ('horror games', 'co-op', 'scary games') degrades to a
+        keyword search instead of returning zero results. Returns True if it added any source."""
+        kws = [k for k in keywords if k]
+        if not kws:
+            return False
+        search_text = " ".join(kws)
+        query_emb = np.array(embed_query_text(search_text), dtype=np.float32)
+        if verticals_set and len(verticals_set) > 1:
+            for i, v in enumerate(sorted(verticals_set)):
+                _add_source(query_emb, kws, {v}, TOP_K_RETRIEVAL,
+                            f"{label_prefix}:{search_text[:30]}:{v}", base_idx + i)
+        else:
+            _add_source(query_emb, kws, verticals_set, TOP_K_RETRIEVAL,
+                        f"{label_prefix}:{search_text[:40]}", base_idx)
+        return True
+
     # ── entity_single ─────────────────────────────────────────────
     if mode == "entity_single":
         if not resolved_pos:
-            return _empty_result(mode, resolved_pos, resolved_neg,
-                                 error=f"No entity resolved from: {pos_names}",
-                                 unresolved_neg_kw=unresolved_neg_keywords)
-        anchor = resolved_pos[0]
-        _add_source(anchor["embedding"], anchor["bm25_keywords"],
-                    verticals_set, TOP_K_RETRIEVAL, f"entity:{anchor['name']}", 0)
+            # FALLBACK: the "entity" did not resolve to a real title — the NLU likely misclassified a
+            # descriptive/genre/feature phrase as an entity. Degrade to keyword search over the
+            # unresolved phrase + any extracted keywords rather than returning zero.
+            if not _kw_search(pos_names + add_kw + desc_kw, "fallback"):
+                return _empty_result(mode, resolved_pos, resolved_neg,
+                                     error=f"No entity resolved from: {pos_names}",
+                                     unresolved_neg_kw=unresolved_neg_keywords)
+        else:
+            anchor = resolved_pos[0]
+            _add_source(anchor["embedding"], anchor["bm25_keywords"],
+                        verticals_set, TOP_K_RETRIEVAL, f"entity:{anchor['name']}", 0)
 
     # ── entity_multi ──────────────────────────────────────────────
     elif mode == "entity_multi":
         if not resolved_pos:
-            return _empty_result(mode, resolved_pos, resolved_neg,
-                                 error=f"No entities resolved from: {pos_names}",
-                                 unresolved_neg_kw=unresolved_neg_keywords)
-        for i, ent in enumerate(resolved_pos):
-            _add_source(ent["embedding"], ent["bm25_keywords"],
-                        verticals_set, 15, f"entity:{ent['name']}", i)
+            # FALLBACK (same rationale as entity_single): degrade to keyword search instead of zero.
+            if not _kw_search(pos_names + add_kw + desc_kw, "fallback"):
+                return _empty_result(mode, resolved_pos, resolved_neg,
+                                     error=f"No entities resolved from: {pos_names}",
+                                     unresolved_neg_kw=unresolved_neg_keywords)
+        else:
+            for i, ent in enumerate(resolved_pos):
+                _add_source(ent["embedding"], ent["bm25_keywords"],
+                            verticals_set, 15, f"entity:{ent['name']}", i)
 
     # ── theme_based / descriptive ─────────────────────────────────
     elif mode in ("theme_based", "descriptive"):
@@ -267,9 +294,12 @@ def retrieve(nlu_output: dict):
                             f"theme:{search_text[:40]}", len(resolved_pos))
 
         if not all_ranked_lists:
-            return _empty_result(mode, resolved_pos, resolved_neg,
-                                 error="No entities resolved and no keywords for mixed search",
-                                 unresolved_neg_kw=unresolved_neg_keywords)
+            # FALLBACK: nothing resolved and no keywords — treat the unresolved entity phrases as
+            # keywords rather than returning zero.
+            if not _kw_search(pos_names + add_kw + desc_kw, "fallback"):
+                return _empty_result(mode, resolved_pos, resolved_neg,
+                                     error="No entities resolved and no keywords for mixed search",
+                                     unresolved_neg_kw=unresolved_neg_keywords)
     else:
         return _empty_result(mode, resolved_pos, resolved_neg,
                              error=f"Unknown query mode: {mode}",

@@ -42,3 +42,8 @@ data_v2/embeddings_v2.npy
 /requirements.txt
 /CLAUDE.md
 /.env.example
+
+# Local-only deployment docs (kept on disk, not committed)
+databricks_deploy/README.md
+databricks_deploy/DEPLOYMENT.md
+databricks_deploy/graph/load_aura.md

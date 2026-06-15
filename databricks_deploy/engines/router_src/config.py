@@ -1,10 +1,3 @@
-"""Config for the unified router: the two engine base URLs + the LLM settings.
-
-Reuses the existing Groq key/pattern from the vector pipeline (../vector/.env) so the secret
-is not duplicated. A router-local router/.env can override anything (engine URLs, model, key).
-All values are read from env with sensible local-dev defaults.
-"""
-
 import os
 from pathlib import Path
 
@@ -58,7 +51,6 @@ HTTP_TIMEOUT_S = float(os.getenv("ROUTER_HTTP_TIMEOUT_S", "30"))
 
 
 def summary() -> dict:
-    """Non-secret config view (key/token PRESENCE only — never the values)."""
     return {
         "graph_api_url": GRAPH_API_URL,
         "vector_api_url": VECTOR_API_URL,

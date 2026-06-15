@@ -1,8 +1,3 @@
-"""
-Test the full chain: NLU → Retrieval → Negative Filter → Reranker (v2).
-Generates results/RERANKER_V2_TEST.md.
-"""
-
 import json
 import os
 import time

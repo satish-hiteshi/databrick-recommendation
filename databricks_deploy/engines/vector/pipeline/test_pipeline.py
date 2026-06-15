@@ -1,7 +1,3 @@
-"""
-Test the full query pipeline with 3 queries and generate PIPELINE_REPORT.md.
-"""
-
 import json
 import os
 import time
@@ -19,7 +15,6 @@ TEST_QUERIES = [
 
 
 def run_tests():
-    """Run all test queries and return results."""
     print("Initializing Qdrant + BM25 index...")
     setup_qdrant()
 
@@ -33,7 +28,6 @@ def run_tests():
 
 
 def generate_report(all_results):
-    """Generate results/PIPELINE_REPORT.md."""
     os.makedirs(RESULTS_DIR, exist_ok=True)
     report_path = os.path.join(RESULTS_DIR, "PIPELINE_REPORT.md")
 

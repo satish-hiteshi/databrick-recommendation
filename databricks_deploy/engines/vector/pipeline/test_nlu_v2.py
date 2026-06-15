@@ -1,7 +1,3 @@
-"""
-Test the NLU v2 with 10 queries and generate NLU_V2_TEST.md report.
-"""
-
 import json
 import os
 

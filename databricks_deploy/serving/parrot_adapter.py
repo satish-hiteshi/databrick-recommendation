@@ -1,31 +1,3 @@
-"""Translate between the Parrot / M2M serving contract and the feeds.ai unified router.
-
-The endpoint `parrot-api-hitashi-dev` speaks a FIXED wire contract (machine-to-machine; other agents
-call it), confirmed live:
-
-  IN : {"dataframe_records": [{"user_id", "query", "requesting_agent"}]}
-  OUT: {"predictions": [{"query", "routed_to", "response": "<JSON string>"}]}
-         response = {"routed_to", "entity_type", "results": [{"entity_id", "score", ...}], "count"}
-
-The feeds.ai router (`route()`) speaks a richer NATIVE shape (path_taken, universe_establisher,
-results tagged exact|related, intent, timing, …). This module is the ONLY place the two shapes meet —
-all contract knowledge lives here so model.py stays a thin wrapper and the router core is untouched.
-
-Mapping decisions (the defaults we agreed on):
-  * PRESERVE every key existing M2M callers read (`entity_id`, `score`) and ADD feeds.ai fields
-    alongside (`name`, `vertical`, `result_type`, `why`, `source_engine`). Adding keys is
-    non-breaking: a caller reading only entity_id/score is unaffected.
-  * `routed_to` = "agent-recs" (preserved from the v2 contract); each result carries its entertainment
-    `vertical` (game|movie|tv|podcast); top-level `entity_type` = "entertainment".
-  * The full router trace (path_taken, establisher, refinements, intent, timing) rides along under a
-    `router` key inside `response`, for the UI / debugging. Unknown keys are ignored by M2M callers.
-
-Note: feeds.ai entity_ids are vertical-prefixed STRINGS ("Movie:1000"), not the integers the old
-property model returned. They go into `response` as strings; that's fine because `response` is a free
-JSON string (no MLflow signature constrains its interior). If a downstream consumer ever needs integer
-ids resolvable in a different catalog, add the id-mapping here — it is deliberately the one choke point.
-"""
-
 import json
 from typing import Any, Dict, List
 
@@ -41,12 +13,6 @@ DEFAULT_TOP_K = 10
 
 # ── IN: parrot request → normalized rows ──────────────────────────────────────────────
 def parse_request(model_input) -> List[Dict[str, Any]]:
-    """Normalize any MLflow serving input into a list of {user_id, query, requesting_agent, top_k}.
-
-    Serving may hand us a pandas DataFrame (from dataframe_records / dataframe_split), a list of row
-    dicts, or a single dict — we accept all three so behavior is identical under `mlflow models serve`,
-    the REST endpoint, and local unit tests.
-    """
     if hasattr(model_input, "to_dict"):                      # pandas DataFrame
         rows = model_input.to_dict(orient="records")
     elif isinstance(model_input, dict):
@@ -83,7 +49,6 @@ def parse_request(model_input) -> List[Dict[str, Any]]:
 
 # ── OUT: router response → parrot response ────────────────────────────────────────────
 def _result_items(route_out: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Flatten the router's results into one ordered list, single- or multi-intent alike."""
     if route_out.get("path_taken") == "MULTI_INTENT":
         items = []
         for g in route_out.get("groups", []):
@@ -96,7 +61,6 @@ def _result_items(route_out: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def _to_parrot_result(it: Dict[str, Any]) -> Dict[str, Any]:
-    """One router result item → parrot result object (contract keys first, feeds.ai fields added)."""
     score = it.get("score")
     out = {
         "entity_id": it.get("entity_id"),
@@ -115,9 +79,6 @@ def _to_parrot_result(it: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _interleave_by_vertical(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Round-robin results across verticals so a multivertical answer LEADS WITH A MIX (game, movie, tv,
-    podcast, …) instead of one vertical stacked first. Order within each vertical is preserved; no-op
-    when only one vertical is present."""
     groups: Dict[Any, List[Dict[str, Any]]] = {}
     order: List[Any] = []
     for r in results:
@@ -139,7 +100,6 @@ def _interleave_by_vertical(results: List[Dict[str, Any]]) -> List[Dict[str, Any
 
 
 def to_parrot_response(route_out: Dict[str, Any], *, routed_to: str = ROUTED_TO) -> Dict[str, Any]:
-    """route() output → one parrot prediction dict: {query, routed_to, response object}."""
     results = [_to_parrot_result(it) for it in _result_items(route_out)]
     if str(route_out.get("path_taken", "")).startswith("MULTIVERTICAL"):
         results = _interleave_by_vertical(results)   # mix verticals at the top, not stacked game-first
@@ -169,7 +129,6 @@ def to_parrot_response(route_out: Dict[str, Any], *, routed_to: str = ROUTED_TO)
 
 
 def error_response(message: str, query: str = "") -> Dict[str, Any]:
-    """Shape-preserving error payload (so callers always get the same envelope, never a 500 body)."""
     inner = {"routed_to": ROUTED_TO, "entity_type": ENTITY_TYPE,
              "results": [], "count": 0, "error": message}
     return {"query": query, "routed_to": ROUTED_TO, "response": inner}

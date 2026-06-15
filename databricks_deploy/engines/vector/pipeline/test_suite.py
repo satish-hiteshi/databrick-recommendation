@@ -1,8 +1,3 @@
-"""
-Comprehensive test suite for Feeds.ai pipeline.
-Runs 15 queries, analyzes quality, and generates the final report.
-"""
-
 import json
 import os
 import time

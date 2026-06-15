@@ -1,9 +1,3 @@
-"""
-PostgreSQL database setup for Feeds.ai pipeline.
-Creates the feedsai_poc database, entities table, indexes, and the
-find_entity() resolution function.
-"""
-
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import numpy as np
@@ -22,7 +16,6 @@ from pipeline.embedding_generator import load_embeddings
 
 
 def _connect_default():
-    """Connect to the default 'postgres' database (for DB creation)."""
     conn = psycopg2.connect(
         host=POSTGRES_HOST,
         port=POSTGRES_PORT,
@@ -35,7 +28,6 @@ def _connect_default():
 
 
 def _connect_feedsai():
-    """Connect to the feedsai_poc database."""
     return psycopg2.connect(
         host=POSTGRES_HOST,
         port=POSTGRES_PORT,
@@ -46,7 +38,6 @@ def _connect_feedsai():
 
 
 def create_database():
-    """Create the feedsai_poc database if it doesn't exist."""
     conn = _connect_default()
     cur = conn.cursor()
     cur.execute("SELECT 1 FROM pg_database WHERE datname = %s;", (POSTGRES_DB,))
@@ -60,7 +51,6 @@ def create_database():
 
 
 def create_table():
-    """Create the entities table."""
     conn = _connect_feedsai()
     cur = conn.cursor()
     cur.execute("""
@@ -89,7 +79,6 @@ def create_table():
 
 
 def create_indexes():
-    """Create indexes for fast lookups."""
     conn = _connect_feedsai()
     cur = conn.cursor()
     cur.execute("""
@@ -105,7 +94,6 @@ def create_indexes():
 
 
 def create_find_entity_function():
-    """Create the find_entity() SQL function with resolution cascade."""
     conn = _connect_feedsai()
     cur = conn.cursor()
     cur.execute("""
@@ -161,7 +149,6 @@ def create_find_entity_function():
 
 
 def insert_entities():
-    """Load all entities + embeddings and insert into PostgreSQL."""
     entities = get_all_entities()
     embeddings = load_embeddings()
     if not embeddings:
@@ -221,7 +208,6 @@ def insert_entities():
 
 
 def create_users_table():
-    """Create app_users table and seed demo users."""
     import hashlib
     conn = _connect_feedsai()
     cur = conn.cursor()
@@ -253,7 +239,6 @@ def create_users_table():
 
 
 def setup_postgres():
-    """Run full PostgreSQL setup sequence."""
     create_database()
     create_table()
     insert_entities()

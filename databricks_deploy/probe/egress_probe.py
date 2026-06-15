@@ -1,17 +1,3 @@
-"""Throwaway EGRESS PROBE — answers deployment question #4: can a served model on THIS workspace make
-the outbound calls the router needs (Voyage, the FM endpoint, the Graph/Vector Apps, AuraDS bolt)?
-
-Deploy as a scratch endpoint, query once, read the verdict, delete it. We only need to see whether the
-TCP/TLS connection + an HTTP response happen — not a successful auth — so no secrets are required.
-
-Register (on Databricks):
-    import mlflow
-    mlflow.set_registry_uri("databricks-uc")
-    mlflow.pyfunc.log_model(python_model="databricks_deploy/probe/egress_probe.py",
-                            artifact_path="probe", registered_model_name="dev_feeds_silver.ml.egress_probe")
-Then create a tiny serving endpoint for it, set TARGETS / BOLT_HOST env vars, and POST any body.
-"""
-
 import os
 import socket
 import time

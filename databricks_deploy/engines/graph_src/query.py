@@ -1,30 +1,3 @@
-"""Embedding-free retrieval archetypes for the Feeds.ai graph PoC (CONTEXT.md §6).
-
-One clean function per archetype; each returns a ranked list of entity dicts
-(entity_id, name, vertical, score, and a short `why` where applicable):
-
-  cypher_structured(filters)         - precise relational / multi-hop Cypher retrieval
-  fulltext_search(text, vertical)    - Lucene/BM25 over entityText (the keyword path)
-  similar_by_attributes(eid, vert)   - traverse precomputed :SIMILAR_TO (explainable)
-  top_by_influence(filters)          - PageRank landmarks within a filtered set
-  community_browse(eid_or_cid)       - Louvain neighborhood, labelled by dominant genres
-  knn_ann(eid, vert)                 - nearest neighbors via :KNN_SIMILAR (Filtered-KNN)
-  cross_vertical(eid, target_vert)   - connected entities in another vertical via shared
-                                       attribute nodes, with the connecting path as the why
-
-Two PROMPT-03 findings carried forward:
-  * Use the UNIFIED Concept layer (`:HAS_CONCEPT` -> `:Concept`, genre∪theme by name) for
-    similarity/cross-vertical/explanations, and prefer the precomputed `:SIMILAR_TO` /
-    `:KNN_SIMILAR` edges (already built on that unified space) over recomputing.
-  * Podcast blind spot: podcasts have 0% concept coverage. Attribute-based functions
-    (similar_by_attributes, knn_ann, cross_vertical) return an explicit
-    {"status": "no_graph_signal", "reason": "no concept coverage — vector territory"}
-    for seeds with no concept coverage, rather than an empty/misleading list. The one graph
-    path that works for podcasts is fulltext_search over their enriched descriptions.
-
-Run a sample of every archetype:  ./.venv/bin/python src/query.py
-"""
-
 from contextlib import contextmanager
 
 from connection import get_driver, NEO4J_DATABASE
@@ -65,7 +38,6 @@ def _rows(session, cypher, **params):
 # ───────────────────────── shared filter builder ─────────────────────────
 
 def _build_match(filters):
-    """Build comma-joined MATCH patterns (all ANDed on the same `e`) + WHERE + params + a label."""
     patterns = ["(e:Entity)"]
     where, params, desc = [], {}, []
     if filters.get("vertical"):
@@ -90,12 +62,6 @@ def _build_match(filters):
 # ───────────────────────── 1. structured / relational (+ multi-hop) ─────────────────────────
 
 def cypher_structured(filters, limit=10):
-    """Precise relational retrieval. `filters` keys: vertical, concept, genre, theme, keyword,
-    franchise, developer, publisher (str or list, ANDed), plus the multi-hop key
-    `developer_also_made` = a concept the entity's developer must ALSO have made a title in
-    (e.g. {"vertical":"game","concept":"Horror","developer_also_made":"Role-Playing"} =
-    "horror games by a developer that also made an RPG" — a structural query vectors can't express).
-    Ranked by influence (landmark-first within the matched set)."""
     patterns, where, params, desc = _build_match(filters)
     params["limit"] = limit
     dam = filters.get("developer_also_made")
@@ -134,8 +100,6 @@ def cypher_structured(filters, limit=10):
 # ───────────────────────── 2. full-text / keyword (BM25) ─────────────────────────
 
 def fulltext_search(text, vertical=None, limit=10):
-    """Lucene/BM25 keyword search over Entity.description + Entity.name via the entityText
-    full-text index. The embedding-free keyword path; also the ONLY graph path for podcasts."""
     cypher = (
         "CALL db.index.fulltext.queryNodes('entityText', $q) YIELD node, score "
         "WHERE $vertical IS NULL OR node.vertical = $vertical "
@@ -162,10 +126,6 @@ def _concept_coverage(session, entity_id):
 # ───────────────────────── 3. similar-by-attributes (:SIMILAR_TO) ─────────────────────────
 
 def similar_by_attributes(entity_id, vertical=None, limit=10):
-    """Most similar entities via precomputed :SIMILAR_TO (Jaccard on unified concepts +
-    keyword/franchise), explained by the shared attributes. `vertical` optionally constrains
-    the neighbors (same-vertical vs cross-vertical). Returns no_graph_signal for podcast-like
-    seeds with no concept coverage."""
     with _session() as s:
         c, _f = _concept_coverage(s, entity_id)
         if c is None:
@@ -195,8 +155,6 @@ def similar_by_attributes(entity_id, vertical=None, limit=10):
 # ───────────────────────── 4. landmark / important (PageRank) ─────────────────────────
 
 def top_by_influence(filters, limit=10):
-    """Highest-influence (PageRank) entities within a filtered set — the landmark archetype
-    (e.g. {"vertical":"game","concept":"Horror"} = "the defining horror games")."""
     patterns, where, params, desc = _build_match(filters)
     params["limit"] = limit
     cypher = (
@@ -215,8 +173,6 @@ def top_by_influence(filters, limit=10):
 # ───────────────────────── 5. neighborhood / browse (Louvain) ─────────────────────────
 
 def community_browse(entity_id=None, community_id=None, limit=10):
-    """Members of a Louvain community (neighborhood/browse), labelled by its dominant genres.
-    Pass an entity_id (uses its community) or a community_id."""
     with _session() as s:
         if community_id is None:
             if entity_id is None:
@@ -243,9 +199,6 @@ def community_browse(entity_id=None, community_id=None, limit=10):
 # ───────────────────────── 6. KNN ANN (:KNN_SIMILAR) ─────────────────────────
 
 def knn_ann(entity_id, vertical=None, limit=10):
-    """Nearest neighbors via the Filtered-KNN :KNN_SIMILAR edges (cosine on the unified-concept
-    multi-hot vector) — the ANN-on-attributes path, to compare against similar_by_attributes.
-    KNN is vertical-locked by construction. Returns no_graph_signal for no-concept seeds."""
     with _session() as s:
         c, _f = _concept_coverage(s, entity_id)
         if c is None:
@@ -268,10 +221,6 @@ def knn_ann(entity_id, vertical=None, limit=10):
 # ───────────────────────── 7. cross-vertical via shared attributes ─────────────────────────
 
 def cross_vertical(entity_id, target_vertical, limit=10):
-    """Given a seed, find connected entities in `target_vertical` via shared attribute nodes
-    (unified Concept + Franchise), ranked by shared-concept count with a heavy franchise bonus,
-    explaining the connecting path. The core cross-vertical-without-embeddings demonstration.
-    Returns no_graph_signal for seeds with no concept/franchise coverage (e.g. podcasts)."""
     with _session() as s:
         c, f = _concept_coverage(s, entity_id)
         if c is None:
@@ -302,7 +251,6 @@ def cross_vertical(entity_id, target_vertical, limit=10):
 # ───────────────────────── helpers + CLI demo ─────────────────────────
 
 def resolve(name, vertical=None):
-    """Resolve an entity name -> entity_id (exact, case-insensitive; optional vertical)."""
     with _session() as s:
         rec = s.run(
             "MATCH (e:Entity) WHERE toLower(e.name) = toLower($n) "

@@ -1,32 +1,3 @@
-"""GDS precompute layer for the Feeds.ai graph PoC (CONTEXT.md §5).
-
-Runs the four algorithms via the graphdatascience client, writing results back so
-reads are fast, and reports stats / samples / coverage.
-
-CRITICAL — genre/theme unification (PROMPT 02 finding):
-  The SAME concept is modeled differently per vertical: "horror" is a *Genre* for
-  movies/TV but a *Theme* for games. With separate Genre/Theme nodes, a horror game
-  (Theme:Horror) and a horror movie (Genre:Horror) share NO node and look unrelated —
-  silently breaking the cross-vertical matching this project exists to do. We:
-    1. Report genre<->theme name overlap (names that are BOTH a Genre and a Theme),
-       flagging non-identical near-synonyms (e.g. War vs Warfare) without merging them.
-    2. Materialize a unified `(:Concept {key,name})` layer: every genre and theme name
-       maps (case-insensitively) to one Concept, with (:Entity)-[:HAS_CONCEPT]->(:Concept).
-       So Genre:Horror and Theme:Horror collapse to Concept:horror.
-    3. Run Node Similarity BOTH ways and compare cross-vertical recall:
-         (i) genre-only shared neighbors,  (ii) genre+theme unified (Concept) shared neighbors.
-       The combined (unified) version is the PRIMARY :SIMILAR_TO / :KNN_SIMILAR going
-       forward; genre-only numbers are reported for comparison.
-
-Algorithms / writes:
-  1. PageRank      -> Entity.influence
-  2. Louvain       -> Entity.community
-  3. Node Sim.     -> (:Entity)-[:SIMILAR_TO {score}]->(:Entity)   (unified concepts + kw + franchise)
-  4. Filtered-KNN  -> (:Entity)-[:KNN_SIMILAR {score}]->(:Entity)  (cosine on unified concept vector)
-
-Run:  ./.venv/bin/python src/precompute.py
-"""
-
 import json
 import time
 from pathlib import Path
@@ -76,8 +47,6 @@ def report_overlap(driver):
 # ───────────────────────── unified Concept layer + attrVec + labels ─────────────────────────
 
 def build_concepts_vectors_labels(driver):
-    """Materialize the unified Concept layer (genre∪theme by case-insensitive name),
-    write a multi-hot `attrVec` over concepts to each Entity, and add vertical labels."""
     with driver.session(database=NEO4J_DATABASE) as s:
         s.run("CREATE CONSTRAINT concept_key_unique IF NOT EXISTS "
               "FOR (c:Concept) REQUIRE c.key IS UNIQUE").consume()
@@ -158,7 +127,6 @@ def _id_to_vertical(driver):
 
 
 def _stream_xvert(gds, G, id2v):
-    """Run nodeSimilarity.stream and count total + cross-vertical pairs."""
     df = gds.nodeSimilarity.stream(G, topK=TOP_K)
     if df.empty:
         return {"total_pairs": 0, "cross_vertical_pairs": 0}

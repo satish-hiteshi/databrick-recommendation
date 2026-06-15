@@ -1,4 +1,3 @@
-"""V2 full test suite — 20 queries across all features."""
 import json, os, time, subprocess
 from pipeline.config import RESULTS_DIR
 

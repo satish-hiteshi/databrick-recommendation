@@ -1,7 +1,3 @@
-"""
-FastAPI backend for Feeds.ai entertainment discovery pipeline.
-"""
-
 import json
 import time
 from contextlib import asynccontextmanager
@@ -140,7 +136,6 @@ def _cosine(a, b):
 
 @app.post("/api/login")
 def login(req: LoginRequest):
-    """Authenticate a user."""
     import hashlib, time
     time.sleep(0.2)  # consistent timing
 
@@ -162,7 +157,6 @@ def login(req: LoginRequest):
 
 @app.post("/api/query")
 def query_endpoint(req: QueryRequest):
-    """Process a natural language query and return recommendations."""
     result = process_query(req.query)
 
     # Count results
@@ -197,7 +191,6 @@ def query_endpoint(req: QueryRequest):
 
 @app.get("/api/history")
 def history_list():
-    """Return all query history, most recent first."""
     conn = _connect()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute("""
@@ -220,7 +213,6 @@ def history_list():
 
 @app.get("/api/history/{history_id}")
 def history_detail(history_id: int):
-    """Return full details of a specific query from history."""
     conn = _connect()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute("SELECT * FROM query_history WHERE id = %s;", (history_id,))
@@ -238,7 +230,6 @@ def history_detail(history_id: int):
 
 @app.delete("/api/history")
 def history_clear():
-    """Clear all query history."""
     conn = _connect()
     cur = conn.cursor()
     cur.execute("DELETE FROM query_history;")
@@ -257,7 +248,6 @@ def entities_list(
     sort_by: str = QueryParam("name", description="Sort field: name or release_date"),
     sort_dir: str = QueryParam("asc", description="Sort direction: asc or desc"),
 ):
-    """Return paginated entity list from PostgreSQL."""
     conn = _connect()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -314,7 +304,6 @@ def entities_list(
 
 @app.get("/api/entities/{entity_id}")
 def entity_detail(entity_id: str):
-    """Return full details of a single entity."""
     conn = _connect()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute("""
@@ -339,8 +328,6 @@ class TextsRequest(BaseModel):
 
 @app.post("/api/texts")
 def texts(req: TextsRequest):
-    """Batch-fetch enriched candidate text (composed_text, truncated) by entity_id — one query for a
-    whole candidate set. Powers the learned reranker (scores query vs each candidate's enriched text)."""
     ids = list(req.entity_ids or [])
     if not ids:
         return {"texts": {}}
@@ -360,7 +347,6 @@ def texts(req: TextsRequest):
 
 @app.get("/api/stats")
 def stats():
-    """Return dashboard statistics."""
     conn = _connect()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -392,8 +378,6 @@ def stats():
 
 @app.post("/api/embed")
 def embed(req: EmbedRequest):
-    """Embedding access. entity_ids -> STORED corpus vectors (fetched by id, no re-embed);
-    text -> fresh embedding via voyage-4-large (input_type='query'). No retrieval."""
     out = {"model": "voyage-4-large", "dim": EMBEDDING_DIMENSION}
     if req.entity_ids:
         emb = _entity_emb()
@@ -413,8 +397,6 @@ def embed(req: EmbedRequest):
 
 @app.post("/api/score_set")
 def score_set(req: ScoreSetRequest):
-    """Score a FIXED set of entities against a semantic phrase: cosine(phrase_emb, stored
-    entity_emb) for ONLY the passed-in ids. No fresh retrieval, no NLU, no set expansion."""
     phrase_vec = _embed_text(req.phrase)
     emb = _entity_emb()
     scored, missing = [], []
@@ -440,10 +422,6 @@ class NeighborsRequest(BaseModel):
 
 @app.post("/api/neighbors")
 def neighbors(req: NeighborsRequest):
-    """ANCHORED backfill hook (CONTEXT §6): nearest neighbors OF the exact-match entities — fetch each
-    anchor's STORED vector and Qdrant-search with IT (NOT the raw query), merge by best similarity, and
-    exclude the anchors/exact set. Because the anchors embody the full intent, their neighbors stay
-    on-theme (relaxing only the structural constraint vectors can't see)."""
     from pipeline.vector_store import vector_search
     emb = _entity_emb()
     exclude = set(req.exclude_ids or []) | set(req.anchor_ids)
@@ -473,11 +451,6 @@ class RetrieveRequest(BaseModel):
 
 @app.post("/api/retrieve")
 def retrieve_endpoint(req: RetrieveRequest):
-    """No-NLU semantic retrieval (ROUTER_PLAN §8): embed the phrase with voyage-4-large and Qdrant-search
-    directly — NO Groq NLU, NO reasoning LLM. The unified router has ALREADY understood the query (it
-    passes the semantic_core / soft phrase it extracted), so the vector engine must NOT re-run its own
-    NLU here. This makes the router's vector_constrain establisher independent of the vector engine's
-    standalone NLU (and its rate limits). Returns uniform items with entity_id/name/vertical/score."""
     from pipeline.vector_store import vector_search
     verts = {req.vertical} if (req.vertical and req.vertical != "any") else None
     vec = _np.asarray(_embed_text(req.phrase), dtype=_np.float32)
@@ -490,7 +463,6 @@ def retrieve_endpoint(req: RetrieveRequest):
 # ── Helpers ───────────────────────────────────────────────────────────
 
 def _sanitize(obj):
-    """Make result JSON-serializable (strip numpy, etc)."""
     if isinstance(obj, dict):
         return {k: _sanitize(v) for k, v in obj.items()}
     if isinstance(obj, list):

@@ -1,23 +1,3 @@
-"""Graph-traversal + ANN reranking layer for the Feeds.ai graph PoC (CONTEXT.md §5).
-
-A first-pass retrieval (full-text or a broad Cypher filter) returns a candidate set; we then
-rerank those candidates by a transparent weighted blend of graph signals and measure whether the
-rerank improves ordering. Prototypes the graph-as-reranker role vectors will also use in production.
-
-Signals (each normalised to [0,1] within the candidate set, then weighted):
-  overlap    - shared attribute-neighbour count with the seed/query (Concept + Keyword + Franchise)
-  similar    - :SIMILAR_TO edge weight to the seed (0..1; precomputed, unified-concept Jaccard)
-  proximity  - shortest-path proximity to the seed through attribute nodes (2 hops = 1.0)
-  community  - 1.0 if same Louvain community as the seed, else 0.0
-  influence  - PageRank landmark boost (min-max normalised within the candidate set)
-
-`seed` may be an entity_id (full signals) or None with `query_concepts` (a "virtual seed" for text
-queries: only overlap + influence apply — community/similar/proximity need a real seed entity).
-
-Run the evaluation (query reranks + seed reranks + a weight-calibration failure case):
-  ./.venv/bin/python src/rerank.py
-"""
-
 import json
 from pathlib import Path
 
@@ -96,10 +76,6 @@ def _collect_signals(session, cand_ids, seed, query_concepts, query_keywords):
 # ───────────────────────── rerank ─────────────────────────
 
 def rerank(candidates, seed=None, weights=None, query_concepts=None, query_keywords=None):
-    """Rerank `candidates` (list of dicts with at least entity_id) by the weighted graph-signal
-    blend. Returns a new list sorted by rerank_score desc, each item augmented with
-    `rerank_score`, `components` (weighted contributions), and `why`. The seed (if an entity_id)
-    is excluded from the output."""
     w = {**DEFAULT_WEIGHTS, **(weights or {})}
     cand_ids = [c["entity_id"] for c in candidates if c["entity_id"] != seed]
     base = {c["entity_id"]: c for c in candidates}
@@ -149,7 +125,6 @@ def rerank(candidates, seed=None, weights=None, query_concepts=None, query_keywo
 # ───────────────────────── flow helpers ─────────────────────────
 
 def _query_concepts(session, cand_ids, top_n=15, min_frac=0.25):
-    """Consensus concepts of the top-N first-pass candidates (the query's structural theme)."""
     head = cand_ids[:top_n]
     rows = session.run(
         "UNWIND $ids AS cid MATCH (c:Entity {entity_id:cid})-[:HAS_CONCEPT]->(k:Concept) "
@@ -162,7 +137,6 @@ def _query_concepts(session, cand_ids, top_n=15, min_frac=0.25):
 
 
 def query_rerank(text, vertical=None, first_pass_n=50, weights=None):
-    """Flow 1 — full-text first pass, then graph rerank via a virtual concept seed."""
     cands = Q.fulltext_search(text, vertical=vertical, limit=first_pass_n)
     if not cands:
         return cands, [], []
@@ -174,8 +148,6 @@ def query_rerank(text, vertical=None, first_pass_n=50, weights=None):
 
 
 def seed_rerank(seed_id, first_pass_n=60, same_vertical=True, weights=None):
-    """Flow 2 — broad candidate set (entities sharing the seed's top concept), then rerank by
-    similarity/proximity to the seed. 'before' = influence-ordered broad set (naive popularity prior)."""
     with _driver().session(database=NEO4J_DATABASE) as s:
         # seed's primary (most specific = rarest) concept, to form a focused-but-broad candidate pool
         top_concept = s.run(
@@ -202,7 +174,6 @@ def _name(eid_map, c):
 
 
 def _before_after(before, after, n=10):
-    """Return aligned rows: rank, before title, after title (+score), movement."""
     before_ids = [c["entity_id"] for c in before]
     rows = []
     for i in range(n):

@@ -1,8 +1,3 @@
-"""
-Test reasoning engine across all 5 query modes.
-Generates results/REASONING_TEST.md and results/REASONING_REPORT.md
-"""
-
 import json
 import os
 import re

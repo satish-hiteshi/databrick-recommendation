@@ -1,13 +1,3 @@
-"""Offline proof of the parrot contract mapping — runs with plain `python`, NO Databricks needed.
-
-Feeds synthetic route() outputs (single-intent, multi-intent, fallback) through the adapter and asserts
-the exact parrot envelope: top-level {query, routed_to, response}, and response = a JSON string holding
-{routed_to, entity_type, results:[{entity_id, score, ...}], count}. This locks the wire contract before
-anything is deployed.
-
-    python databricks_deploy/serving/test_parrot_adapter.py
-"""
-
 import json
 import os
 import sys

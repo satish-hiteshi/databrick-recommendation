@@ -1,15 +1,3 @@
-"""Single seam for the router's LLM chat-completion call.
-
-`llm_complete(system, user) -> str` dispatches to the configured provider
-(`config.LLM_PROVIDER` = databricks | groq). Swapping providers is a config flag; nothing
-downstream (schema / prompt / parser / eval) changes.
-
-Databricks Foundation Model endpoint is OpenAI-compatible (confirmed live, see PROGRESS):
-  POST {messages,temperature,max_tokens,response_format} with the PAT as `Authorization: Bearer`,
-  → response {id,object,created,model,choices:[{message:{content}}],usage}.
-The PAT is a SECRET read from config (router/.env). If absent, this fails with a clear message.
-"""
-
 import json
 import time
 from typing import Optional
@@ -111,7 +99,6 @@ def _groq(system: str, user: str, json_mode: bool, temperature: float, max_token
 # ── the seam ───────────────────────────────────────────────────────────
 def llm_complete(system: str, user: str, json_mode: bool = True,
                  temperature: float = 0.0, max_tokens: Optional[int] = None) -> str:
-    """Provider-agnostic chat completion → assistant text. Provider = config.LLM_PROVIDER."""
     max_tokens = max_tokens or config.LLM_MAX_TOKENS
     p = config.LLM_PROVIDER
     if p == "databricks":

@@ -1,15 +1,3 @@
-"""Databricks Foundation Model client for the vector pipeline (the ONLY LLM; no Groq).
-
-The unified-router architecture (ROUTER_PLAN §8) uses ONE shared query-understanding brain. This
-helper exists so the legacy standalone vector engine's own NLU (vector/pipeline/nlu.py) also runs on
-your Databricks Meta-Llama endpoint instead of Groq — making the whole repo Groq-free. It is NOT
-called by the unified router (the router understands the query once and drives this engine via the
-no-NLU /api/retrieve, /api/score_set, /api/neighbors hooks).
-
-OpenAI-compatible: POST {messages, temperature, max_tokens, response_format} with the PAT as
-Authorization: Bearer; response at choices[0].message.content. Secret read from config (vector/.env).
-"""
-
 import json
 import time
 
@@ -36,7 +24,6 @@ def _extract_text(j) -> str:
 
 def databricks_complete(system: str, user: str, json_mode: bool = True,
                         temperature: float = 0.0, max_tokens: int = 900) -> str:
-    """Chat completion against the Databricks Llama endpoint → assistant text."""
     if not config.DATABRICKS_TOKEN:
         raise LLMError("DATABRICKS_TOKEN is not set — add it to vector/.env (DATABRICKS_TOKEN=dapi…).")
     headers = {"Authorization": f"Bearer {config.DATABRICKS_TOKEN}", "Content-Type": "application/json"}

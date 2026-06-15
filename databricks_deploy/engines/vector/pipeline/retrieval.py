@@ -1,9 +1,3 @@
-"""
-Retrieval v3 for Feeds.ai pipeline.
-Uses Reciprocal Rank Fusion (RRF) instead of weighted score combination.
-Handles all 5 query modes: entity_single, entity_multi, theme_based, descriptive, mixed.
-"""
-
 import numpy as np
 
 from pipeline.config import TOP_K_RETRIEVAL
@@ -21,11 +15,6 @@ MISSING_RANK = 1000       # Rank for documents not in a list
 
 def _collect_ranked_lists(embedding, keywords, verticals_set, top_k, source_label,
                           date_start=None, date_end=None):
-    """
-    Run vector + BM25 search for one source. Returns two ranked lists
-    (vector_list, bm25_list) and metadata for each entity seen.
-    Each ranked list is: [(entity_id, rank_position), ...]
-    """
     vec_results = vector_search(embedding, verticals_set, top_k,
                                  date_start=date_start, date_end=date_end)
     bm25_results = keyword_search(keywords, verticals_set, top_k,
@@ -57,18 +46,6 @@ def _collect_ranked_lists(embedding, keywords, verticals_set, top_k, source_labe
 # ── RRF Fusion ────────────────────────────────────────────────────────
 
 def _rrf_fuse(all_ranked_lists, all_list_types, all_source_indices, meta_pool):
-    """
-    Fuse multiple ranked lists using Reciprocal Rank Fusion.
-
-    Args:
-        all_ranked_lists: list of [(entity_id, rank), ...] for each list
-        all_list_types: list of "vector" or "bm25" for each list
-        all_source_indices: list of source index (which entity/theme produced this list)
-        meta_pool: dict entity_id -> {name, vertical}
-
-    Returns:
-        list of candidate dicts sorted by rrf_score descending
-    """
     # Build per-entity tracking
     candidates = {}
 
@@ -140,9 +117,6 @@ def _rrf_fuse(all_ranked_lists, all_list_types, all_source_indices, meta_pool):
 # ── Main retrieve function ────────────────────────────────────────────
 
 def retrieve(nlu_output: dict):
-    """
-    Full retrieval pipeline handling all 5 query modes with RRF fusion.
-    """
     mode = nlu_output["query_mode"]
     pos_names = nlu_output.get("positive_entities", [])
     neg_names = nlu_output.get("negative_entities", [])
@@ -193,10 +167,6 @@ def retrieve(nlu_output: dict):
         all_source_indices.append(source_idx)
 
     def _kw_search(keywords, label_prefix, base_idx=0):
-        """Keyword + semantic search over `keywords` (mirrors the theme_based path). Used as the
-        graceful fallback when an entity-mode query resolves NO real entity — so a misclassified
-        descriptive/genre/feature phrase ('horror games', 'co-op', 'scary games') degrades to a
-        keyword search instead of returning zero results. Returns True if it added any source."""
         kws = [k for k in keywords if k]
         if not kws:
             return False

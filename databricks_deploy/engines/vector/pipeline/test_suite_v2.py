@@ -1,8 +1,3 @@
-"""
-Comprehensive Phase 2 test suite — 20 queries across all modes.
-Generates results/FINAL_TEST_REPORT_V2.md and results/test_results_v2.json.
-"""
-
 import json
 import os
 import time

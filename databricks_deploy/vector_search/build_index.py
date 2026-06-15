@@ -1,22 +1,3 @@
-"""One-time build: load the EXISTING Voyage vectors + entity metadata into a Unity Catalog Delta table,
-then create a Databricks Vector Search Delta-Sync index over it (self-managed embeddings).
-
-Run on a Databricks cluster/notebook with Vector Search enabled. NO re-embedding — we reuse
-vector/data_v2/embeddings_v2.npy exactly, so dense-retrieval parity with local Qdrant is preserved.
-
-STEP 0 — upload these four files to a UC Volume (default: /Volumes/<catalog>/<schema>/feedsai_src):
-  embeddings_v2.npy        (6945, 1024) float32   — cached voyage-4-large document vectors
-  embeddings_ids_v2.json   row-order → entity_id  — aligns npy rows to ids
-  all_compositions_v2.json name / vertical / bm25_keywords per entity
-  entity_profiles_v2.json  franchise / release_date / … per entity
-
-OUTPUTS:
-  <catalog>.<schema>.entities      Delta table (payload + `embedding ARRAY<FLOAT>`, CDF enabled)
-  <catalog>.<schema>.entities_vs   Vector Search index (Delta-Sync, self-managed embeddings)
-
-    python databricks_deploy/vector_search/build_index.py     # (inside Databricks)
-"""
-
 import json
 import os
 
@@ -32,7 +13,6 @@ EMBEDDING_DIM = 1024
 
 
 def _merge_records():
-    """Replicate the pipeline's data_loader merge (compositions ⨝ profiles) + attach the npy vector."""
     with open(f"{SRC}/all_compositions_v2.json") as f:
         comps = json.load(f)
     with open(f"{SRC}/entity_profiles_v2.json") as f:

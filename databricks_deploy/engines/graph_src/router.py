@@ -1,19 +1,3 @@
-"""End-to-end query router for the Feeds.ai graph PoC.
-
-Takes a natural-language query, classifies it into an archetype using the rules learned in
-PROMPT 06 (the routing matrix), and dispatches to the matching graph query function — applying
-the reranker where useful. For archetypes the matrix assigned to vectors (fuzzy/mood, date,
-podcast-seeded), it returns an explicit `route="vector"` signal instead of forcing a weak graph
-answer, honestly reflecting the complementary design.
-
-Governing principle: **graph owns the EXPLICIT** (named relationships, exact attributes, structure
-you can traverse), **vectors own the IMPLICIT** (mood, vibe, meaning, paraphrase). Every routing
-decision is an instance of that split.
-
-Classification is rule-based (regex + a concept/mood lexicon) — no LLM, no embeddings, consistent
-with the PoC's constraint. Run the end-to-end demo:  ./.venv/bin/python src/router.py
-"""
-
 import re
 
 from connection import get_driver, NEO4J_DATABASE
@@ -105,7 +89,6 @@ def _has(text, markers):
 
 
 def _resolve_anchor(query):
-    """Extract a named entity from 'like/similar to/based on X' patterns and resolve it."""
     for pat in _SIMILAR_PATTERNS:
         m = re.search(pat, query, re.IGNORECASE)
         if not m:
@@ -136,7 +119,6 @@ P_IMPLICIT = "IMPLICIT (mood/meaning/paraphrase) → vector"
 
 
 def route(query, k=10):
-    """Classify `query` -> archetype, dispatch to the graph (or signal route-to-vector)."""
     verts = _verticals_in(query)
     single_vert = verts[0] if len(verts) == 1 else None
     concepts = _concepts_in(query)

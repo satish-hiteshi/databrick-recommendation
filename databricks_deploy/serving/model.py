@@ -1,19 +1,3 @@
-"""MLflow pyfunc that serves the feeds.ai unified router behind the Parrot / M2M endpoint.
-
-Registered as a NEW VERSION of  dev_feeds_silver.ml.parrot-api-hitashi-dev  (see register.py), so the
-endpoint URL and the wire contract are unchanged — only the brain behind it changes.
-
-    predict():  parrot request  →  route(query, top_k)  →  parrot response
-                (request/response mapping lives entirely in parrot_adapter)
-
-The router core is REUSED, not copied. route() reaches the Graph engine and Vector engine over HTTP
-(URLs from GRAPH_API_URL / VECTOR_API_URL) and the LLM over HTTP (DATABRICKS_LLM_ENDPOINT / _TOKEN), so
-this serving model imports only the router source + httpx — no Qdrant, Neo4j, or Voyage dependencies.
-
-Logged with MLflow "models from code": register.py bundles router/src and parrot_adapter via
-code_paths; `set_model(...)` at import time registers the instance.
-"""
-
 import os
 import sys
 
@@ -37,14 +21,6 @@ _ENGINE_ENV = {
 
 
 def _bootstrap_paths():
-    """Discover the bundled sources in the model artifact and put them on sys.path:
-      • router source   (route.py + assembler.py + blocks.py + config.py …)  → flat imports
-      • vector pipeline (the dir CONTAINING `pipeline/`)                      → `import pipeline.*`
-      • graph source    (query.py + connection.py)                           → flat imports
-    MLflow's code_paths layout varies by version, so we DISCOVER each rather than hard-code it. Flat
-    module names are unique across the three trees (router=route/blocks/config…, graph=query/connection…,
-    vector is namespaced under `pipeline`), so order only needs router before graph for safety.
-    """
     here = os.path.dirname(os.path.abspath(__file__))
     found = {"router": None, "vector": None, "graph": None, "serving": None}
     for dirpath, dirnames, filenames in os.walk(here):       # walk the model dir, NEVER the fs root

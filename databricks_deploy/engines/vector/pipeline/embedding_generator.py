@@ -1,8 +1,3 @@
-"""
-Embedding generator for Feeds.ai entities using Voyage AI.
-Generates, caches, and loads embedding vectors for all entity compositions.
-"""
-
 import json
 import os
 import time
@@ -28,7 +23,6 @@ BATCH_SIZE = 50
 
 
 def generate_embeddings():
-    """Generate embeddings for all entities and save to cache files."""
     client = voyageai.Client(api_key=VOYAGE_API_KEY)
     entities = get_all_entities()
 
@@ -106,7 +100,6 @@ def generate_embeddings():
 
 
 def load_embeddings():
-    """Load embeddings from cache. Returns dict mapping entity_id -> np.array."""
     if os.path.exists(EMBEDDINGS_CACHE_NPY) and os.path.exists(EMBEDDINGS_IDS_JSON):
         emb_array = np.load(EMBEDDINGS_CACHE_NPY)
         with open(EMBEDDINGS_IDS_JSON) as f:
@@ -122,7 +115,6 @@ def load_embeddings():
 
 
 def get_query_embedding(query_text):
-    """Embed a single query string using input_type='query'."""
     client = voyageai.Client(api_key=VOYAGE_API_KEY)
     result = client.embed([query_text], model=VOYAGE_MODEL, input_type="query")
     return np.array(result.embeddings[0], dtype=np.float32)
@@ -133,11 +125,6 @@ _query_embedding_cache = {}
 
 
 def embed_query_text(text: str) -> list:
-    """
-    Embed an arbitrary text string using Voyage voyage-4-large with input_type='query'.
-    Used for theme_based and descriptive modes where we embed the user's intent directly.
-    Results are cached in memory for the session.
-    """
     if text in _query_embedding_cache:
         return _query_embedding_cache[text]
 
@@ -148,13 +135,11 @@ def embed_query_text(text: str) -> list:
 
 
 def cosine_similarity(a, b):
-    """Compute cosine similarity between two vectors."""
     a, b = np.asarray(a, dtype=np.float64), np.asarray(b, dtype=np.float64)
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
 def validate_and_sanity_check(stats):
-    """Validate all embeddings and run similarity sanity checks."""
     print("\n=== Validation ===")
     embeddings = load_embeddings()
     entities = get_all_entities()
@@ -221,7 +206,6 @@ def validate_and_sanity_check(stats):
 
 
 def generate_report(stats, sim_results, nan_count, zero_count):
-    """Write the embedding report to results/EMBEDDING_REPORT.md."""
     os.makedirs(RESULTS_DIR, exist_ok=True)
     report_path = os.path.join(RESULTS_DIR, "EMBEDDING_REPORT.md")
 

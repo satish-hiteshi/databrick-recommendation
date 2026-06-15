@@ -1,11 +1,3 @@
-"""Extraction: query string -> LLM (via the provider-agnostic seam) -> parse + validate ->
-list of Intent objects.
-
-Isolated (NO engine calls). The LLM call goes through `llm.llm_complete` (provider =
-config.LLM_PROVIDER: databricks | groq) so the provider swap is contained. On malformed/invalid
-output it retries once with a "return valid JSON only" nudge, then fails cleanly.
-"""
-
 import json
 from typing import List
 
@@ -15,7 +7,6 @@ from extraction_prompt import SYSTEM_PROMPT
 
 
 def _loads(raw: str):
-    """Best-effort: strip markdown fences, then json.loads; fall back to the outermost {...}."""
     t = (raw or "").strip()
     if t.startswith("```"):
         t = t.strip("`")
@@ -37,8 +28,6 @@ _RETRY_NUDGE = ('\n\n[Your previous reply was not valid. Return ONLY the JSON ob
 
 
 def extract(query: str, retries: int = 1) -> List[Intent]:
-    """Return the extracted Intent list (length 1 normally; >1 for multi-intent).
-    Raises ValueError if the LLM cannot produce valid JSON after `retries` retries."""
     user = query
     last_err = None
     for attempt in range(retries + 1):

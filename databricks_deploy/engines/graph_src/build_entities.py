@@ -1,23 +1,3 @@
-"""Build the normalized load file data/entities.jsonl.
-
-Joins the two PROMPT-00 source files (read-only, in data/raw/) into one record
-per entity, following the schema realities confirmed in PROMPT 00:
-
-  * Driving set = compositions (6,945). Join to a profile on entity_id, with a
-    (normalized name, vertical) fallback for the ~97 TV titles whose Watchmode id
-    drifted. All 6,945 join; 9 surplus profiles (no composition) are excluded.
-  * description = composed_text from all_compositions_v2.json (the ENRICHED text).
-    The profile's own `description` field is IGNORED on purpose.
-  * Genre field is `canonical_genres` (NOT `genres`) -> stored as `genres`.
-  * Two separate keyword fields: `bm25_keywords` (compositions) stays an Entity
-    property; `keywords` (profiles) becomes :HAS_KEYWORD nodes. Never merged.
-  * word_count is coerced to int (one record stores it as a string).
-  * Attribute strings are trimmed and deduped case-insensitively while keeping a
-    stable display casing. Empties are dropped; nothing is fabricated.
-
-Run:  ./.venv/bin/python src/build_entities.py
-"""
-
 import json
 from collections import Counter
 from pathlib import Path
@@ -37,7 +17,6 @@ _canon = {}
 
 
 def _canon_value(kind, value):
-    """Trim + case-insensitive-dedup a single attribute string; None if empty."""
     if value is None:
         return None
     s = str(value).strip()
@@ -51,7 +30,6 @@ def _canon_value(kind, value):
 
 
 def _canon_list(kind, values):
-    """Normalize a list of attribute strings: trim, dedup (case-insensitive), drop empties."""
     out, seen = [], set()
     for v in values or []:
         cv = _canon_value(kind, v)
@@ -65,7 +43,6 @@ def _canon_list(kind, values):
 
 
 def _coerce_int(v):
-    """Coerce word_count to int; tolerate strings like '180'. None if not coercible."""
     if v is None:
         return None
     if isinstance(v, bool):

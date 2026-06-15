@@ -1,15 +1,3 @@
-"""
-Natural Language Understanding v2 for Feeds.ai pipeline.
-Supports 5 query modes: entity_single, entity_multi, theme_based, descriptive, mixed.
-
-LLM = Databricks Foundation Model (Meta Llama 3.3 70B) via pipeline.llm.databricks_complete — NO Groq.
-Uses JSON mode (response_format=json_object) with the schema spelled out in the prompt (the Databricks
-serving endpoint is used in JSON mode, not OpenAI tool-calling). Output shape is unchanged from before.
-
-NOTE: in the unified-router architecture this standalone NLU is superseded by the router's single
-shared brain (ROUTER_PLAN §8); it remains only for the legacy standalone vector-search surface.
-"""
-
 import json
 import time
 
@@ -82,7 +70,6 @@ SYSTEM_PROMPT = (
 
 
 def _safe_list(val):
-    """Convert null/None to empty list."""
     if val is None:
         return []
     if isinstance(val, list):
@@ -91,7 +78,6 @@ def _safe_list(val):
 
 
 def _loads(raw: str):
-    """Strip markdown fences, json.loads; fall back to the outermost {...}."""
     t = (raw or "").strip()
     if t.startswith("```"):
         t = t.strip("`")
@@ -108,10 +94,6 @@ def _loads(raw: str):
 
 
 def parse_query(user_query: str, max_retries: int = 2) -> dict:
-    """
-    Parse a user query into structured intent using the Databricks Llama endpoint (JSON mode).
-    Returns dict with all v2 fields (shape unchanged from the previous Groq implementation).
-    """
     for attempt in range(max_retries + 1):
         try:
             raw = databricks_complete(SYSTEM_PROMPT, user_query, json_mode=True, temperature=0)

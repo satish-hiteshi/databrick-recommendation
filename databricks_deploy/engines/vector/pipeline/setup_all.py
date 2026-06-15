@@ -1,8 +1,3 @@
-"""
-One-command setup: PostgreSQL + Qdrant + BM25.
-Run with: python -m pipeline.setup_all
-"""
-
 import os
 import time
 
@@ -15,7 +10,6 @@ from pipeline.data_loader import get_entity_by_name
 
 
 def validate_postgres():
-    """Test entity resolution against PostgreSQL."""
     print("\n=== PostgreSQL Validation ===")
     test_cases = [
         ("Elden Ring Nightreign", "exact"),
@@ -41,7 +35,6 @@ def validate_postgres():
 
 
 def validate_qdrant():
-    """Test vector search and keyword search against Qdrant."""
     print("\n=== Qdrant Validation ===")
 
     # Use Elden Ring Nightreign's embedding for a test search
@@ -72,7 +65,6 @@ def validate_qdrant():
 
 
 def generate_report(pg_results, vec_results, kw_results, elapsed):
-    """Write results/STORAGE_REPORT.md."""
     os.makedirs(RESULTS_DIR, exist_ok=True)
     report_path = os.path.join(RESULTS_DIR, "STORAGE_REPORT.md")
 

@@ -1,14 +1,8 @@
-"""
-Data loader for Feeds.ai entity data.
-Loads and merges compositions + entity profiles into a unified dataset.
-"""
-
 import json
 from pipeline.config import COMPOSITIONS_PATH, PROFILES_PATH
 
 
 def _load_and_merge():
-    """Load both JSON files and merge on entity_id."""
     with open(COMPOSITIONS_PATH) as f:
         compositions = json.load(f)
 
@@ -57,12 +51,10 @@ def _ensure_loaded():
 
 
 def get_all_entities():
-    """Return all merged entities."""
     return _ensure_loaded()
 
 
 def get_entity_by_name(name):
-    """Find entity by exact name (case-insensitive)."""
     name_lower = name.lower()
     for e in _ensure_loaded():
         if e["name"].lower() == name_lower:
@@ -71,7 +63,6 @@ def get_entity_by_name(name):
 
 
 def get_entities_by_vertical(vertical):
-    """Return all entities for a given vertical."""
     vertical_lower = vertical.lower()
     return [e for e in _ensure_loaded() if e["vertical"].lower() == vertical_lower]
 

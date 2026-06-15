@@ -1,10 +1,3 @@
-"""
-Negative entity filtering for Feeds.ai pipeline.
-Handles two cases:
-  1. Resolved negative entities (from SQL) — embedding similarity + keyword overlap + franchise exclusion
-  2. Unresolved keyword negatives (e.g., "comedy") — keyword overlap penalization only
-"""
-
 import numpy as np
 
 from pipeline.entity_resolver import batch_fetch_entities
@@ -21,19 +14,6 @@ def _cosine_sim(a, b):
 
 
 def apply_negative_filter(candidates, negative_entities, unresolved_neg_keywords=None):
-    """
-    Penalize or remove candidates similar to negative entities or matching negative keywords.
-
-    Args:
-        candidates: list of candidate dicts with entity_id, combined_score, etc.
-        negative_entities: list of resolved negative entity dicts from entity_resolver
-            (each has entity_id, embedding, bm25_keywords, franchise)
-        unresolved_neg_keywords: list of lowercase keyword strings that didn't resolve
-            as entities (e.g., "comedy", "romance"). Penalizes via keyword/text overlap.
-
-    Returns:
-        (filtered_candidates, debug_log)
-    """
     if not candidates:
         return candidates, []
 

@@ -1,9 +1,3 @@
-"""
-Deterministic reasoning engine for Feeds.ai.
-Generates human-readable explanations for why each recommendation was shown.
-No technical terms (vector, BM25, embedding, cosine, semantic) allowed.
-"""
-
 import random
 from pipeline.data_loader import get_all_entities
 
@@ -34,7 +28,6 @@ def _get_franchise(eid):
 
 
 def _pick_distinctive_keywords(shared_kw, n=3):
-    """Pick the most distinctive shared keywords, deprioritizing generic ones."""
     specific = [k for k in shared_kw if k not in GENERIC_KW]
     generic = [k for k in shared_kw if k in GENERIC_KW]
     picked = (specific + generic)[:n]
@@ -200,7 +193,6 @@ TEMPLATES = {
 # ══════════════════════════════════════════════════════════════════════
 
 def _select_template(category, used_set):
-    """Pick a template from the category pool, avoiding recently used ones."""
     pool = TEMPLATES.get(category, TEMPLATES["fallback"])
     available = [t for t in pool if t not in used_set]
     if not available:
@@ -215,18 +207,6 @@ def _select_template(category, used_set):
 # ══════════════════════════════════════════════════════════════════════
 
 def generate_reasoning(result, anchor_entities, nlu_output, used_templates):
-    """
-    Generate human-readable reasoning for a single result.
-
-    Args:
-        result: dict with entity_id, name, vertical, shared_keywords, etc.
-        anchor_entities: list of resolved positive entity dicts
-        nlu_output: full NLU output with query_mode, keywords, negatives, etc.
-        used_templates: set — shared across all results in one query for dedup
-
-    Returns:
-        (reasoning_short, reasoning_long)
-    """
     mode = nlu_output.get("query_mode", "")
     add_kw = nlu_output.get("additional_keywords", [])
     desc_kw = nlu_output.get("description_derived_keywords", [])
@@ -334,7 +314,6 @@ def generate_reasoning(result, anchor_entities, nlu_output, used_templates):
 
 
 def _make_short_long(text):
-    """Split a reasoning text into short (≤80 chars) and long (≤200 chars) versions."""
     text = text.strip()
     if len(text) <= 80:
         return text, text
@@ -350,10 +329,6 @@ def _make_short_long(text):
 # ══════════════════════════════════════════════════════════════════════
 
 def attach_reasoning(results, anchor_entities, nlu_output):
-    """
-    Attach reasoning_short and reasoning_long to each result in a list.
-    Uses a shared used_templates tracker to prevent repetition within one query.
-    """
     used = set()
     for r in results:
         short, long = generate_reasoning(r, anchor_entities, nlu_output, used)

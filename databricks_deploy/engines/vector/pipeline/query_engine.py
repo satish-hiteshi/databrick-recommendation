@@ -1,8 +1,3 @@
-"""
-Query engine v2 for Feeds.ai pipeline.
-Orchestrates: NLU → Retrieval → Negative Filter → Reranker.
-"""
-
 import json
 import time
 
@@ -45,7 +40,6 @@ def _format_result(rank, c):
 
 
 def _add_similarity_pct(results):
-    """Add similarity_percentage: top result = 100%, others scaled proportionally."""
     if not results:
         return
     max_rrf = max(r["rrf_score"] for r in results) if results else 1
@@ -54,10 +48,6 @@ def _add_similarity_pct(results):
 
 
 def process_query(user_query: str) -> dict:
-    """
-    End-to-end Phase 2 query processing.
-    Returns structured result dict with per-stage timings.
-    """
     timings = {}
 
     # 1. NLU
@@ -167,7 +157,6 @@ def process_query(user_query: str) -> dict:
 
 
 def print_results(output: dict):
-    """Pretty-print query results."""
     print(f"\n{'='*70}")
     print(f"Query: {output['query']}")
     print(f"{'='*70}")

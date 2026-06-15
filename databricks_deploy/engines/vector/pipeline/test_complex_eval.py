@@ -1,12 +1,3 @@
-"""
-Complex test suite + ground truth evaluation for Feeds.ai pipeline.
-Runs 20 queries, then evaluates result quality against metadata-based ground truth.
-Generates:
-  - results/COMPLEX_TEST_RESULTS.md
-  - results/QUALITY_EVALUATION.md
-  - results/quality_evaluation_data.json
-"""
-
 import json
 import os
 import time
@@ -76,7 +67,6 @@ def run_all():
 
 
 def generate_complex_results_report(results):
-    """Generate results/COMPLEX_TEST_RESULTS.md"""
     path = os.path.join(RESULTS_DIR, "COMPLEX_TEST_RESULTS.md")
     L = ["# Complex Query Test Results", ""]
 
@@ -149,7 +139,6 @@ def generate_complex_results_report(results):
 # ══════════════════════════════════════════════════════════════════════
 
 def load_entity_db():
-    """Load full entity database with profiles + compositions merged."""
     with open(PROFILES_PATH) as f:
         profiles = json.load(f)
     with open(COMPOSITIONS_PATH) as f:
@@ -179,11 +168,6 @@ def load_entity_db():
 
 
 def compute_ground_truth_score(anchor_entities, candidate, is_theme_query=False, theme_terms=None):
-    """
-    Compute metadata-based ground truth relevance score.
-    For entity queries: compare candidate metadata against anchor entity metadata.
-    For theme queries: compare candidate metadata against theme terms.
-    """
     score = 0.0
 
     if is_theme_query and theme_terms:
@@ -241,7 +225,6 @@ def compute_ground_truth_score(anchor_entities, candidate, is_theme_query=False,
 
 def get_ideal_top10(db, anchor_eids, target_verticals, exclude_eids=None,
                     is_theme=False, theme_terms=None):
-    """Get the ideal top 10 by ground truth metadata scoring."""
     exclude = set(exclude_eids or [])
     anchor_entities = [db[eid] for eid in anchor_eids if eid in db]
     target_set = set(target_verticals) if target_verticals else None
@@ -263,7 +246,6 @@ def get_ideal_top10(db, anchor_eids, target_verticals, exclude_eids=None,
 
 
 def evaluate_query(qid, result, db, name_map):
-    """Evaluate a single query's results against ground truth."""
     nlu = result.get("parsed_intent", {})
     mode = nlu.get("query_mode", "")
     pos_names = nlu.get("positive_entities", [])
@@ -378,7 +360,6 @@ def evaluate_query(qid, result, db, name_map):
 
 
 def run_evaluation(results):
-    """Run ground truth evaluation for all queries."""
     db, name_map = load_entity_db()
     evaluations = {}
 
@@ -402,7 +383,6 @@ def run_evaluation(results):
 
 
 def generate_quality_report(evaluations, db, name_map):
-    """Generate results/QUALITY_EVALUATION.md"""
     path = os.path.join(RESULTS_DIR, "QUALITY_EVALUATION.md")
     L = ["# Ground Truth Quality Evaluation", ""]
 

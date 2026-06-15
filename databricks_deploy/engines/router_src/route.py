@@ -1,25 +1,3 @@
-"""The single entry point for the unified router (ROUTER_PLAN §9 step 5, CONTEXT §1–§7).
-
-    route(query) -> structured response
-
-Flow:  query
-         -> extract           (LLM → intent JSON; the ONLY language-understanding step)
-         -> assemble_query    (deterministic establish-then-refine; picks the bounded path)
-         -> response          { query, path_taken, universe_establisher, refinements_applied,
-                                results (each tagged exact|related) + exact_vs_related, intent }
-
-The LLM only fills the intent JSON; ALL decisioning is the deterministic assembler's. This module
-adds nothing to that logic — it just wires extract→assemble and handles the one failure mode the
-composed system must survive: the LLM being unavailable / emitting unparseable output.
-
-GRACEFUL DEGRADATION (extraction failure):
-  If `extract` raises (LLM down, timeout, or unparseable after its own retry), we DO NOT crash and
-  we DO NOT guess a structured plan. We fall back to a single `vector_constrain` on the RAW query —
-  the safest universe when intent is unknown (vector tolerates free text) — and flag it loudly:
-  `extraction_ok=False`, `path_taken="FALLBACK__VECTOR_CONSTRAIN(raw_query)"`. The caller can always
-  see the system degraded rather than silently returning a different kind of answer.
-"""
-
 import sys
 import time
 from pathlib import Path
@@ -33,7 +11,6 @@ from extract import extract
 
 
 def _fallback_vector(query: str, top_k: int, error: str) -> dict:
-    """Extraction unavailable → degrade to one vector_constrain on the raw query, clearly flagged."""
     try:
         items = B.vector_constrain(query, vertical=None, top_n=top_k)
     except Exception as e:                                  # even the safe path can fail (engine down)
@@ -53,11 +30,6 @@ def _fallback_vector(query: str, top_k: int, error: str) -> dict:
 
 
 def route(query: str, top_k: int = 10, backfill_threshold: Optional[int] = None) -> dict:
-    """Run a query through the full unified router. Returns one structured response dict.
-
-    `extraction_ok` is True on the normal path (intent JSON → assembled path); False when the LLM
-    failed and we degraded to the raw-query vector fallback. `timing_ms` is wall-clock end to end.
-    """
     t0 = time.time()
 
     # ── 1. EXTRACT (the only LLM step). On failure → graceful vector fallback. ──

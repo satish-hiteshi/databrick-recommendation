@@ -1,16 +1,3 @@
-"""Load data/entities.jsonl into Neo4j (CONTEXT.md §5 graph model).
-
-Batched UNWIND. Per entity: MERGE the Entity by entity_id and set its scalar
-properties (incl. the bm25_keywords list for the full-text layer), then MERGE the
-shared attribute nodes by name and MERGE the relationships:
-  HAS_GENRE, HAS_THEME, HAS_KEYWORD, IN_FRANCHISE, DEVELOPED_BY, PUBLISHED_BY.
-
-All-MERGE => idempotent (safe to re-run; upserts properties, no duplicate
-nodes/rels). Requires the constraints from schema.py first (for dedup + speed).
-
-Run:  ./.venv/bin/python src/load.py
-"""
-
 import json
 from pathlib import Path
 

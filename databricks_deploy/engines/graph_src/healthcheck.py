@@ -1,10 +1,3 @@
-"""End-to-end Python -> Neo4j healthcheck.
-
-Connects via the shared connection helpers and prints the Neo4j server version,
-GDS version, and APOC version, then confirms full-text procedures are available.
-Run:  ./.venv/bin/python src/healthcheck.py
-"""
-
 from connection import (
     get_driver,
     get_gds,

@@ -1,8 +1,3 @@
-"""
-Qdrant vector store and BM25 keyword search for Feeds.ai pipeline.
-In-memory Qdrant for fast ANN search + rank-bm25 for keyword scoring.
-"""
-
 import os
 
 import numpy as np
@@ -30,7 +25,6 @@ _bm25_entities = None
 
 
 def get_client():
-    """Get or create the in-memory Qdrant client."""
     global _client
     if _client is None:
         _client = QdrantClient(":memory:")
@@ -38,7 +32,6 @@ def get_client():
 
 
 def create_collection():
-    """Create the Qdrant collection."""
     client = get_client()
 
     # Recreate collection
@@ -56,7 +49,6 @@ def create_collection():
 
 
 def upload_vectors():
-    """Upload all entity vectors to Qdrant."""
     entities = get_all_entities()
     embeddings = load_embeddings()
     if not embeddings:
@@ -102,10 +94,6 @@ def upload_vectors():
 
 def vector_search(query_embedding, target_verticals=None, top_k=TOP_K_RETRIEVAL,
                    date_start=None, date_end=None):
-    """
-    Search Qdrant by embedding vector.
-    Returns list of (entity_id, name, vertical, score) tuples.
-    """
     client = get_client()
 
     must_conditions = []
@@ -142,7 +130,6 @@ def vector_search(query_embedding, target_verticals=None, top_k=TOP_K_RETRIEVAL,
 
 
 def _build_bm25_index():
-    """Build the BM25 index from all entity keywords."""
     global _bm25_index, _bm25_entities
     entities = get_all_entities()
     # Tokenize: each entity's keywords lowercased
@@ -155,11 +142,6 @@ def _build_bm25_index():
 
 def keyword_search(anchor_keywords, target_verticals=None, top_k=TOP_K_RETRIEVAL,
                     date_start=None, date_end=None):
-    """
-    BM25 keyword search across all entities.
-    anchor_keywords: list of keyword strings from the anchor entity.
-    Returns list of (entity_id, name, vertical, bm25_score) tuples.
-    """
     if _bm25_index is None:
         _build_bm25_index()
 
@@ -189,12 +171,6 @@ def keyword_search(anchor_keywords, target_verticals=None, top_k=TOP_K_RETRIEVAL
 
 
 def setup_qdrant():
-    """Run full Qdrant setup: create collection + upload vectors.
-
-    Deployment: with VECTOR_BACKEND=databricks the dense ANN is served by Databricks Vector Search
-    (see the override at the bottom of this module), so the in-memory Qdrant build is skipped — only
-    the in-process BM25 index is needed locally for keyword_search.
-    """
     if os.getenv("VECTOR_BACKEND", "").lower() == "databricks":
         _build_bm25_index()
         print(f"VECTOR_BACKEND=databricks → dense ANN via Databricks Vector Search; "

@@ -1,8 +1,3 @@
-"""
-Entity resolution via PostgreSQL find_entity() cascade.
-Exact match -> prefix match -> contains match.
-"""
-
 import numpy as np
 import psycopg2
 
@@ -26,12 +21,6 @@ def _connect():
 
 
 def resolve_entity(entity_name: str):
-    """
-    Resolve an entity name using the PostgreSQL find_entity() cascade.
-    Returns dict with: entity_id, name, vertical, embedding (np.array),
-    bm25_keywords, franchise, match_type.
-    Returns None if not found.
-    """
     conn = _connect()
     cur = conn.cursor()
     cur.execute("SELECT * FROM find_entity(%s);", (entity_name,))
@@ -57,10 +46,6 @@ def resolve_entity(entity_name: str):
 
 
 def batch_fetch_entities(entity_ids: list):
-    """
-    Batch-fetch entity data (embedding, keywords, franchise, composed_text) by entity_id list.
-    Returns dict mapping entity_id -> {embedding, bm25_keywords, franchise, composed_text}.
-    """
     if not entity_ids:
         return {}
 

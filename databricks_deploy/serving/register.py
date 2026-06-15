@@ -1,18 +1,3 @@
-"""Log the COLLAPSED router pyfunc and register it as a NEW VERSION of the Parrot UC model.
-
-SELF-CONTAINED build: this folder vendors all engine sources under ../engines, so it does not depend on
-the rest of this repo. Bundles into ONE model artifact (no engine servers):
-  serving glue   : model.py, parrot_adapter.py, inprocess_engines.py, inmemory_store.py, vs_store.py
-  router source  : ../engines/router_src/*.py        → router_src/
-  vector pipeline: ../engines/vector/pipeline/*.py    → vector/pipeline/   (+ the 4 data_v2 files)
-  graph source   : ../engines/graph_src/*.py          → graph_src/
-
-Run on Databricks (notebook, repo synced) or locally with workspace creds. Then repoint the endpoint's
-served entity to the new version and set its env vars (see ../config.example.env).
-
-    import sys; sys.path.insert(0, "databricks_deploy/serving"); import register; register.main()
-"""
-
 import os
 import shutil
 import tempfile
@@ -57,7 +42,6 @@ def _copy_py(src_dir, dst_dir):
 
 
 def _stage():
-    """Assemble the bundle directory (the layout model.py discovers on sys.path)."""
     s = tempfile.mkdtemp(prefix="parrot_collapse_")
     for fn in _SERVING_GLUE:
         shutil.copy(os.path.join(_HERE, fn), s)

@@ -1,8 +1,3 @@
-"""Offline proof of the Postgres-free resolver — runs against the REAL data_v2 files, no DB needed.
-
-    python databricks_deploy/serving/test_inmemory_store.py
-"""
-
 import os
 import sys
 

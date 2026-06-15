@@ -1,42 +1,3 @@
-"""Deterministic assembler: intent JSON -> bounded execution path.
-
-VECTOR-PRIMARY architecture (07b, after the honest 06b eval showed graph-primary regressed against the
-full vector pipeline). Reads an Intent and composes the blocks into ONE establish-then-refine path;
-assembly is dynamic but every result is a NAMED, testable composition.
-
-THE NEW DEFAULT — VECTOR establishes, GRAPH refines (vector has the semantic recall; graph does what
-vector provably cannot: enforce relational/structural constraints, filter negations, contribute a
-structural rerank). GRAPH establishes FIRST only for the proven structural niche.
-
-Establisher selection (exactly one, runs first):
-  1. seed(s) present:
-       specific target vertical -> vector_seed / multiseed   (combined seed vector neighborhood; handles
-                                                               single cross-vertical game->movie)
-       vertical=any / multi-target -> vector_constrain(raw)   (/api/query NLU targets the right verticals)
-  2. structural NICHE (franchise / developer_relation.also_made / explicit structural) -> graph_constrain
-       (sparse-franchise safety: a tiny franchise node, e.g. "Warhammer", re-establishes via vector recall)
-  3. negation present -> establish the BROAD POSITIVE set then graph apply_negations removes the category
-       (concepts -> graph_constrain broad; else positive phrase -> vector; else vertical universe). The
-       phrase sent to vector is POSITIVE-ONLY so the vector pipeline never over-negates to empty (07a).
-  4. DEFAULT (anything with semantic/thematic/descriptive character) -> vector_constrain (full /api/query)
-  5. bare "<vertical>" with no other signal -> vector on the vertical word, else graph vertical universe
-  6. last resort (no signal but raw text) -> vector_constrain(raw_query); EMPTY only if truly nothing.
-
-Refine the established set (refiners only reorder/shrink it): semantic rerank WITHIN a graph/seed set
-(vector-established sets are already semantically ranked) -> vector_rerank_within; soft.structural_prefs
--> graph_rerank_within; negations -> apply_negations (final hard exclusion). Too-small -> anchored backfill.
-
-INVARIANT (enforced structurally + at runtime): exactly one establisher runs first; every refiner is
-called only on the handed set and its output is asserted ⊆ the established ids (a refiner can never
-introduce a new entity / act as an establisher).
-
-NAMED PATHS (path_taken): establisher token ∈ {VECTOR_CONSTRAIN, GRAPH_CONSTRAIN, GRAPH_VERTICAL,
-SEED_VECTOR, MULTISEED}; only-name ∈ {VECTOR_ONLY, GRAPH_ONLY, GRAPH_VERTICAL_ONLY, SEED_VECTOR_ONLY,
-MULTISEED_ONLY}; with refiners -> "TOKEN__VECTOR_RERANK", "TOKEN__GRAPH_RERANK",
-"TOKEN__VECTOR_RERANK__GRAPH_RERANK"; + optional trailing "__BACKFILL". apply_negations runs on any path
-when present (recorded in refinements_applied[], not a path token, so the named-path set stays bounded).
-"""
-
 import re
 import statistics
 from typing import List, Optional
@@ -65,9 +26,6 @@ _VERTICAL_FILLER = {
 
 
 def _has_signal_beyond_vertical(raw_query: str, vertical: Optional[str]) -> bool:
-    """True if the raw query carries retrievable content beyond the bare vertical word + trivial framing
-    filler. Used to salvage a topic the LLM dropped (e.g. 'business podcasts' extracted as only
-    verticals=[podcast]) — establish on the raw query instead of the meaningless bare vertical word."""
     toks = re.findall(r"[a-z0-9']+", (raw_query or "").lower())
     stop = _VERTICAL_FILLER | {(vertical or "").lower()}
     content = [t for t in toks if t not in stop and len(t) > 1]
@@ -75,8 +33,6 @@ def _has_signal_beyond_vertical(raw_query: str, vertical: Optional[str]) -> bool
 
 
 def _split_seeds(seed_entity) -> List[str]:
-    """A seed_entity string may name MULTIPLE entities ('Hades II, Hollow Knight', 'X and Y').
-    NOTE: do NOT split on '&' — it appears inside single titles ('Dungeons & Dragons')."""
     if not seed_entity:
         return []
     if isinstance(seed_entity, list):
@@ -89,10 +45,6 @@ _ENFORCEABLE_STRUCT = ("developer", "publisher")
 
 
 def _split_structural(structural):
-    """(enforceable_dict, feature_terms_str). developer/publisher are real graph nodes graph_constrain
-    enforces (the niche); everything else (mode, feature, multiplayer, crafting, player_count, …) is a
-    preference-like signal — graph-establishing on it yields an influence dump, so it must drive VECTOR
-    establishment + a graph rerank instead (07b v2 loss #100)."""
     structural = structural or {}
     enforceable = {k: v for k, v in structural.items() if k in _ENFORCEABLE_STRUCT and v}
     terms = []
@@ -110,9 +62,6 @@ def _split_structural(structural):
 
 # ── selective-rerank GATE (07f) — decide per query whether the cross-encoder fires (RERANK=auto) ──
 def _topk_cv(items, k: int = 10):
-    """Coefficient of variation (std/mean — scale-free) of the top-K establisher scores. LOW CV = flat,
-    uninformative ordering (cosine/influence bunched ≈ noise) → reranking helps; HIGH CV = a clear
-    gradient → ordering already meaningful. None if too few / non-positive."""
     scores = [it.get("score") for it in items[:k] if isinstance(it.get("score"), (int, float))]
     if len(scores) < 3:
         return None
@@ -123,11 +72,6 @@ def _topk_cv(items, k: int = 10):
 
 
 def should_rerank(intent, established, establisher, refiner_order, signal=None):
-    """Per-query gate: fire the cross-encoder? Returns (fire: bool, reason: str).
-    GUARD 3 (both signals): NEVER rerank where the establisher's ORDER encodes correctness the text-only
-    cross-encoder can't see — negation (graph set-exclusion) and graph-established structural+semantic.
-    Signal A (preferred, general): rerank when Stage-1 top-K scores are FLAT (low CV). Signal B (fallback):
-    rerank the vector-established semantic paths only."""
     sig = (signal or config.RERANK_GATE_SIGNAL).upper()
     h = intent.hard_constraints
     if h.negations:
@@ -304,7 +248,6 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     working = list(established)
 
     def _refine(label, new_set, kind):
-        """Apply a refiner result, asserting the invariant (output ⊆ established set)."""
         out_ids = {it["entity_id"] for it in new_set}
         assert out_ids <= established_ids, f"INVARIANT VIOLATED: {label} introduced new entities"
         refinements.append(label)
@@ -390,9 +333,6 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
 
 
 def _parallel_assemble(jobs):
-    """Run several assemble() sub-plans CONCURRENTLY — they're I/O-bound on the engines (Voyage + Vector
-    Search + Neo4j), so wall-clock ≈ the SLOWEST sub-plan, not the sum. Input order is preserved. A
-    single job runs inline (no thread overhead)."""
     if len(jobs) <= 1:
         return [assemble(*j) for j in jobs]
     from concurrent.futures import ThreadPoolExecutor
@@ -401,10 +341,6 @@ def _parallel_assemble(jobs):
 
 
 def assemble_multi(intents, top_k: int = 10, backfill_threshold: int = BACKFILL_THRESHOLD) -> dict:
-    """Independent multi-intent (CONTEXT §7) — the RARE case where extraction emits >1 intent object
-    (two genuinely independent universes, e.g. 'horror games AND cozy podcasts'). Run each as its own
-    establish→refine sub-plan and MERGE into clearly-grouped sections. Distinct from the default
-    single-universe path."""
     subs = _parallel_assemble([(it, top_k, backfill_threshold) for it in intents])
     groups, merged = [], []
     seen_labels = {}
@@ -424,10 +360,6 @@ def assemble_multi(intents, top_k: int = 10, backfill_threshold: int = BACKFILL_
 
 
 def _vertical_subintent(intent: Intent, v: str) -> Intent:
-    """Derive a single-vertical sub-intent for vertical `v` from a multi-vertical intent (07f Fix 2).
-    Seeds tagged for `v` are used same-vertical; if none are tagged for `v` but seeds exist, ALL seeds are
-    used as cross-vertical anchors (recommend `v` based on the user's seeds); shared hard/soft (incl.
-    negations) are carried so EVERY vertical's sub-plan is negation-filtered."""
     d = intent.model_dump()
     seeds = [s for s in d["seed_entities"] if s.get("vertical") == v] or list(d["seed_entities"])
     d["verticals"] = [v]
@@ -439,10 +371,6 @@ def _vertical_subintent(intent: Intent, v: str) -> Intent:
 
 def assemble_multivertical(intent: Intent, top_k: int = 10,
                            backfill_threshold: int = BACKFILL_THRESHOLD) -> dict:
-    """Multi-vertical coverage (07f Fix 2): a request spanning >1 vertical runs ONE establish→refine
-    sub-plan PER requested vertical (so every vertical is represented, instead of one blended universe the
-    largest seed-group dominates), merged into vertical-grouped sections. Reuses the MULTI_INTENT merge
-    shape."""
     verticals = list(intent.verticals)
     subs = _parallel_assemble(
         [(_vertical_subintent(intent, v), top_k, backfill_threshold) for v in verticals])
@@ -461,8 +389,6 @@ def assemble_multivertical(intent: Intent, top_k: int = 10,
 
 
 def assemble_query(intents, top_k: int = 10, backfill_threshold: int = BACKFILL_THRESHOLD) -> dict:
-    """Dispatcher: >1 intent object -> independent multi-intent merge (CONTEXT §7); 1 intent spanning
-    >1 vertical -> per-vertical coverage merge (07f); else the default single-universe assemble."""
     if not intents:
         return {"path_taken": "EMPTY", "universe_establisher": None, "refinements_applied": [],
                 "results": [], "exact_vs_related": {"exact": 0, "related": 0, "backfill": False},

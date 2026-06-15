@@ -1,24 +1,3 @@
-"""In-process engine transport for the COLLAPSED router (Databricks Model Serving).
-
-In local dev the router's blocks.py calls two FastAPI engines over HTTP. In the collapsed deployment
-there are NO engine servers — this module answers those exact calls IN-PROCESS, dispatching by URL path
-to the underlying pipeline + graph functions. blocks.py routes its `_post` / `_get` here when
-ROUTER_ENGINE_MODE=inprocess.
-
-It REUSES the real logic (no reimplementation of retrieval/Cypher):
-  vector  → pipeline.query_engine.process_query (the full pipeline: NLU + resolve + hybrid retrieval +
-            rank), with resolve_entity in-memory (ENTITY_BACKEND=memory) and dense ANN via Databricks
-            Vector Search (VECTOR_BACKEND=databricks). Thin replicas of /api/retrieve, /api/score_set,
-            /api/neighbors, /api/texts are built on vector_store / embedding_generator / data_loader.
-  graph   → src/query.py (cypher_structured, similar_by_attributes) + thin replicas of
-            /graph/score_within, /graph/entity_search, /graph/concepts (Cypher copied verbatim from
-            src/api.py) over a neo4j driver to the Aura cloud.
-
-Heavy modules are imported lazily inside handlers so an env/dep problem surfaces at the failing call
-(clear in serving logs) rather than at module import. Engines are configured purely by env on the
-endpoint: VS_* (Vector Search), VOYAGE_API_KEY, DATABRICKS_* (FM endpoint), NEO4J_* (Aura).
-"""
-
 import time
 from urllib.parse import urlsplit
 
@@ -45,7 +24,6 @@ def _driver():
 
 
 def _reset_driver():
-    """Drop the cached driver so the next call reconnects (after a stale-connection error)."""
     global _DRIVER
     try:
         if _DRIVER is not None:
@@ -62,13 +40,11 @@ def _db():
 
 # ════════════════════════════════ vector handlers ════════════════════════════════
 def _vec_query(body):
-    """/api/query — the full vector pipeline (resolve_entity in-memory, dense ANN via Vector Search)."""
     from pipeline.query_engine import process_query
     return process_query(body["query"])
 
 
 def _vec_retrieve(body):
-    """/api/retrieve — no-NLU semantic retrieval: embed the phrase + Vector Search."""
     from pipeline.embedding_generator import embed_query_text
     from pipeline.vector_store import vector_search
     phrase = body.get("phrase", "")
@@ -83,7 +59,6 @@ def _vec_retrieve(body):
 
 
 def _vec_score_set(body):
-    """/api/score_set — cosine(phrase, stored vector) for a FIXED id set; no retrieval."""
     from pipeline.embedding_generator import cosine_similarity, embed_query_text
     import inmemory_store
     phrase = body["phrase"]
@@ -103,7 +78,6 @@ def _vec_score_set(body):
 
 
 def _vec_neighbors(body):
-    """/api/neighbors — nearest neighbors OF anchor entities (search with each anchor's stored vector)."""
     from pipeline.vector_store import vector_search
     import inmemory_store
     anchor_ids = body.get("anchor_ids", [])
@@ -134,7 +108,6 @@ _TEXTS = None
 
 
 def _vec_texts(body):
-    """/api/texts — enriched candidate text by id, served in-memory from composed_text (no Postgres)."""
     global _TEXTS
     if _TEXTS is None:
         from pipeline.data_loader import get_all_entities
@@ -157,7 +130,6 @@ def _score_of(r):
 
 
 def _fmt(raw, top_k):
-    """Vector-shaped result formatting — identical to src/api.py::_fmt (keeps the wire shape exact)."""
     items = list(raw)[:top_k]
     scores = [_score_of(r) for r in items]
     mx = max(scores) if scores else 1.0
@@ -176,7 +148,6 @@ def _fmt(raw, top_k):
 
 
 def _graph_structured(body):
-    """/graph/structured — relational / multi-hop Cypher retrieval."""
     import query as Q
     top_k = body.get("top_k", 10)
     filters = {k: v for k, v in body.items() if k != "top_k" and v is not None}
@@ -187,7 +158,6 @@ def _graph_structured(body):
 
 
 def _graph_similar(body):
-    """/graph/similar — more-like-this via precomputed :SIMILAR_TO."""
     import query as Q
     eid = body.get("entity_id")
     top_k = body.get("top_k", 10)
@@ -217,7 +187,6 @@ RETURN e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical,
 
 
 def _graph_score_within(body):
-    """/graph/score_within — per-id graph attrs + influence/pref/seed score for a FIXED set."""
     ids = body.get("entity_ids", [])
     prefs = body.get("structural_prefs") or {}
     seed = body.get("seed_entity")
@@ -252,7 +221,6 @@ def _graph_score_within(body):
 
 
 def _graph_entity_search(params):
-    """/graph/entity_search — name → entity lookup (Cypher copied from src/api.py)."""
     q = params.get("q")
     limit = int(params.get("limit", 10))
     vertical = params.get("vertical")
@@ -269,7 +237,6 @@ def _graph_entity_search(params):
 
 
 def _graph_concepts(params):
-    """/graph/concepts — the Concept vocabulary (Cypher copied from src/api.py)."""
     min_count = int(params.get("min_count", 1))
     cypher = (
         "MATCH (c:Concept)<-[:HAS_CONCEPT]-(e) "
@@ -313,9 +280,6 @@ def _is_neo4j_conn(e):
 
 
 def dispatch(method, url, payload):
-    """Answer a blocks.py engine call in-process, with SHORT retries on TRANSIENT engine errors
-    (Voyage / Vector Search rate-limits or 5xx, Neo4j Aura idle-connection drops). Non-transient errors
-    raise immediately. `url`'s path picks the handler; `payload` is the POST body or GET params dict."""
     path = urlsplit(url).path
     fn = _ROUTES.get((method.upper(), path))
     if fn is None:

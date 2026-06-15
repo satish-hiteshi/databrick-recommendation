@@ -1,8 +1,3 @@
-"""
-Test retrieval v2 with 5 queries covering all query modes.
-Generates results/RETRIEVAL_V2_TEST.md.
-"""
-
 import json
 import os
 import time

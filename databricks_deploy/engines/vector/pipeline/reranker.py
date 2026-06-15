@@ -1,8 +1,3 @@
-"""
-Reranker v2 for Feeds.ai pipeline.
-Supports Phase 2: multi-entity, keyword boosting, per-vertical splitting, franchise diversity.
-"""
-
 from collections import Counter
 
 from pipeline.config import TOP_K_RESULTS
@@ -54,22 +49,6 @@ def _get_composed(eid):
 # ── Main rerank function ─────────────────────────────────────────────
 
 def rerank(candidates, positive_entities, nlu_output, query_mode, top_k=TOP_K_RESULTS):
-    """
-    Apply reranking rules to merged candidates.
-
-    Args:
-        candidates: list of candidate dicts from retrieval (with combined_score)
-        positive_entities: list of resolved positive entity dicts
-        nlu_output: dict from NLU with additional_keywords, description_derived_keywords,
-                    target_verticals, query_type
-        query_mode: string query mode from NLU
-        top_k: max results per vertical
-
-    Returns:
-        dict with:
-          results: list of final ranked results (or dict of vertical -> results for multi-vertical)
-          debug: reranking debug info
-    """
     if not candidates:
         return {"results": [], "debug": {"note": "no candidates"}}
 
@@ -177,7 +156,6 @@ def rerank(candidates, positive_entities, nlu_output, query_mode, top_k=TOP_K_RE
 
 
 def _enforce_franchise_diversity(results, debug):
-    """Cap at 3 results per franchise within a result list."""
     franchise_counts = Counter()
     filtered = []
     for c in results:

@@ -1,19 +1,3 @@
-"""FastAPI service exposing the Feeds.ai embedding-free GRAPH engine over HTTP.
-
-Mirrors the SHAPE of the existing vector pipeline's API (Feedsai-pipeline `POST /api/query`)
-so a frontend can render graph results with the same components. Each result carries the
-vector API's fields (rank / name / vertical / final_score / similarity_percentage /
-reasoning_short / reasoning_long) PLUS graph-only extras (entity_id / why / archetype / route).
-
-The headline behavior: `POST /graph/search` runs the rule-based router (router.py), dispatches to
-the graph query functions (query.py) with the reranker (rerank.py) where useful, and — when the
-query is IMPLICIT (mood/paraphrase/date/podcast-seed) — returns an explicit `route:"vector"`
-decision with an empty result set and a human-readable reason, instead of a weak graph answer.
-
-Run (port 8010 — the vector API owns 8000):
-  ./.venv/bin/uvicorn api:app --app-dir src --port 8010 --reload
-"""
-
 import time
 
 from fastapi import FastAPI, Query as QueryParam
@@ -128,7 +112,6 @@ class ScoreWithinRequest(BaseModel):
 
 @app.post("/graph/search")
 def graph_search(req: SearchRequest):
-    """Auto-router: classify the query (explicit→graph / implicit→vector) and dispatch."""
     t0 = time.time()
     try:
         d = RT.route(req.query, k=req.top_k)
@@ -155,7 +138,6 @@ def graph_search(req: SearchRequest):
 
 @app.post("/graph/similar")
 def graph_similar(req: SimilarRequest):
-    """More-like-this via precomputed :SIMILAR_TO (explainable shared attributes)."""
     r = Q.similar_by_attributes(req.entity_id, vertical=req.vertical, limit=req.top_k)
     if isinstance(r, dict):  # no_graph_signal / not_found
         return {"engine": "graph", "endpoint": "similar", "entity_id": req.entity_id,
@@ -167,7 +149,6 @@ def graph_similar(req: SimilarRequest):
 
 @app.post("/graph/cross_vertical")
 def graph_cross_vertical(req: CrossVerticalRequest):
-    """Connected entities in another vertical via shared attribute nodes (explainable path)."""
     r = Q.cross_vertical(req.entity_id, req.target_vertical, limit=req.top_k)
     if isinstance(r, dict):
         return {"engine": "graph", "endpoint": "cross_vertical", "entity_id": req.entity_id,
@@ -181,7 +162,6 @@ def graph_cross_vertical(req: CrossVerticalRequest):
 
 @app.post("/graph/structured")
 def graph_structured(req: StructuredRequest):
-    """Relational / multi-hop Cypher retrieval (the graph-only archetype)."""
     filters = {k: v for k, v in req.dict().items()
                if k != "top_k" and v is not None}
     r = Q.cypher_structured(filters, limit=req.top_k)
@@ -192,7 +172,6 @@ def graph_structured(req: StructuredRequest):
 
 @app.post("/graph/community")
 def graph_community(req: CommunityRequest):
-    """Browse a Louvain community (neighborhood), labelled by dominant genres."""
     r = Q.community_browse(entity_id=req.entity_id, community_id=req.community_id, limit=req.top_k)
     if isinstance(r, dict):
         return {"engine": "graph", "endpoint": "community", "status": r.get("status"),
@@ -217,12 +196,6 @@ RETURN e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical,
 
 @app.post("/graph/score_within")
 def score_within(req: ScoreWithinRequest):
-    """Graph analog of the vector /api/score_set hook: for a FIXED set of entity_ids, return each
-    entity's graph attributes (concepts/keywords/genres/themes/franchise/developer/publisher),
-    influence, community, and a graph rerank `score` (influence normalised within the set + a
-    structural_prefs match boost + optional shared-concept overlap with a seed). MATCHes only the
-    passed-in ids — NO retrieval, NO expansion. Powers graph_rerank_within / graph_filter_within /
-    apply_negations in the router (those operate purely on what this returns)."""
     pref_vals = [str(v).lower() for v in (req.structural_prefs or {}).values()]
     with _driver().session(database=NEO4J_DATABASE) as s:
         rows = [r.data() for r in s.run(_SCORE_WITHIN_CYPHER, ids=req.entity_ids)]
@@ -257,7 +230,6 @@ def score_within(req: ScoreWithinRequest):
 def entity_search(q: str = QueryParam(..., min_length=1),
                   limit: int = QueryParam(10, ge=1, le=50),
                   vertical: Optional[str] = QueryParam(None)):
-    """Name lookup so the UI can pick a seed entity for similar / cross_vertical."""
     cypher = (
         "MATCH (e:Entity) WHERE toLower(e.name) CONTAINS toLower($q) "
         "AND ($v IS NULL OR e.vertical = $v) "
@@ -272,9 +244,6 @@ def entity_search(q: str = QueryParam(..., min_length=1),
 
 @app.get("/graph/concepts")
 def concepts(min_count: int = QueryParam(1, ge=1)):
-    """The Concept vocabulary (key + display name + entity count). The unified router uses this to
-    normalise LLM-extracted concept terms against the graph's REAL vocabulary — folding terms the
-    graph doesn't recognise (mood/quality words) into soft intent instead of zeroing the universe."""
     cypher = (
         "MATCH (c:Concept)<-[:HAS_CONCEPT]-(e) "
         "WITH c, count(e) AS n WHERE n >= $min_count "
@@ -286,7 +255,6 @@ def concepts(min_count: int = QueryParam(1, ge=1)):
 
 @app.get("/graph/health")
 def health():
-    """Neo4j connectivity + node/edge counts."""
     try:
         with _driver().session(database=NEO4J_DATABASE) as s:
             comp = s.run("CALL dbms.components() YIELD versions, edition "

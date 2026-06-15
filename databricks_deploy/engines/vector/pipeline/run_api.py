@@ -1,5 +1,3 @@
-"""Start the Feeds.ai API server."""
-
 import uvicorn
 
 if __name__ == "__main__":

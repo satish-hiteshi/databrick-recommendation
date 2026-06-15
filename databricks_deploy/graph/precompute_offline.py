@@ -1,30 +1,3 @@
-"""GDS-FREE precompute for Neo4j AuraDB (no Graph Data Science library).
-
-AuraDB (unlike AuraDS) has no GDS, so the project's src/precompute.py can't run there. This reproduces
-the parts the COLLAPSED ROUTER actually reads, computed in Python and written straight into AuraDB:
-
-  1. Unified Concept layer + vertical labels   — plain Cypher (same as src/precompute.py; no GDS)
-  2. Entity.influence   = PageRank              — networkx, over the primary graph
-  3. Entity.community   = Louvain communities   — networkx
-  4. (:Entity)-[:SIMILAR_TO {score}]->(:Entity) = Node Similarity (Jaccard, topK=10, Entity→Entity)
-  5. (:Entity)-[:KNN_SIMILAR {score}]->(:Entity)= cosine-KNN over the multi-hot concept vector, per
-                                                  vertical, topK=10
-
-Router criticality: #1 (concepts), #2 (influence — score_within ranking) and #4 (SIMILAR_TO —
-graph_similar establisher) are REQUIRED by the unified router. #3/#5 are produced for fidelity with the
-graph engine but the router's blocks don't call them. Serve-time queries are plain Cypher either way.
-
-The "primary graph" matches src/precompute.py: nodes Entity+Concept+Keyword+Franchise, relationships
-HAS_CONCEPT/HAS_KEYWORD/IN_FRANCHISE, UNDIRECTED. Run ONCE, AFTER schema.py + load.py, against AuraDB:
-
-  pip install neo4j networkx numpy
-  NEO4J_URI=neo4j+s://<id>.databases.neo4j.io NEO4J_USER=neo4j NEO4J_PASSWORD=*** \
-      python databricks_deploy/graph/precompute_offline.py
-
-Connects from env (NEO4J_URI / NEO4J_USER or NEO4J_USERNAME / NEO4J_PASSWORD / NEO4J_DATABASE). It is a
-one-time data-prep job — it does NOT run inside the serving endpoint.
-"""
-
 import os
 import time
 from collections import defaultdict
@@ -44,8 +17,6 @@ PRIMARY_RELS = ["HAS_CONCEPT", "HAS_KEYWORD", "IN_FRANCHISE"]
 
 # ───────────────────────── 1. Concept layer + labels (plain Cypher, no GDS) ─────────────────────────
 def build_concept_layer(s):
-    """Materialize (:Concept {key,name}) from genres∪themes (case-insensitive) + vertical labels.
-    Identical Cypher to src/precompute.py::build_concepts_vectors_labels (sans the GDS-only attrVec)."""
     s.run("CREATE CONSTRAINT concept_key_unique IF NOT EXISTS "
           "FOR (c:Concept) REQUIRE c.key IS UNIQUE").consume()
     # Genres first so genre casing wins as the Concept display name.
@@ -64,8 +35,6 @@ def build_concept_layer(s):
 
 # ───────────────────────── read the primary graph into memory ─────────────────────────
 def read_graph(s):
-    """Return: entities (ordered ids), vertical{eid}, attr_neighbors{eid:set(attr_key)},
-    concept_keys{eid:set(concept_key)} — all from the loaded graph."""
     ent = [r["eid"] for r in s.run("MATCH (e:Entity) RETURN e.entity_id AS eid")]
     vertical = {r["eid"]: r["v"] for r in
                 s.run("MATCH (e:Entity) RETURN e.entity_id AS eid, e.vertical AS v")}
@@ -114,8 +83,6 @@ def pagerank_louvain(ent, attr_neighbors):
 
 # ───────────────────────── 4. Node Similarity (Jaccard, topK) ─────────────────────────
 def node_similarity(ent, attr_neighbors, top_k=TOP_K):
-    """Jaccard of attr-neighbor sets, Entity→Entity, topK per source — matches GDS nodeSimilarity.
-    Uses an inverted index (attr → entities) so only entities that SHARE a neighbor are compared."""
     inv = defaultdict(list)
     for e in ent:
         for a in attr_neighbors.get(e, ()):

@@ -1,14 +1,3 @@
-"""Create the Neo4j schema for the Feeds.ai graph PoC (CONTEXT.md §5).
-
-  * Uniqueness constraints on Entity.entity_id and on name for each attribute
-    label (Genre, Theme, Keyword, Franchise, Developer, Publisher). Constraints
-    also create backing indexes for fast MERGE.
-  * A full-text index `entityText` (Lucene/BM25) over Entity.description and
-    Entity.name — the embedding-free keyword-retrieval path.
-
-Idempotent (IF NOT EXISTS). Run:  ./.venv/bin/python src/schema.py
-"""
-
 from connection import get_driver, NEO4J_DATABASE
 
 # (constraint_name, label, property)

@@ -1,15 +1,3 @@
-"""The LLM extraction prompt (CONTEXT.MD §3). The LLM's ONLY job is language understanding:
-convert the query into the intent JSON. It does NOT choose engines, plans, or ordering.
-
-Output contract: a single JSON object {"intents": [ <intent>, ... ]}. One intent normally;
-multiple ONLY for genuinely independent multi-intent queries (CONTEXT §7). The word JSON appears
-so output is strict JSON.
-
-07f: the schema now carries an explicit `verticals` SET and a `seed_entities` LIST (each seed tagged
-with the vertical the user tied it to). These guarantee multi-vertical coverage and clean multi-seed
-parsing — the keystone fix for "recommend movies, games AND TV" silently dropping verticals.
-"""
-
 SYSTEM_PROMPT = r"""You convert an entertainment-discovery query into a structured intent as STRICT JSON.
 You ONLY do language understanding. You do NOT choose engines, retrieval, or ordering.
 

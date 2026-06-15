@@ -1,10 +1,3 @@
-"""Neo4j connection helpers for the Feeds.ai graph PoC.
-
-Single source of connection truth for all `src/` modules. Opens the official
-`neo4j` driver and a `graphdatascience` (GDS) client from config (env / .env at
-the project root). Keep credentials in `.env`, not in code.
-"""
-
 import os
 from pathlib import Path
 
@@ -25,15 +18,12 @@ _AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 
 
 def get_driver():
-    """Return a connectivity-verified neo4j driver. Caller is responsible for .close()."""
     driver = GraphDatabase.driver(NEO4J_URI, auth=_AUTH)
     driver.verify_connectivity()
     return driver
 
 
 def get_gds():
-    """Return a graphdatascience (GDS) client bound to the configured database.
-    Caller is responsible for .close()."""
     return GraphDataScience(NEO4J_URI, auth=_AUTH, database=NEO4J_DATABASE)
 
 

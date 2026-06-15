@@ -1,13 +1,3 @@
-"""Validate the loaded Feeds.ai graph and print a report.
-
-Reports node counts by label, relationship counts by type, entity counts by
-vertical, rich sample entities, the most common genres/themes, a cross-vertical
-shared-attribute check (verticals attached to Genre 'Horror'), and a full-text
-query against the entityText index. Also writes results/load_validation.json.
-
-Run:  ./.venv/bin/python src/validate.py
-"""
-
 import json
 from pathlib import Path
 

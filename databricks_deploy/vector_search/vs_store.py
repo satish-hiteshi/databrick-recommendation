@@ -1,21 +1,3 @@
-"""Databricks Vector Search implementation of the vector pipeline's dense-ANN call.
-
-Drop-in for pipeline.vector_store.vector_search — SAME signature, SAME return shape
-[(entity_id, name, vertical, score), ...] — so retrieval.py needs no change. Activated when the Vector
-App runs with VECTOR_BACKEND=databricks (see the env-gated import at the bottom of
-pipeline/vector_store.py). BM25 keyword_search stays in-process (rank-bm25) and is NOT overridden here.
-
-Reuses the EXISTING Voyage vectors: build_index.py loaded vector/data_v2/embeddings_v2.npy into the
-`embedding` column of the source Delta table, so retrieval parity with local Qdrant holds up to ANN
-recall. Query vectors are produced upstream by the same voyage-4-large model (retrieval passes the
-embedding in) — nothing re-embeds here.
-
-Env:
-  VS_ENDPOINT_NAME   Vector Search endpoint (e.g. feedsai-vs)
-  VS_INDEX_NAME      Delta-Sync index (e.g. dev_feeds_silver.ml.entities_vs)
-Auth is taken from the standard Databricks env (DATABRICKS_HOST/TOKEN or the App's service principal).
-"""
-
 import os
 
 import numpy as np
@@ -37,7 +19,6 @@ def _index():
 
 def vector_search(query_embedding, target_verticals=None, top_k=20,
                   date_start=None, date_end=None):
-    """Dense ANN over Databricks Vector Search. Returns [(entity_id, name, vertical, score), ...]."""
     vec = query_embedding.tolist() if isinstance(query_embedding, np.ndarray) else list(query_embedding)
 
     # Vector Search filter syntax: {"col": [in-list]} and {"col >=": n} / {"col <=": n}.

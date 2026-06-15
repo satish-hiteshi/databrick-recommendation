@@ -1,25 +1,3 @@
-"""Head-to-head: Neo4j graph engine vs the saved Qdrant baseline on the 100-query set.
-
-Produces the per-query comparison and the archetype-level routing tallies that seed
-results/routing_matrix.md. Reuses the Qdrant baseline's PARSED intent
-(positive_entities / keywords / target_verticals) — already in
-data/raw/100_query_test_results.json — to route each query to the right graph function,
-so we compare retrieval quality, not NLU.
-
-Relevance is judged by two engine-NEUTRAL proxies applied identically to both engines'
-top-K (every result name resolves to a graph entity, since both engines share the same
-6,945 entities):
-  * vert_p@K     - fraction of top-K in the query's requested target_verticals
-  * concept_p@K  - fraction of top-K whose unified-Concept set intersects the query's
-                   relevance concepts (seed-entity concepts for "similar" queries; the
-                   keyword-mapped concepts for theme queries)
-plus set overlap (titles in both engines' top-K). Fuzzy/mood queries — where the concept
-proxy is uninformative (paraphrase) — are flagged so the matrix can apply the known
-paraphrase-gap judgment rather than the proxy.
-
-Run:  ./.venv/bin/python src/compare.py
-"""
-
 import json
 from collections import defaultdict
 from pathlib import Path

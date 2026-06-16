@@ -9,6 +9,15 @@ import blocks as B
 from assembler import assemble_query
 from extract import extract
 
+try:                                   # optional latency-attribution seam (serving only; no-op locally)
+    from timing import span as _tspan
+except Exception:                      # pragma: no cover — `timing` is bundled only in the serving image
+    from contextlib import contextmanager as _cm
+
+    @_cm
+    def _tspan(_category):
+        yield
+
 
 def _fallback_vector(query: str, top_k: int, error: str) -> dict:
     try:
@@ -34,7 +43,8 @@ def route(query: str, top_k: int = 10, backfill_threshold: Optional[int] = None)
 
     # ── 1. EXTRACT (the only LLM step). On failure → graceful vector fallback. ──
     try:
-        intents = extract(query)
+        with _tspan("llm"):
+            intents = extract(query)
     except Exception as e:
         out = _fallback_vector(query, top_k, f"{type(e).__name__}: {e}")
         out["timing_ms"] = round((time.time() - t0) * 1000)

@@ -117,6 +117,7 @@ def to_parrot_response(route_out: Dict[str, Any], *, routed_to: str = ROUTED_TO)
             "extraction_ok": route_out.get("extraction_ok"),
             "extraction_error": route_out.get("extraction_error"),
             "timing_ms": route_out.get("timing_ms"),
+            "timing_breakdown": route_out.get("timing_breakdown"),   # per-stage ms when TIMING_BREAKDOWN=1
             "n_intents": route_out.get("n_intents"),
             "intent": route_out.get("intent"),
         },

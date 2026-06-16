@@ -79,7 +79,12 @@ class RouterModel(mlflow.pyfunc.PythonModel):
                 preds.append(parrot_adapter.error_response("missing or empty 'query'"))
                 continue
             try:
+                import timing
+                timing.reset()                               # per-request latency attribution (gated)
                 out = self._route(row["query"], top_k=row["top_k"])
+                bd = timing.snapshot()
+                if bd:
+                    out["timing_breakdown"] = bd             # → response.router.timing_breakdown
             except Exception as e:                           # never leak a 500 body to M2M callers
                 print(f"[parrot] route failed for {row['query']!r}: {type(e).__name__}: {e}", flush=True)
                 preds.append(parrot_adapter.error_response(

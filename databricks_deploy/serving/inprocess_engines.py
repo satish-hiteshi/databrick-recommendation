@@ -3,6 +3,8 @@ from urllib.parse import urlsplit
 
 import numpy as np
 
+import timing                                          # per-stage latency attribution (no-op unless on)
+
 
 # ════════════════════════ graph driver (Neo4j Aura), lazy singleton ════════════════════════
 _DRIVER = None
@@ -285,15 +287,19 @@ def dispatch(method, url, payload):
     if fn is None:
         raise ValueError(f"no in-process engine handler for {method} {path}")
     payload = payload or {}
+    # latency attribution: /graph/* → neo4j, /api/* → vector (incl. the Voyage embed + VS ANN nested
+    # inside the vector handlers), anything else → engine. No-op unless TIMING_BREAKDOWN=1.
+    cat = "neo4j" if path.startswith("/graph") else ("vector" if path.startswith("/api") else "engine")
     last = None
-    for attempt in range(3):                         # 1 try + 2 retries (0.15s, 0.30s backoff)
-        try:
-            return fn(payload)
-        except Exception as e:
-            last = e
-            if not _is_transient(e):
-                raise
-            if _is_neo4j_conn(e):                     # stale Aura connection → reconnect next attempt
-                _reset_driver()
-            time.sleep(0.15 * (2 ** attempt))
-    raise last
+    with timing.span(cat):                           # times the full dispatch incl. retries (real wait)
+        for attempt in range(3):                     # 1 try + 2 retries (0.15s, 0.30s backoff)
+            try:
+                return fn(payload)
+            except Exception as e:
+                last = e
+                if not _is_transient(e):
+                    raise
+                if _is_neo4j_conn(e):                 # stale Aura connection → reconnect next attempt
+                    _reset_driver()
+                time.sleep(0.15 * (2 ** attempt))
+        raise last

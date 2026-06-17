@@ -2,7 +2,7 @@
 
 # COMMAND ----------
 
-%pip install voyageai rank-bm25 databricks-vectorsearch databricks-sql-connector mlflow --quiet
+%pip install rank-bm25 databricks-vectorsearch databricks-sql-connector mlflow --quiet
 
 # COMMAND ----------
 
@@ -55,7 +55,6 @@ except Exception:
 _host = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().get()
 
 for _k, _v in {
-    "VOYAGE_API_KEY":        "vk-...",                                   # fill in
     "DATABRICKS_HOST":       _host,
     "DATABRICKS_TOKEN":      "<LONG_LIVED_PAT>",                         # fill in
     "FEEDSAI_CATALOG":       CATALOG,
@@ -86,7 +85,7 @@ signature = ModelSignature(
 )
 
 pip_deps = [
-    "voyageai>=0.3", "rank-bm25>=0.2.2", "numpy>=1.24",
+    "rank-bm25>=0.2.2", "numpy>=1.24",
     "databricks-vectorsearch>=0.40", "databricks-sql-connector>=3.0",
     "pandas>=2.0",
 ]
@@ -123,7 +122,7 @@ print(f"Deploying {REGISTERED_MODEL} v{latest_version}")
 env_vars = {
     k: dbutils.secrets.get(scope=SECRET_SCOPE, key=k)
     for k in [
-        "VOYAGE_API_KEY", "DATABRICKS_HOST", "DATABRICKS_TOKEN",
+        "DATABRICKS_HOST", "DATABRICKS_TOKEN",
         "FEEDSAI_CATALOG", "FEEDSAI_SCHEMA", "FEEDSAI_VS_ENDPOINT", "FEEDSAI_SQL_HTTP_PATH",
     ]
 }

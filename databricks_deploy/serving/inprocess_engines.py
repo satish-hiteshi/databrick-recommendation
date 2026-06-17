@@ -56,7 +56,7 @@ def _vec_retrieve(body):
     vec = np.asarray(embed_query_text(phrase), dtype=np.float32)
     out = [{"entity_id": eid, "name": name, "vertical": vert, "score": round(float(score), 6)}
            for (eid, name, vert, score) in vector_search(vec, verts, top_k)]
-    return {"phrase": phrase, "model": "voyage-4-large", "vertical": vertical,
+    return {"phrase": phrase, "model": "qwen3-embedding-0-6b", "vertical": vertical,
             "results": out, "count": len(out)}
 
 
@@ -75,7 +75,7 @@ def _vec_score_set(body):
             continue
         scored.append({"entity_id": eid, "score": round(cosine_similarity(pv, v), 6)})
     scored.sort(key=lambda x: x["score"], reverse=True)
-    return {"phrase": phrase, "model": "voyage-4-large", "scored": scored, "missing": missing,
+    return {"phrase": phrase, "model": "qwen3-embedding-0-6b", "scored": scored, "missing": missing,
             "n_in": len(ids), "n_scored": len(scored)}
 
 
@@ -287,7 +287,7 @@ def dispatch(method, url, payload):
     if fn is None:
         raise ValueError(f"no in-process engine handler for {method} {path}")
     payload = payload or {}
-    # latency attribution: /graph/* → neo4j, /api/* → vector (incl. the Voyage embed + VS ANN nested
+    # latency attribution: /graph/* → neo4j, /api/* → vector (incl. the Qwen embed + VS ANN nested
     # inside the vector handlers), anything else → engine. No-op unless TIMING_BREAKDOWN=1.
     cat = "neo4j" if path.startswith("/graph") else ("vector" if path.startswith("/api") else "engine")
     last = None

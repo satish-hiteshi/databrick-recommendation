@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 ENDPOINT = "parrot-api-hitashi-dev"
 
-# one representative query per router path — keeps a run fast (each call hits Voyage + the LLM live)
+# one representative query per router path — keeps a run fast (each call hits Qwen + the LLM live)
 DEFAULT_QUERIES = [
     "cozy relaxing games like Stardew Valley",                        # SEED_VECTOR
     "a long narrative-driven single-player RPG with a strong lead",   # VECTOR_CONSTRAIN__GRAPH_RERANK

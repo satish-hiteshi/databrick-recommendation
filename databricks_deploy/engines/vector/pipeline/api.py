@@ -112,8 +112,8 @@ class ScoreSetRequest(BaseModel):
 # ── Router-support hooks (PROMPT: vector scoring/embedding, NO retrieval) ──────
 # These exist so the router's refiner blocks (vector_rerank_within, backfill) can score a
 # PASSED-IN set without re-retrieving. They reuse the SAME model the corpus was built with
-# (voyage-4-large): stored entity vectors are FETCHED by id from the cache; only free text is
-# embedded fresh (input_type='query'). No NLU, no /api/query, no set expansion.
+# (qwen3-embedding-0-6b): stored entity vectors are FETCHED by id from the cache; only free text is
+# embedded fresh (as a query). No NLU, no /api/query, no set expansion.
 
 import numpy as _np
 from pipeline.embedding_generator import load_embeddings as _load_embeddings, embed_query_text as _embed_text
@@ -378,7 +378,7 @@ def stats():
 
 @app.post("/api/embed")
 def embed(req: EmbedRequest):
-    out = {"model": "voyage-4-large", "dim": EMBEDDING_DIMENSION}
+    out = {"model": "qwen3-embedding-0-6b", "dim": EMBEDDING_DIMENSION}
     if req.entity_ids:
         emb = _entity_emb()
         vecs, missing = {}, []
@@ -407,7 +407,7 @@ def score_set(req: ScoreSetRequest):
             continue
         scored.append({"entity_id": eid, "score": round(_cosine(phrase_vec, v), 6)})
     scored.sort(key=lambda x: x["score"], reverse=True)
-    return {"phrase": req.phrase, "model": "voyage-4-large",
+    return {"phrase": req.phrase, "model": "qwen3-embedding-0-6b",
             "scored": scored, "missing": missing,
             "n_in": len(req.entity_ids), "n_scored": len(scored)}
 
@@ -456,7 +456,7 @@ def retrieve_endpoint(req: RetrieveRequest):
     vec = _np.asarray(_embed_text(req.phrase), dtype=_np.float32)
     out = [{"entity_id": eid, "name": name, "vertical": vert, "score": round(float(score), 6)}
            for (eid, name, vert, score) in vector_search(vec, verts, req.top_k)]
-    return {"phrase": req.phrase, "model": "voyage-4-large", "vertical": req.vertical,
+    return {"phrase": req.phrase, "model": "qwen3-embedding-0-6b", "vertical": req.vertical,
             "results": out, "count": len(out)}
 
 

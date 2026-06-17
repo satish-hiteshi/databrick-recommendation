@@ -2,15 +2,19 @@ import json
 import os
 import time
 
+import httpx
 import numpy as np
-import voyageai
 from tqdm import tqdm
 
 from pipeline.config import (
     DATA_DIR,
+    DATABRICKS_EMBEDDING_ENDPOINT,
+    DATABRICKS_TOKEN,
+    EMBEDDING_BATCH_SIZE,
     EMBEDDING_DIMENSION,
-    VOYAGE_API_KEY,
-    VOYAGE_MODEL,
+    EMBEDDING_MODEL,
+    EMBEDDING_QUERY_INSTRUCTION,
+    EMBEDDING_TIMEOUT_S,
     RESULTS_DIR,
 )
 from pipeline.data_loader import get_all_entities, get_entity_by_name
@@ -19,15 +23,37 @@ EMBEDDINGS_CACHE_JSON = os.path.join(DATA_DIR, "embeddings_cache_v2.json")
 EMBEDDINGS_CACHE_NPY = os.path.join(DATA_DIR, "embeddings_v2.npy")
 EMBEDDINGS_IDS_JSON = os.path.join(DATA_DIR, "embeddings_ids_v2.json")
 
-BATCH_SIZE = 50
+BATCH_SIZE = EMBEDDING_BATCH_SIZE
+
+
+# ── Databricks Qwen embeddings (OpenAI-compatible llm/v1/embeddings) ──────────────────
+def _embed_batch(texts, is_query=False):
+    """POST a batch of texts to the Qwen serving endpoint; return (embeddings, total_tokens).
+
+    Replaces the old voyageai client. The OpenAI-compatible interface has no input_type field, so the
+    query/document distinction is carried by an optional instruction prefix on the QUERY only (Qwen3-
+    Embedding convention) — mirroring Voyage's input_type="query"/"document".
+    """
+    if is_query and EMBEDDING_QUERY_INSTRUCTION:
+        instr = EMBEDDING_QUERY_INSTRUCTION
+        texts = [f"Instruct: {instr}\nQuery: {t}" for t in texts]
+    headers = {"Authorization": f"Bearer {DATABRICKS_TOKEN}", "Content-Type": "application/json"}
+    resp = httpx.post(DATABRICKS_EMBEDDING_ENDPOINT, headers=headers,
+                      json={"input": list(texts)}, timeout=EMBEDDING_TIMEOUT_S)
+    resp.raise_for_status()
+    body = resp.json()
+    # data items carry an `index` aligned to the input order — sort to be safe before stripping vectors.
+    data = sorted(body.get("data", []), key=lambda d: d.get("index", 0))
+    embeddings = [d["embedding"] for d in data]
+    total_tokens = (body.get("usage") or {}).get("total_tokens", 0) or 0
+    return embeddings, total_tokens
 
 
 def generate_embeddings():
-    client = voyageai.Client(api_key=VOYAGE_API_KEY)
     entities = get_all_entities()
 
     print(f"Generating embeddings for {len(entities)} entities...")
-    print(f"Model: {VOYAGE_MODEL}, Dimensions: {EMBEDDING_DIMENSION}")
+    print(f"Model: {EMBEDDING_MODEL}, Dimensions: {EMBEDDING_DIMENSION}")
     print(f"Batch size: {BATCH_SIZE}, Total batches: {(len(entities) + BATCH_SIZE - 1) // BATCH_SIZE}")
 
     all_embeddings = []
@@ -43,22 +69,20 @@ def generate_embeddings():
         ids = [e["entity_id"] for e in batch]
 
         try:
-            result = client.embed(texts, model=VOYAGE_MODEL, input_type="document")
-            all_embeddings.extend(result.embeddings)
+            embeddings, tokens = _embed_batch(texts, is_query=False)
+            all_embeddings.extend(embeddings)
             all_ids.extend(ids)
-            if result.total_tokens:
-                total_tokens += result.total_tokens
+            total_tokens += tokens
         except Exception as e:
             # Retry once after a brief pause
             retries += 1
             print(f"\nError on batch {i // BATCH_SIZE}: {e}. Retrying in 5s...")
             time.sleep(5)
             try:
-                result = client.embed(texts, model=VOYAGE_MODEL, input_type="document")
-                all_embeddings.extend(result.embeddings)
+                embeddings, tokens = _embed_batch(texts, is_query=False)
+                all_embeddings.extend(embeddings)
                 all_ids.extend(ids)
-                if result.total_tokens:
-                    total_tokens += result.total_tokens
+                total_tokens += tokens
             except Exception as e2:
                 errors.append(f"Batch {i // BATCH_SIZE} failed: {e2}")
                 print(f"\nBatch {i // BATCH_SIZE} permanently failed: {e2}")
@@ -115,9 +139,8 @@ def load_embeddings():
 
 
 def get_query_embedding(query_text):
-    client = voyageai.Client(api_key=VOYAGE_API_KEY)
-    result = client.embed([query_text], model=VOYAGE_MODEL, input_type="query")
-    return np.array(result.embeddings[0], dtype=np.float32)
+    embeddings, _ = _embed_batch([query_text], is_query=True)
+    return np.array(embeddings[0], dtype=np.float32)
 
 
 # Session-level cache for query embeddings
@@ -209,9 +232,7 @@ def generate_report(stats, sim_results, nan_count, zero_count):
     os.makedirs(RESULTS_DIR, exist_ok=True)
     report_path = os.path.join(RESULTS_DIR, "EMBEDDING_REPORT.md")
 
-    # Voyage AI pricing: voyage-4-large is ~$0.12 per 1M tokens
-    cost_estimate = (stats["total_tokens"] / 1_000_000) * 0.12
-
+    # Qwen runs on a Databricks serving endpoint (billed by DBU, not per-token), so no per-token cost.
     json_size_mb = os.path.getsize(EMBEDDINGS_CACHE_JSON) / 1e6
     npy_size_mb = os.path.getsize(EMBEDDINGS_CACHE_NPY) / 1e6
 
@@ -221,10 +242,9 @@ def generate_report(stats, sim_results, nan_count, zero_count):
         "## Summary",
         f"- **Total embeddings generated:** {stats['count']:,}",
         f"- **Embedding dimensions:** {stats['dimensions']}",
-        f"- **Model:** {VOYAGE_MODEL}",
+        f"- **Model:** {EMBEDDING_MODEL}",
         f"- **Time taken:** {stats['elapsed_seconds']:.1f} seconds",
         f"- **Total tokens processed:** {stats['total_tokens']:,}",
-        f"- **Estimated API cost:** ${cost_estimate:.4f}",
         f"- **Retries:** {stats['retries']}",
         f"- **Errors:** {len(stats['errors'])}",
         "",

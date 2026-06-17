@@ -56,8 +56,8 @@ def _stage():
     data_dst = os.path.join(s, "vector", "data_v2")
     os.makedirs(data_dst)
     parquet_src = os.getenv("EMBEDDINGS_PARQUET_SRC",
-                            "/Volumes/dev_feeds_silver/ml/feedsai_src/embeddings_voyage_57k.parquet")
-    shutil.copy(parquet_src, os.path.join(data_dst, "embeddings_voyage_57k.parquet"))
+                            "/Volumes/dev_feeds_silver/ml/feedsai_src/embeddings_qwen_57k.parquet")
+    shutil.copy(parquet_src, os.path.join(data_dst, "embeddings_qwen_57k.parquet"))
     print(f"staged parquet from {parquet_src}")
     return s
 
@@ -87,7 +87,7 @@ def main():
         print(f"Logged + registered new version of {MODEL_NAME}")
         print(f"  model_uri: {info.model_uri}")
         print("Next: Serving → repoint the served entity to this version, then set env vars from")
-        print("../config.example.env (NEO4J_* with password via secret, VS_*, VOYAGE_API_KEY, DATABRICKS_*).")
+        print("../config.example.env (NEO4J_* with password via secret, VS_*, DATABRICKS_EMBEDDING_ENDPOINT, DATABRICKS_*).")
     finally:
         shutil.rmtree(s, ignore_errors=True)
 

@@ -7,7 +7,7 @@ from mlflow.models import set_model
 
 # url|label, comma-separated; override with the TARGETS env var on the endpoint.
 DEFAULT_TARGETS = (
-    "https://api.voyageai.com|voyage,"
+    # Qwen embeddings run on the Databricks workspace itself — no external (Voyage) egress needed.
     "https://dbc-f79d5cae-0d05.cloud.databricks.com|workspace-self"
 )
 

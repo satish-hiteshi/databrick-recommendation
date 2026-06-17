@@ -1,7 +1,8 @@
 import os
 
-VOYAGE_API_KEY      = os.getenv("VOYAGE_API_KEY")
-VOYAGE_MODEL        = "voyage-4-large"
+# Qwen embeddings via a Databricks serving endpoint (OpenAI-compatible llm/v1/embeddings).
+# Called by name through the mlflow deploy client (same pattern as LLM_ENDPOINT), so no API key.
+EMBEDDING_ENDPOINT  = os.getenv("FEEDSAI_EMBEDDING_ENDPOINT", "qwen3-embedding-0-6b")
 EMBEDDING_DIMENSION = 1024
 
 LLM_ENDPOINT = os.getenv("FEEDSAI_LLM_ENDPOINT", "databricks-meta-llama-3-3-70b-instruct")

@@ -111,5 +111,57 @@ def run(token=None, host=None, url=None, queries=None, n=5, top_k=10, concurrenc
     return rows
 
 
+def run_by_type(token=None, host=None, url=None, by_type=None, n=1, top_k=10, warmup=True):
+    """Run a {type: [queries]} bank and report PER-TYPE latency + the AVERAGE per-stage breakdown.
+
+    n=1 → each query once (50 queries already give 50 samples per type, enough for p50/p95). Every call
+    hits Voyage + the LLM live, so a full 7×50 pass is ~350 calls (~12 min serial) — start with n=1, and
+    pass a sliced bank (e.g. {k: v[:15] for k, v in QUERIES_BY_TYPE.items()}) for a quick look.
+    Reads the per-stage split from response.router.timing_breakdown (needs TIMING_BREAKDOWN=1 deployed).
+    """
+    token = token or os.environ["DATABRICKS_TOKEN"]
+    url = url or os.environ.get("PARROT_URL") or \
+        host.rstrip("/") + f"/serving-endpoints/{ENDPOINT}/invocations"
+    if by_type is None:
+        from latency_queries import QUERIES_BY_TYPE as by_type
+
+    if warmup:
+        first = next(iter(by_type.values()))[0]
+        w = _call(url, token, first, top_k)
+        print(f"warmup: wall={w['wall_ms']:.0f}ms err={w['error']}")
+
+    print(f"\n=== per-type latency (n={n} each, {sum(len(v) for v in by_type.values())} queries total) ===")
+    print(f"{'type':<18}{'n_ok':>5}{'wall_p50':>9}{'wall_p95':>9}{'rt_p50':>8}{'rt_p95':>8}"
+          f"   avg breakdown (ms)            top path")
+    summary = []
+    for typ, qs in by_type.items():
+        walls, rtms, bds, paths = [], [], [], {}
+        for q in qs:
+            for _ in range(n):
+                s = _call(url, token, q, top_k)
+                if s["error"]:
+                    continue
+                walls.append(s["wall_ms"])
+                if s["timing_ms"] is not None:
+                    rtms.append(s["timing_ms"])
+                if s["breakdown"]:
+                    bds.append(s["breakdown"])
+                paths[s["path"]] = paths.get(s["path"], 0) + 1
+        avg = {}
+        for k in ("llm_ms", "vector_ms", "neo4j_ms", "engine_ms"):
+            vals = [b[k] for b in bds if b.get(k) is not None]
+            if vals:
+                avg[k] = round(sum(vals) / len(vals))
+        bdstr = "  ".join(f"{k.replace('_ms', '')}={v}" for k, v in avg.items()) or "(no breakdown)"
+        top_path = max(paths, key=paths.get) if paths else "?"
+        print(f"{typ:<18}{len(walls):>5}{str(_percentile(walls, 50)):>9}{str(_percentile(walls, 95)):>9}"
+              f"{str(_percentile(rtms, 50)):>8}{str(_percentile(rtms, 95)):>8}   {bdstr:<28} {str(top_path)[:34]}")
+        summary.append({"type": typ, "n_ok": len(walls), "wall_p50": _percentile(walls, 50),
+                        "wall_p95": _percentile(walls, 95), "rt_p50": _percentile(rtms, 50),
+                        "rt_p95": _percentile(rtms, 95), "avg_breakdown": avg, "top_path": top_path,
+                        "paths": paths})
+    return summary
+
+
 if __name__ == "__main__":
     run()

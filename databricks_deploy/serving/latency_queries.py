@@ -113,6 +113,76 @@ QUERIES_BY_TYPE = {
     "multi_intent": multi_intent,
 }
 
+
+# ── PER-VERTICAL bank: the SAME query shapes fired at each vertical, so latency is comparable
+#    across games / movies / TV / podcasts (their corpora differ a lot in size). Feed this to
+#    run_by_type to get a per-vertical table:  lp.run_by_type(by_type=QUERIES_BY_VERTICAL). ──
+_PV = {
+    "games":    ("games", "play", GAMES,
+                 ["roguelike", "open-world", "survival", "puzzle", "horror", "cozy farming",
+                  "fantasy RPG", "narrative-driven"]),
+    "movies":   ("movies", "watch", MOVIES,
+                 ["sci-fi", "psychological thriller", "heist", "drama", "dark comedy", "horror",
+                  "romance", "mystery"]),
+    "tv":       ("shows", "watch", TV,
+                 ["sci-fi", "crime drama", "fantasy", "sitcom", "mystery", "thriller",
+                  "period drama", "animated"]),
+    "podcasts": ("podcasts", "listen to", PODS,
+                 ["true crime", "business", "history", "comedy", "science", "interview",
+                  "news", "storytelling"]),
+}
+
+QUERIES_BY_VERTICAL = {}
+for _vert, (_noun, _verb, _titles, _genres) in _PV.items():
+    _qs = []
+    for i in range(50):
+        _qs += [
+            f"{_g(MOODS, i)} {_noun} {_g(OCCASIONS, i)}",
+            f"{_noun} like {_g(_titles, i)}",
+            f"{_g(_genres, i)} {_noun}",
+            f"something {_g(MOODS, i + 1)} to {_verb} {_g(OCCASIONS, i + 2)}",
+        ]
+    QUERIES_BY_VERTICAL[_vert] = _take(_qs, 40)
+
+
+# ── MULTI-VERTICAL bank: queries that explicitly span 2 / 3 / 4 verticals, so we measure how latency
+#    SCALES with fan-out breadth. Each extra vertical is another parallel establish (vector + graph +
+#    LLM), so this is the heaviest, most realistic stress test and it DOES hit the graph per vertical.
+#    Feed to run_by_type:  lp.run_by_type(by_type=QUERIES_BY_FANOUT). ──
+_TOPICS = ["true crime", "history", "comedy", "science", "business", "technology", "sports", "space"]
+
+fanout_2 = _take(
+    [f"games and movies like {_g(GAMES, i)}" for i in range(15)] +
+    [f"{_g(MOODS, i)} games and shows {_g(OCCASIONS, i)}" for i in range(15)] +
+    [f"{_g(GENRES, i)} movies and TV series" for i in range(15)] +
+    [f"games and podcasts about {_g(_TOPICS, i)}" for i in range(15)] +
+    [f"movies and shows like {_g(MOVIES, i)}" for i in range(15)], 40)
+
+fanout_3 = _take(
+    [f"{_g(GENRES, i)} games, movies, and shows" for i in range(15)] +
+    [f"{_g(MOODS, i)} games, films, and series {_g(OCCASIONS, i)}" for i in range(15)] +
+    [f"games, TV, and podcasts about {_g(_TOPICS, i)}" for i in range(15)] +
+    [f"movies, shows, and podcasts like {_g(MOVIES, i)}" for i in range(15)], 40)
+
+fanout_4 = _take(
+    [f"{_g(GENRES, i)} across games, movies, TV, and podcasts" for i in range(20)] +
+    [f"something {_g(MOODS, i)} to play, watch, or listen to {_g(OCCASIONS, i)}" for i in range(20)] +
+    [f"games, movies, shows, and podcasts about {_g(_TOPICS, i)}" for i in range(20)], 40)
+
+QUERIES_BY_FANOUT = {
+    "2_vertical": fanout_2,
+    "3_vertical": fanout_3,
+    "4_vertical": fanout_4,
+}
+
+
 if __name__ == "__main__":
+    print("BY TYPE:")
     for t, qs in QUERIES_BY_TYPE.items():
-        print(f"{t:<18} {len(qs):>3} queries   e.g. {qs[0]!r}")
+        print(f"  {t:<18} {len(qs):>3} queries   e.g. {qs[0]!r}")
+    print("BY VERTICAL (single):")
+    for v, qs in QUERIES_BY_VERTICAL.items():
+        print(f"  {v:<18} {len(qs):>3} queries   e.g. {qs[0]!r}")
+    print("BY FAN-OUT (multi-vertical):")
+    for v, qs in QUERIES_BY_FANOUT.items():
+        print(f"  {v:<18} {len(qs):>3} queries   e.g. {qs[0]!r}")

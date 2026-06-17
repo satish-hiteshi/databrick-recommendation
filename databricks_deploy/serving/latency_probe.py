@@ -101,8 +101,8 @@ def run(token=None, host=None, url=None, queries=None, n=5, top_k=10, concurrenc
         print(f"{str(r['wall_p50']):>9}{str(r['wall_p95']):>9}{str(r['rt_p50']):>8}{str(r['rt_p95']):>8}  "
               f"{str(r['path']):<34} {r['q'][:36]}{flag}")
         if r["bd"]:                                     # per-stage attribution (TIMING_BREAKDOWN=1)
-            parts = [f"{k}={r['bd'][k]}" for k in ("llm_ms", "vector_ms", "neo4j_ms", "engine_ms", "work_ms")
-                     if k in r["bd"]]
+            parts = [f"{k}={r['bd'][k]}" for k in ("llm_ms", "vector_ms", "nlu_ms", "embed_ms", "vs_ms",
+                                                   "neo4j_ms", "engine_ms", "work_ms") if k in r["bd"]]
             print(f"{'breakdown →':>34}  {'  '.join(parts)}")
 
     print(f"\nOVERALL wall — p50 {_percentile(all_walls,50)} | p90 {_percentile(all_walls,90)} | "
@@ -148,7 +148,7 @@ def run_by_type(token=None, host=None, url=None, by_type=None, n=1, top_k=10, wa
                     bds.append(s["breakdown"])
                 paths[s["path"]] = paths.get(s["path"], 0) + 1
         avg = {}
-        for k in ("llm_ms", "vector_ms", "neo4j_ms", "engine_ms"):
+        for k in ("llm_ms", "vector_ms", "nlu_ms", "embed_ms", "vs_ms", "neo4j_ms", "engine_ms"):
             vals = [b[k] for b in bds if b.get(k) is not None]
             if vals:
                 avg[k] = round(sum(vals) / len(vals))

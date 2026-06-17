@@ -15,6 +15,15 @@ from pipeline.config import (
 )
 from pipeline.data_loader import get_all_entities, get_entity_by_name
 
+try:                                   # latency-attribution seam (serving only; no-op locally)
+    from timing import span as _tspan
+except Exception:                      # pragma: no cover — `timing` is bundled only in the serving image
+    from contextlib import contextmanager as _cm
+
+    @_cm
+    def _tspan(_category):
+        yield
+
 EMBEDDINGS_CACHE_JSON = os.path.join(DATA_DIR, "embeddings_cache_v2.json")
 EMBEDDINGS_CACHE_NPY = os.path.join(DATA_DIR, "embeddings_v2.npy")
 EMBEDDINGS_IDS_JSON = os.path.join(DATA_DIR, "embeddings_ids_v2.json")
@@ -116,7 +125,8 @@ def load_embeddings():
 
 def get_query_embedding(query_text):
     client = voyageai.Client(api_key=VOYAGE_API_KEY)
-    result = client.embed([query_text], model=VOYAGE_MODEL, input_type="query")
+    with _tspan("embed"):              # Voyage query-embedding round-trip
+        result = client.embed([query_text], model=VOYAGE_MODEL, input_type="query")
     return np.array(result.embeddings[0], dtype=np.float32)
 
 

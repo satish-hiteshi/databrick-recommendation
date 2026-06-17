@@ -5,6 +5,15 @@ import httpx
 
 from pipeline import config
 
+try:                                   # latency-attribution seam (serving only; no-op locally)
+    from timing import span as _tspan
+except Exception:                      # pragma: no cover — `timing` is bundled only in the serving image
+    from contextlib import contextmanager as _cm
+
+    @_cm
+    def _tspan(_category):
+        yield
+
 
 class LLMError(RuntimeError):
     pass
@@ -37,8 +46,9 @@ def databricks_complete(system: str, user: str, json_mode: bool = True,
     last = None
     for _ in range(2):  # one retry on transient (network / 5xx)
         try:
-            r = httpx.post(config.DATABRICKS_LLM_ENDPOINT, headers=headers, json=body,
-                           timeout=config.LLM_TIMEOUT_S)
+            with _tspan("nlu"):        # vector-pipeline LLM (its own NLU) — distinct from router extraction
+                r = httpx.post(config.DATABRICKS_LLM_ENDPOINT, headers=headers, json=body,
+                               timeout=config.LLM_TIMEOUT_S)
             if r.status_code == 200:
                 return _extract_text(r.json())
             if 500 <= r.status_code < 600:

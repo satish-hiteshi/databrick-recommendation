@@ -124,6 +124,20 @@ def load_embeddings():
 
 
 def get_query_embedding(query_text):
+    # Qwen query path (staging): set QUERY_EMBED_ENDPOINT to the Databricks embeddings endpoint name.
+    # Qwen3-Embedding is asymmetric — queries take an instruction prefix; documents (offline) do not.
+    qwen = os.getenv("QUERY_EMBED_ENDPOINT")
+    if qwen:
+        import httpx
+        instr = os.getenv("QWEN_QUERY_INSTRUCTION",
+                          "Instruct: Given a search query, retrieve relevant entertainment titles\nQuery: ")
+        url = os.environ["DATABRICKS_HOST"].rstrip("/") + f"/serving-endpoints/{qwen}/invocations"
+        with _tspan("embed"):          # Qwen query-embedding round-trip
+            r = httpx.post(url, json={"input": [instr + (query_text or "")]},
+                           headers={"Authorization": f"Bearer {os.environ['DATABRICKS_TOKEN']}",
+                                    "Content-Type": "application/json"}, timeout=30)
+        r.raise_for_status()
+        return np.array(r.json()["data"][0]["embedding"], dtype=np.float32)
     client = voyageai.Client(api_key=VOYAGE_API_KEY)
     with _tspan("embed"):              # Voyage query-embedding round-trip
         result = client.embed([query_text], model=VOYAGE_MODEL, input_type="query")

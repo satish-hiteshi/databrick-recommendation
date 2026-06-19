@@ -9,8 +9,10 @@ substrate blip — cold-start global pools still work from local CSV signals).
 
 from __future__ import annotations
 
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Dict, List, Optional
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -54,8 +56,14 @@ class SubstrateClient:
         self.graph = (graph_url or config.GRAPH_API_URL).rstrip("/")
         self.timeout = timeout_s or config.SUBSTRATE_HTTP_TIMEOUT_S
         self.retries = retries if retries is not None else config.SUBSTRATE_HTTP_RETRIES
+        # COLLAPSE seam (Databricks): SUBSTRATE_MODE=inprocess dispatches to E1's in-process engines
+        # (no :8000/:8010 servers) — same path + request/response contract. Default http = local unchanged.
+        self._inproc = os.getenv("SUBSTRATE_MODE", "http").lower() == "inprocess"
 
     def _post(self, url: str, body: dict) -> dict:
+        if self._inproc:                              # in-process dispatch into E1's collapsed engines
+            from inprocess_engines import dispatch
+            return dispatch("POST", urlsplit(url).path, body)
         last = None
         for _ in range(max(1, self.retries)):
             try:
@@ -123,6 +131,8 @@ class SubstrateClient:
 
     # ── health (optional integration probe) ─────────────────────────────
     def is_up(self) -> bool:
+        if self._inproc:                              # engines live in-process → always reachable
+            return True
         try:
             return (httpx.get(f"{self.vector}/api/stats", timeout=3).status_code < 500 and
                     httpx.get(f"{self.graph}/graph/health", timeout=3).status_code < 500)

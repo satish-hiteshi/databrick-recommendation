@@ -56,11 +56,22 @@ def _utc(dt) -> Optional[datetime]:
 
 
 def _kw_list(v) -> List[str]:
-    """bm25_keywords arrives as a Spark array (Python list) or None -> lowercase str list."""
+    """bm25_keywords -> lowercase str list. Robust to the source: spark.sql returns a Python LIST;
+    the databricks-sql-connector may return a JSON-array STRING (e.g. '["sim","rpg"]'). Handle both."""
     if not v:
         return []
-    if isinstance(v, str):                       # defensive: a serialized list
-        v = [v]
+    if isinstance(v, str):
+        s = v.strip()
+        if s.startswith("[") and s.endswith("]"):
+            import json as _json
+            try:
+                v = _json.loads(s)
+            except Exception:
+                return [s.lower()]
+        else:
+            return [s.lower()] if s else []
+    if not isinstance(v, (list, tuple)):
+        return []
     return [str(x).strip().lower() for x in v if str(x).strip()]
 
 

@@ -56,10 +56,14 @@ def _utc(dt) -> Optional[datetime]:
 
 
 def _kw_list(v) -> List[str]:
-    """bm25_keywords -> lowercase str list. Robust to the source: spark.sql returns a Python LIST;
-    the databricks-sql-connector may return a JSON-array STRING (e.g. '["sim","rpg"]'). Handle both."""
-    if not v:
+    """bm25_keywords -> lowercase str list. Robust to the source: spark.sql returns a Python LIST; the
+    databricks-sql-connector returns a numpy ARRAY (arrow fetch) or a JSON-array STRING ('["sim","rpg"]').
+    NOTE: never use `if not v` here — numpy arrays raise 'truth value is ambiguous'. Check None explicitly
+    and convert any array-like to a plain list first."""
+    if v is None:
         return []
+    if hasattr(v, "tolist") and not isinstance(v, (str, bytes)):   # numpy/pandas array -> plain list
+        v = v.tolist()
     if isinstance(v, str):
         s = v.strip()
         if s.startswith("[") and s.endswith("]"):
@@ -72,7 +76,7 @@ def _kw_list(v) -> List[str]:
             return [s.lower()] if s else []
     if not isinstance(v, (list, tuple)):
         return []
-    return [str(x).strip().lower() for x in v if str(x).strip()]
+    return [str(x).strip().lower() for x in v if x is not None and str(x).strip()]
 
 
 class LiveDataSource(DataSource):

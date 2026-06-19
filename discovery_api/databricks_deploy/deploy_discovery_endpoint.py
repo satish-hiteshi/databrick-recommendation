@@ -73,13 +73,18 @@ ENV = {
     "DATABRICKS_HOST": HOST, "DATABRICKS_TOKEN": sec("databricks_token"),
     "DATABRICKS_HTTP_PATH": WAREHOUSE_HTTP_PATH,
 }
-WorkspaceClient().serving_endpoints.create(
-    name=ENDPOINT,
-    config=EndpointCoreConfigInput(
-        served_entities=[ServedEntityInput(name="discovery", entity_name=MODEL_NAME, entity_version=ver,
-            workload_size="Medium", scale_to_zero_enabled=False, environment_vars=ENV)],
-        traffic_config=TrafficConfig(routes=[Route(served_model_name="discovery", traffic_percentage=100)])))
-print(f"creating {ENDPOINT} v{ver} — watch Serving for Ready (~15 min: loads the Qwen parquet + Silver tables)")
+wc = WorkspaceClient()
+entities = [ServedEntityInput(name="discovery", entity_name=MODEL_NAME, entity_version=ver,
+            workload_size="Medium", scale_to_zero_enabled=False, environment_vars=ENV)]
+traffic = TrafficConfig(routes=[Route(served_model_name="discovery", traffic_percentage=100)])
+if ENDPOINT in [e.name for e in wc.serving_endpoints.list()]:          # re-deploy → update to the new version
+    wc.serving_endpoints.update_config(name=ENDPOINT, served_entities=entities, traffic_config=traffic)
+    print(f"updating existing {ENDPOINT} → v{ver}")
+else:                                                                   # first deploy → create
+    wc.serving_endpoints.create(name=ENDPOINT,
+        config=EndpointCoreConfigInput(served_entities=entities, traffic_config=traffic))
+    print(f"creating {ENDPOINT} → v{ver}")
+print("watch Serving for Ready (~15 min: loads the Qwen parquet + Silver tables)")
 
 # COMMAND ----------
 # ===================== 3. SMOKE TEST — user 13 (a real game-follower) =====================

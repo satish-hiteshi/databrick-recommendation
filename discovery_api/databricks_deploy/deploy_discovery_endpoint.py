@@ -8,8 +8,11 @@
 # MAGIC `feedsai_staging` secret scope has `neo4j_password`, `voyage_api_key`, `databricks_token`.
 
 # COMMAND ----------
-# MAGIC %pip install mlflow databricks-sdk
-# MAGIC dbutils.library.restartPython()
+# MAGIC %md
+# MAGIC **Do NOT `%pip install mlflow`** — the Databricks runtime's MLflow is integrated; reinstalling it
+# MAGIC breaks registration (circular-import errors, `log_model` returns None, no version created).
+# MAGIC `mlflow` + `databricks-sdk` are already in the ML runtime. If `databricks-sdk` is somehow missing,
+# MAGIC install ONLY it (`%pip install databricks-sdk` then `dbutils.library.restartPython()`).
 
 # COMMAND ----------
 # ===================== CONFIG — fill these in =====================
@@ -30,12 +33,18 @@ print("config:", MODEL_NAME, "| endpoint:", ENDPOINT)
 
 # COMMAND ----------
 # ===================== 1. REGISTER the model =====================
+import mlflow
+mlflow.set_registry_uri("databricks-uc")     # init MLflow before register (runtime mlflow; do NOT pip-install it)
 import os, sys, importlib
 os.environ["UC_MODEL_NAME"]          = MODEL_NAME
 os.environ["EMBEDDINGS_PARQUET_SRC"] = PARQUET
 sys.path.insert(0, f"{REPO}/discovery_api/databricks_deploy/serving")
 import register; importlib.reload(register)
 register.main()      # bundles E2 engine + E1 collapsed substrate + Qwen parquet → new UC version
+
+# verify a version was actually created (NOT just the success print)
+from mlflow import MlflowClient
+print("versions:", sorted(int(v.version) for v in MlflowClient().search_model_versions(f"name='{MODEL_NAME}'")))
 
 # COMMAND ----------
 # ===================== 2. CREATE the endpoint =====================

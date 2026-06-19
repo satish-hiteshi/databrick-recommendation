@@ -106,7 +106,8 @@ def main():
                 registered_model_name=MODEL_NAME,
             )
         print(f"Logged + registered new version of {MODEL_NAME}")
-        print(f"  model_uri: {info.model_uri}")
+        if info is not None and getattr(info, "model_uri", None):   # log_model returns None on some MLflow versions
+            print(f"  model_uri: {info.model_uri}")
         print("Next: create/repoint the discovery-api-staging endpoint with the env block, then smoke-test.")
     finally:
         shutil.rmtree(s, ignore_errors=True)

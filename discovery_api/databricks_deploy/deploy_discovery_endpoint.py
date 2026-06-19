@@ -43,7 +43,7 @@ import register; importlib.reload(register)
 register.main()      # bundles E2 engine + E1 collapsed substrate + Qwen parquet → new UC version
 
 # verify a version was actually created (NOT just the success print)
-from mlflow import MlflowClient
+from mlflow.tracking import MlflowClient
 print("versions:", sorted(int(v.version) for v in MlflowClient().search_model_versions(f"name='{MODEL_NAME}'")))
 
 # COMMAND ----------
@@ -51,7 +51,7 @@ print("versions:", sorted(int(v.version) for v in MlflowClient().search_model_ve
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.serving import (EndpointCoreConfigInput, ServedEntityInput, TrafficConfig, Route)
 import mlflow
-from mlflow import MlflowClient
+from mlflow.tracking import MlflowClient
 mlflow.set_registry_uri("databricks-uc")
 ver = str(max(int(v.version) for v in MlflowClient().search_model_versions(f"name='{MODEL_NAME}'")))
 print("model version:", ver)

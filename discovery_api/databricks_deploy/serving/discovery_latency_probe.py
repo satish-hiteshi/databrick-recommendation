@@ -56,11 +56,10 @@ def _call(url, token, payload, timeout=300):
         feed = feed if isinstance(feed, dict) else json.loads(feed)
         ctx = feed.get("context", {}) or {}
         mf = feed.get("main_feed", {}) or {}
-        dbg = feed.get("debug") or {}
         return {"wall_ms": wall, "mode": ctx.get("mode"), "signal": ctx.get("signal_strength"),
                 "count": mf.get("count"), "carousels": len(feed.get("carousels", []) or []),
                 "error": feed.get("error"),
-                "breakdown": (dbg.get("timing_breakdown") if isinstance(dbg, dict) else None)}
+                "breakdown": ctx.get("timing_breakdown")}     # per-stage ms when TIMING_BREAKDOWN=1
     except Exception as e:
         return {"wall_ms": (time.perf_counter() - t0) * 1000.0, "mode": None, "signal": None,
                 "count": None, "carousels": None, "error": f"{type(e).__name__}: {str(e)[:120]}",

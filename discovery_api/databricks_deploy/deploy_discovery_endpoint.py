@@ -72,6 +72,8 @@ ENV = {
     # ── auth + the SQL warehouse for LiveDataSource ──
     "DATABRICKS_HOST": HOST, "DATABRICKS_TOKEN": sec("databricks_token"),
     "DATABRICKS_HTTP_PATH": WAREHOUSE_HTTP_PATH,
+    # ── latency attribution (per-stage ms in context.timing_breakdown); remove for prod ──
+    "TIMING_BREAKDOWN": "1",
 }
 wc = WorkspaceClient()
 entities = [ServedEntityInput(name="discovery", entity_name=MODEL_NAME, entity_version=ver,

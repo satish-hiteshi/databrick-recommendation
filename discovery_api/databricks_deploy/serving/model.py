@@ -129,12 +129,18 @@ class DiscoveryModel(mlflow.pyfunc.PythonModel):
 
     def predict(self, context, model_input, params=None):
         try:
+            import timing as _timing                          # bundled via E1 serving; per-stage attribution
+        except Exception:
+            _timing = None
+        try:
             rows = discovery_adapter.parse_request(model_input)
         except Exception as e:
             print(f"[discovery] bad request: {type(e).__name__}: {e}", flush=True)
             return [discovery_adapter.error_response(f"bad request: {type(e).__name__}: {e}")]
         out = []
         for req in rows:
+            if _timing is not None:
+                _timing.reset()                              # per-request; gated by TIMING_BREAKDOWN=1
             try:
                 now = self._timeutil.parse_ts(req["now"]) if req.get("now") else self._timeutil.now()
                 uid = req["user_id"]
@@ -142,7 +148,12 @@ class DiscoveryModel(mlflow.pyfunc.PythonModel):
                     (int(uid) if uid is not None else -1), now=now,
                     limit=1_000_000, offset=0,                 # build whole feed; adapter date-filters+pages
                     seen_ids=req["seen_ids"], excluded_property_ids=req["property_ids"])
-                out.append(discovery_adapter.serialize(feed, meta, req, now, self._ds))
+                result = discovery_adapter.serialize(feed, meta, req, now, self._ds)
+                if _timing is not None:                      # where the ms went (vector/neo4j/embed); None unless gated on
+                    bd = _timing.snapshot()
+                    if bd:
+                        result.setdefault("context", {})["timing_breakdown"] = bd
+                out.append(result)
             except Exception as e:
                 print(f"[discovery] feed failed for user {req.get('user_id')}: {type(e).__name__}: {e}", flush=True)
                 out.append(discovery_adapter.error_response(f"{type(e).__name__}: {e}", req.get("user_id")))

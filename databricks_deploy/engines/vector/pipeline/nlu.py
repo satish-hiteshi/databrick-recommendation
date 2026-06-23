@@ -1,7 +1,24 @@
+import copy
 import json
+import os
+import threading
 import time
 
 from pipeline.llm import databricks_complete
+
+# ── deterministic-result cache (perf) ────────────────────────────────────────
+# parse_query() calls the LLM at temperature 0, so its parsed signals are a pure function of the query.
+# Memoizing by normalized query is BEHAVIOR-PRESERVING — a hit returns exactly what a fresh NLU call
+# would, without the ~1.0-1.4s round-trip (this is the SECOND LLM hop on router-driven vector routes).
+# Deep copies on store/return so callers can mutate freely. Disable with NLU_CACHE_TTL_S=0.
+_NLU_CACHE_TTL_S = float(os.getenv("NLU_CACHE_TTL_S", "300"))
+_NLU_CACHE_MAX = int(os.getenv("NLU_CACHE_MAX", "512"))
+_nlu_cache: dict = {}
+_nlu_cache_lock = threading.Lock()
+
+
+def _nlu_norm(q: str) -> str:
+    return " ".join((q or "").strip().lower().split())
 
 SYSTEM_PROMPT = (
     "You are a query parser for an entertainment discovery system covering games, movies, "
@@ -94,11 +111,17 @@ def _loads(raw: str):
 
 
 def parse_query(user_query: str, max_retries: int = 2) -> dict:
+    ckey = _nlu_norm(user_query)
+    if _NLU_CACHE_TTL_S > 0 and ckey:
+        with _nlu_cache_lock:
+            ent = _nlu_cache.get(ckey)
+            if ent is not None and (time.time() - ent[0]) < _NLU_CACHE_TTL_S:
+                return copy.deepcopy(ent[1])
     for attempt in range(max_retries + 1):
         try:
             raw = databricks_complete(SYSTEM_PROMPT, user_query, json_mode=True, temperature=0)
             args = _loads(raw)
-            return {
+            result = {
                 "query_mode": args.get("query_mode", "descriptive"),
                 "positive_entities": _safe_list(args.get("positive_entities")),
                 "negative_entities": _safe_list(args.get("negative_entities")),
@@ -110,6 +133,12 @@ def parse_query(user_query: str, max_retries: int = 2) -> dict:
                 "date_filter_end": args.get("date_filter_end") or None,
                 "raw_response": args,
             }
+            if _NLU_CACHE_TTL_S > 0 and ckey:
+                with _nlu_cache_lock:
+                    if len(_nlu_cache) >= _NLU_CACHE_MAX and ckey not in _nlu_cache:
+                        _nlu_cache.pop(min(_nlu_cache, key=lambda k: _nlu_cache[k][0]), None)
+                    _nlu_cache[ckey] = (time.time(), copy.deepcopy(result))
+            return result
         except Exception as e:
             if attempt < max_retries:
                 print(f"NLU attempt {attempt + 1} failed: {e}. Retrying in 2s...")

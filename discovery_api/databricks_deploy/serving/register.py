@@ -25,8 +25,10 @@ from mlflow.types.schema import ColSpec, Schema
 try:                                         # UC needs outputs; the feed is a nested JSON object → AnyType
     from mlflow.types.schema import AnyType  # so it isn't coerced to a stringified blob.
     _RT = AnyType()
+    _HAS_ANYTYPE = True
 except ImportError:
     _RT = "string"
+    _HAS_ANYTYPE = False
 
 MODEL_NAME = os.getenv("UC_MODEL_NAME", "stg_feeds_silver.ml.discovery-api-staging")
 
@@ -37,8 +39,36 @@ _E1 = os.path.join(_REPO, "databricks_deploy")               # E1's deploy bundl
 _E1_SERVING = os.path.join(_E1, "serving")
 _E1_ENG = os.path.join(_E1, "engines")
 
+
+def _optional_col(dtype, name):
+    try:
+        return ColSpec(dtype, name, required=False)
+    except TypeError:                         # older MLflow: keep the current non-breaking signature
+        return None
+
+
+_INPUT_COLS = [ColSpec("long", "user_id")]
+_OPTIONAL_INPUTS = [
+    ("string", "sort_order"),
+    ("string", "time_window"),
+    ("long", "limit"),
+    ("long", "offset"),
+    ("boolean", "debug"),
+    ("string", "now"),
+]
+if _HAS_ANYTYPE:
+    _OPTIONAL_INPUTS += [
+        (_RT, "date_range"),
+        (_RT, "property_ids"),
+        (_RT, "seen_ids"),
+    ]
+for _dtype, _name in _OPTIONAL_INPUTS:
+    _col = _optional_col(_dtype, _name)
+    if _col is not None:
+        _INPUT_COLS.append(_col)
+
 _SIGNATURE = ModelSignature(
-    inputs=Schema([ColSpec("long", "user_id")]),             # only user_id enforced; rest are optional
+    inputs=Schema(_INPUT_COLS),
     outputs=Schema([ColSpec("string", "endpoint"), ColSpec(_RT, "context"),
                     ColSpec(_RT, "main_feed"), ColSpec(_RT, "carousels")]))
 

@@ -37,14 +37,17 @@ def _load():
         kws = t.column("bm25_keywords").to_pylist()
         mat = (t.column("embedding").combine_chunks().flatten()
                .to_numpy(zero_copy_only=False).reshape(len(eids), -1).astype(np.float32))
-        by_id, name_list, emb = {}, [], {}
+        by_id, name_list, exact_names, emb = {}, [], {}, {}
         for i, eid in enumerate(eids):
             v = mat[i]
             by_id[eid] = {"entity_id": eid, "name": names[i], "vertical": verts[i],
                           "embedding": v, "bm25_keywords": kws[i] or []}
             emb[eid] = v
-            name_list.append(((names[i] or "").lower(), eid))
-        _INDEX = {"by_id": by_id, "names": name_list, "emb": emb, "dim": int(mat.shape[1])}
+            nm = (names[i] or "").lower()
+            name_list.append((nm, eid))
+            exact_names.setdefault(nm, eid)
+        _INDEX = {"by_id": by_id, "names": name_list, "exact_names": exact_names,
+                  "emb": emb, "dim": int(mat.shape[1])}
     return _INDEX
 
 
@@ -58,9 +61,9 @@ def resolve_entity(entity_name):
     q = entity_name.strip().lower()
     idx = _load()
     by_id, names = idx["by_id"], idx["names"]
-    exact = [eid for (nm, eid) in names if nm == q]
-    if exact:
-        eid, match = exact[0], "exact"
+    eid = idx["exact_names"].get(q)
+    if eid:
+        match = "exact"
     else:
         prefix = [eid for (nm, eid) in names if nm.startswith(q)]
         if prefix:

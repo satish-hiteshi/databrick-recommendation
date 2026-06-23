@@ -15,6 +15,7 @@ datetimes coerced to ISO strings so the result is JSON-serializable for Model Se
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
@@ -24,6 +25,65 @@ DEFAULT_LIMIT = 20
 
 
 # ── IN ─────────────────────────────────────────────────────────────────────
+def _missing(value) -> bool:
+    if value is None:
+        return True
+    try:
+        return bool(value != value)
+    except Exception:
+        return False
+
+
+def _jsonish(value):
+    if not isinstance(value, str):
+        return value
+    s = value.strip()
+    if not s or s.lower() in ("null", "none", "nan"):
+        return None
+    if s[0] in "[{":
+        try:
+            return json.loads(s)
+        except Exception:
+            return value
+    return value
+
+
+def _as_list(value) -> List[Any]:
+    value = _jsonish(value)
+    if _missing(value):
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, set):
+        return list(value)
+    if isinstance(value, str):
+        s = value.strip()
+        return [x.strip() for x in s.split(",") if x.strip()] if "," in s else ([s] if s else [])
+    return [value]
+
+
+def _as_dict(value):
+    value = _jsonish(value)
+    return value if isinstance(value, dict) else None
+
+
+def _scalar(value, default=None):
+    value = _jsonish(value)
+    return default if _missing(value) else value
+
+
+def _as_bool(value) -> bool:
+    if _missing(value):
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "t", "yes", "y")
+    return bool(value)
+
+
 def parse_request(model_input) -> List[Dict[str, Any]]:
     if hasattr(model_input, "to_dict"):                      # pandas DataFrame
         rows = model_input.to_dict(orient="records")
@@ -45,15 +105,15 @@ def parse_request(model_input) -> List[Dict[str, Any]]:
         except (TypeError, ValueError):
             offset = 0
         out.append({
-            "user_id": r.get("user_id"),
-            "sort_order": (r.get("sort_order") or "trending"),
-            "time_window": r.get("time_window"),
-            "date_range": r.get("date_range"),
+            "user_id": _scalar(r.get("user_id")),
+            "sort_order": _scalar(r.get("sort_order"), "trending"),
+            "time_window": _scalar(r.get("time_window")),
+            "date_range": _as_dict(r.get("date_range")),
             "limit": limit, "offset": offset,
-            "property_ids": list(r.get("property_ids") or []),   # EXCLUSION list
-            "seen_ids": list(r.get("seen_ids") or []),
-            "debug": bool(r.get("debug")),
-            "now": r.get("now"),
+            "property_ids": _as_list(r.get("property_ids")),   # EXCLUSION list
+            "seen_ids": _as_list(r.get("seen_ids")),
+            "debug": _as_bool(r.get("debug")),
+            "now": _scalar(r.get("now")),
         })
     return out
 

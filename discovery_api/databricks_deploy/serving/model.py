@@ -71,35 +71,46 @@ def _bootstrap_paths():
 
 
 class _SqlConn:
-    """Persistent databricks-sql-connector connection for LiveDataSource (lock-protected; reconnect on
-    failure). One small query per user request (follows); the heavy global reads run once on load."""
-    def __init__(self):
-        self._lock = threading.Lock()
-        self._conn = None
+    """databricks-sql-connector access for LiveDataSource. A BOUNDED POOL of connections (default size 1,
+    set via DISCOVERY_SQL_POOL_SIZE) so concurrent per-user feed requests don't serialize on a single
+    connection lock — pool size 1 reproduces the original single-locked behavior exactly. One small query
+    per user request (follows); the heavy global reads run once on load. Reconnects a connection on
+    failure. The pool is a simple checkout/return queue; query() blocks only while the pool is empty."""
+    def __init__(self, pool_size: int = None):
+        import queue
+        if pool_size is None:
+            pool_size = max(1, int(os.getenv("DISCOVERY_SQL_POOL_SIZE", "1")))
+        self._size = pool_size
+        self._pool = queue.Queue()
+        for _ in range(pool_size):
+            self._pool.put(None)            # lazily connected on first checkout
 
     def _connect(self):
         from databricks import sql as dbsql
         host = os.environ["DATABRICKS_HOST"].replace("https://", "").replace("http://", "").rstrip("/")
-        self._conn = dbsql.connect(server_hostname=host,
-                                   http_path=os.environ["DATABRICKS_HTTP_PATH"],
-                                   access_token=os.environ["DATABRICKS_TOKEN"])
+        return dbsql.connect(server_hostname=host,
+                             http_path=os.environ["DATABRICKS_HTTP_PATH"],
+                             access_token=os.environ["DATABRICKS_TOKEN"])
 
     def query(self, sql):
-        with self._lock:
+        conn = self._pool.get()             # checkout (blocks only if all connections are in use)
+        try:
             last = None
             for attempt in range(2):
                 try:
-                    if self._conn is None:
-                        self._connect()
-                    cur = self._conn.cursor()
+                    if conn is None:
+                        conn = self._connect()
+                    cur = conn.cursor()
                     cur.execute(sql)
                     cols = [c[0] for c in cur.description]
                     rows = [dict(zip(cols, r)) for r in cur.fetchall()]
                     cur.close()
                     return rows
-                except Exception as e:                       # stale conn → reconnect once
-                    last = e; self._conn = None
+                except Exception as e:       # stale conn → drop it, reconnect next attempt
+                    last = e; conn = None
             raise last
+        finally:
+            self._pool.put(conn)            # return to pool (None if it died → re-lazy-connects next time)
 
 
 class DiscoveryModel(mlflow.pyfunc.PythonModel):
@@ -144,9 +155,13 @@ class DiscoveryModel(mlflow.pyfunc.PythonModel):
             try:
                 now = self._timeutil.parse_ts(req["now"]) if req.get("now") else self._timeutil.now()
                 uid = req["user_id"]
+                if req.get("date_range") or req.get("time_window"):
+                    build_limit = int(os.getenv("DISCOVERY_DATE_FILTER_BUILD_LIMIT", "1000000"))
+                else:
+                    build_limit = req["offset"] + req["limit"] + 1
                 feed, meta = self._builder.build(
                     (int(uid) if uid is not None else -1), now=now,
-                    limit=1_000_000, offset=0,                 # build whole feed; adapter date-filters+pages
+                    limit=build_limit, offset=0,
                     seen_ids=req["seen_ids"], excluded_property_ids=req["property_ids"])
                 result = discovery_adapter.serialize(feed, meta, req, now, self._ds)
                 if _timing is not None:                      # where the ms went (vector/neo4j/embed); None unless gated on

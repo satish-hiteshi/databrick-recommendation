@@ -27,7 +27,9 @@ class BundleCache:
 
     @staticmethod
     def key(user_id: int, now: datetime, excluded_property_ids: Iterable[int] = ()):
-        return (user_id, now.isoformat(), tuple(sorted(excluded_property_ids or [])), config.V2_STRING_COMPOSER)
+        ttl = config.V2_BUNDLE_CACHE_TTL_SECONDS
+        now_key = now.isoformat() if ttl <= 0 else int(now.timestamp() // ttl)
+        return (user_id, now_key, tuple(sorted(excluded_property_ids or [])), config.V2_STRING_COMPOSER)
 
     def get(self, key):
         ent = self._c.get(key)

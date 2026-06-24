@@ -18,16 +18,31 @@ _HERE = os.path.dirname(os.path.abspath(__file__))          # databricks_deploy/
 _DEPLOY = os.path.dirname(_HERE)                            # databricks_deploy
 _ENG = os.path.join(_DEPLOY, "engines")                    # vendored engine sources
 
+
+def _optional_col(dtype, name):
+    try:
+        return ColSpec(dtype, name, required=False)
+    except TypeError:                         # older MLflow: keep the current non-breaking signature
+        return None
+
+
+_INPUT_COLS = [
+    ColSpec("string", "user_id"),
+    ColSpec("string", "query"),
+    ColSpec("string", "requesting_agent"),
+]
+_top_k_col = _optional_col("long", "top_k")
+if _top_k_col is not None:
+    _INPUT_COLS.append(_top_k_col)
+
 _SIGNATURE = ModelSignature(
-    inputs=Schema([ColSpec("string", "user_id"),
-                   ColSpec("string", "query"),
-                   ColSpec("string", "requesting_agent")]),
+    inputs=Schema(_INPUT_COLS),
     outputs=Schema([ColSpec("string", "query"),
                     ColSpec("string", "routed_to"),
                     ColSpec(_RESPONSE_TYPE, "response")]),
 )
 _INPUT_EXAMPLE = {"dataframe_records": [
-    {"user_id": "12345", "query": "pokemon", "requesting_agent": "morgan"}]}
+    {"user_id": "12345", "query": "pokemon", "requesting_agent": "morgan", "top_k": 10}]}
 
 _SERVING_GLUE = ("model.py", "parrot_adapter.py", "inprocess_engines.py", "inmemory_store.py", "timing.py")
 _DATA_FILES = ("embeddings_v2.npy", "embeddings_ids_v2.json",

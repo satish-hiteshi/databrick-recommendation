@@ -43,7 +43,8 @@ class TrendingTable:
 
     # ── build (cached per `now` + refresh cadence) ──
     def ensure(self, now: datetime) -> dict:
-        key = now.isoformat()
+        refresh = max(1, config.V2_TRENDING_REFRESH_SECONDS)
+        key = str(int(now.timestamp() // refresh))
         ent = self._cache.get(key)
         if ent is not None and (self._clock() - ent["built_wall"]) < config.V2_TRENDING_REFRESH_SECONDS:
             return ent

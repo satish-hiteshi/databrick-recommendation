@@ -44,7 +44,8 @@ _SIGNATURE = ModelSignature(
 _INPUT_EXAMPLE = {"dataframe_records": [
     {"user_id": "12345", "query": "pokemon", "requesting_agent": "morgan", "top_k": 10}]}
 
-_SERVING_GLUE = ("model.py", "parrot_adapter.py", "inprocess_engines.py", "inmemory_store.py", "timing.py")
+_SERVING_GLUE = ("model.py", "parrot_adapter.py", "inprocess_engines.py", "inmemory_store.py",
+                 "timing.py", "otel_setup.py")
 _DATA_FILES = ("embeddings_v2.npy", "embeddings_ids_v2.json",
                "all_compositions_v2.json", "entity_profiles_v2.json")
 
@@ -90,6 +91,7 @@ def main():
                     os.path.join(s, "inprocess_engines.py"),
                     os.path.join(s, "inmemory_store.py"),
                     os.path.join(s, "timing.py"),
+                    os.path.join(s, "otel_setup.py"),
                     os.path.join(s, "vs_store.py"),
                     os.path.join(s, "router_src"),
                     os.path.join(s, "vector"),                            # pipeline/*.py + data_v2/*

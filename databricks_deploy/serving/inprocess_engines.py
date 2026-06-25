@@ -4,6 +4,15 @@ from urllib.parse import urlsplit
 import numpy as np
 
 import timing                                          # per-stage latency attribution (no-op unless on)
+try:
+    import otel_setup                                  # OTLP dependency metrics + child spans (best-effort)
+except Exception:                                      # not bundled in some local contexts → no-op shim
+    otel_setup = None
+
+# cat (timing bucket) -> (dependency label, trace span name) for the OTLP dependency signals.
+_DEP = {"neo4j": ("neo4j", "neo4j_query"),
+        "vector": ("vector_search", "vector_search"),
+        "engine": ("engine", "engine_call")}
 
 
 # ════════════════════════ graph driver (Neo4j Aura), lazy singleton ════════════════════════
@@ -290,16 +299,34 @@ def dispatch(method, url, payload):
     # latency attribution: /graph/* → neo4j, /api/* → vector (incl. the Voyage embed + VS ANN nested
     # inside the vector handlers), anything else → engine. No-op unless TIMING_BREAKDOWN=1.
     cat = "neo4j" if path.startswith("/graph") else ("vector" if path.startswith("/api") else "engine")
+    dep, span_name = _DEP.get(cat, (cat, cat))
     last = None
-    with timing.span(cat):                           # times the full dispatch incl. retries (real wait)
-        for attempt in range(3):                     # 1 try + 2 retries (0.15s, 0.30s backoff)
-            try:
-                return fn(payload)
-            except Exception as e:
-                last = e
-                if not _is_transient(e):
-                    raise
-                if _is_neo4j_conn(e):                 # stale Aura connection → reconnect next attempt
-                    _reset_driver()
-                time.sleep(0.15 * (2 ** attempt))
-        raise last
+    t0 = time.perf_counter()
+    dep_span = otel_setup.span(span_name, {"dependency": dep, "http.target": path}) \
+        if otel_setup is not None else None
+    if dep_span is not None:
+        dep_span.__enter__()
+    err = False
+    try:
+        with timing.span(cat):                       # times the full dispatch incl. retries (real wait)
+            for attempt in range(3):                 # 1 try + 2 retries (0.15s, 0.30s backoff)
+                try:
+                    return fn(payload)
+                except Exception as e:
+                    last = e
+                    if not _is_transient(e):
+                        err = True
+                        raise
+                    if _is_neo4j_conn(e):            # stale Aura connection → reconnect next attempt
+                        _reset_driver()
+                    time.sleep(0.15 * (2 ** attempt))
+            err = True
+            raise last
+    finally:
+        if otel_setup is not None:
+            otel_setup.record_dependency(dep, (time.perf_counter() - t0) * 1000.0, error=err)
+        if dep_span is not None:
+            if err and last is not None:
+                dep_span.__exit__(type(last), last, None)   # mark span ERROR + record the exception
+            else:
+                dep_span.__exit__(None, None, None)

@@ -1,4 +1,5 @@
 import json
+import threading
 import time
 from typing import Optional
 
@@ -9,6 +10,45 @@ import config
 
 class LLMError(RuntimeError):
     pass
+
+
+# ── per-request token accounting (cost signal) ───────────────────────────
+# Mirrors serving/timing.py: a lock-protected module accumulator, reset once per request by route.py
+# and read into out["tokens"]. Sums across every LLM call in the request (extraction + any LLM rerank),
+# including assembler worker threads. Same concurrency caveat as timing.py — correct one-request-at-a-
+# time; buckets can mingle under concurrent requests to the same replica. Always on (cost is cheap to
+# count and matters regardless of TIMING_BREAKDOWN).
+_tok_lock = threading.Lock()
+_tok = {"input": 0, "output": 0, "calls": 0}
+
+
+def reset_token_usage():
+    with _tok_lock:
+        _tok["input"] = 0
+        _tok["output"] = 0
+        _tok["calls"] = 0
+
+
+def get_token_usage() -> dict:
+    with _tok_lock:
+        return dict(_tok)
+
+
+def _record_usage(usage):
+    """Accumulate a provider `usage` block. Accepts the OpenAI/Databricks shape (prompt_tokens/
+    completion_tokens) or an object with those attributes (Groq). Best-effort — never raises."""
+    if not usage:
+        return
+    try:
+        get = usage.get if isinstance(usage, dict) else lambda k, d=None: getattr(usage, k, d)
+        pin = get("prompt_tokens") or get("input_tokens") or 0
+        pout = get("completion_tokens") or get("output_tokens") or 0
+        with _tok_lock:
+            _tok["input"] += int(pin or 0)
+            _tok["output"] += int(pout or 0)
+            _tok["calls"] += 1
+    except Exception:
+        pass
 
 
 # ── response text extraction (defensive across endpoint shapes) ────────
@@ -65,7 +105,10 @@ def _databricks(system: str, user: str, json_mode: bool, temperature: float, max
             r = httpx.post(config.DATABRICKS_LLM_ENDPOINT, headers=headers, json=body,
                            timeout=config.LLM_TIMEOUT_S)
             if r.status_code == 200:
-                return _extract_text(r.json())
+                j = r.json()
+                if isinstance(j, dict):
+                    _record_usage(j.get("usage"))
+                return _extract_text(j)
             if 500 <= r.status_code < 600:
                 last = f"HTTP {r.status_code}: {r.text[:150]}"
                 time.sleep(1.0)
@@ -93,6 +136,7 @@ def _groq(system: str, user: str, json_mode: bool, temperature: float, max_token
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
     resp = _groq_client.chat.completions.create(**kwargs)
+    _record_usage(getattr(resp, "usage", None))
     return resp.choices[0].message.content
 
 

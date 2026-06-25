@@ -6,6 +6,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # allow `python route.py` from anywhere
 
 import blocks as B
+import llm
 from assembler import assemble_query
 from extract import extract
 
@@ -40,6 +41,7 @@ def _fallback_vector(query: str, top_k: int, error: str) -> dict:
 
 def route(query: str, top_k: int = 10, backfill_threshold: Optional[int] = None) -> dict:
     t0 = time.time()
+    llm.reset_token_usage()                            # per-request token accounting (cost signal)
 
     # ── 1. EXTRACT (the only LLM step). On failure → graceful vector fallback. ──
     try:
@@ -48,6 +50,7 @@ def route(query: str, top_k: int = 10, backfill_threshold: Optional[int] = None)
     except Exception as e:
         out = _fallback_vector(query, top_k, f"{type(e).__name__}: {e}")
         out["timing_ms"] = round((time.time() - t0) * 1000)
+        out["tokens"] = llm.get_token_usage()
         return out
 
     # ── 2. ASSEMBLE (deterministic establish-then-refine; 1 intent → single universe, >1 → merge) ──
@@ -60,6 +63,7 @@ def route(query: str, top_k: int = 10, backfill_threshold: Optional[int] = None)
     out["query"] = query
     out["extraction_ok"] = True
     out["timing_ms"] = round((time.time() - t0) * 1000)
+    out["tokens"] = llm.get_token_usage()              # {input, output, calls} summed over the request
     return out
 
 

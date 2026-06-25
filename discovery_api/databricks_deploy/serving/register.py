@@ -73,7 +73,7 @@ _SIGNATURE = ModelSignature(
                     ColSpec(_RT, "main_feed"), ColSpec(_RT, "carousels")]))
 
 _E2_SERVING = ("model.py", "discovery_adapter.py", "live_source_dbx.py")
-_E1_GLUE = ("inprocess_engines.py", "inmemory_store.py", "timing.py")
+_E1_GLUE = ("inprocess_engines.py", "inmemory_store.py", "timing.py", "otel_setup.py")
 
 
 def _copy_py(src, dst):
@@ -125,6 +125,7 @@ def main():
                     os.path.join(s, "inprocess_engines.py"),
                     os.path.join(s, "inmemory_store.py"),
                     os.path.join(s, "timing.py"),
+                    os.path.join(s, "otel_setup.py"),
                     os.path.join(s, "vs_store.py"),
                     os.path.join(s, "router_src"),
                     os.path.join(s, "vector"),                # pipeline/*.py + data_v2/<parquet>

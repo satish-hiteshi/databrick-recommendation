@@ -1,115 +1,132 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Deploy Endpoint 2 — Discovery API
-# MAGIC Registers the **collapsed discovery model** (E2 engine + E1's Qwen substrate + LiveDataSource) and
-# MAGIC creates the **`discovery-api-staging`** serving endpoint, then smoke-tests a real user's feed.
+# MAGIC # Deploy Endpoint 2 — Discovery API (collapsed discovery feed)
+# MAGIC **Self-configuring · job-runnable.** Derives the repo path + workspace host at runtime, registers the
+# MAGIC collapsed model (E2 engine + E1 substrate + Qwen parquet), **creates OR updates** the endpoint with the
+# MAGIC full env, **waits for READY**, then smoke-tests a real user's feed. No cell edits needed — run by hand
+# MAGIC or as a Databricks Job (override any value via job `base_parameters` / widgets).
 # MAGIC
-# MAGIC Prereqs: the repo is pulled; the Qwen parquet exists on the Volume; a SQL warehouse exists; the
-# MAGIC `feedsai_staging` secret scope has `neo4j_password`, `voyage_api_key`, `databricks_token`.
+# MAGIC Prereqs: the Qwen parquet on the Volume; a SQL warehouse (for LiveDataSource); the secret scope holds
+# MAGIC `neo4j_password`, `voyage_api_key`, `databricks_token`.
+# MAGIC **Do NOT `%pip install mlflow`** — the runtime's MLflow is integrated; reinstalling it breaks registration.
 
 # COMMAND ----------
-# MAGIC %md
-# MAGIC **Do NOT `%pip install mlflow`** — the Databricks runtime's MLflow is integrated; reinstalling it
-# MAGIC breaks registration (circular-import errors, `log_model` returns None, no version created).
-# MAGIC `mlflow` + `databricks-sdk` are already in the ML runtime. If `databricks-sdk` is somehow missing,
-# MAGIC install ONLY it (`%pip install databricks-sdk` then `dbutils.library.restartPython()`).
+# ===================== 0. AUTO-DERIVE repo location + workspace host (no hardcoding) =====================
+import os
+HOST = "https://" + spark.conf.get("spark.databricks.workspaceUrl")
+_nb = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
+if not _nb.startswith("/Workspace"):
+    _nb = "/Workspace" + _nb
+SERVING = os.path.dirname(_nb) + "/serving"          # <this notebook's dir>/serving (discovery bundle)
+print("HOST    :", HOST)
+print("SERVING :", SERVING)
 
 # COMMAND ----------
-# ===================== CONFIG — fill these in =====================
-REPO        = "/Workspace/Users/satish.deshmukh@hiteshi.com/databrick-recommendation"   # the pulled repo
-HOST        = "https://<staging-host>"                          # e.g. https://dbc-xxxx.cloud.databricks.com
-CATALOG     = "stg_feeds_silver"
-SCHEMA      = "ml"
-SCOPE       = "feedsai_staging"
-MODEL_NAME  = f"{CATALOG}.{SCHEMA}.discovery-api-staging"
-ENDPOINT    = "discovery-api-staging"
-PARQUET     = "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen.parquet"  # the Qwen parquet (Phase 3)
-VS_ENDPOINT = "feedsai-staging-vs"
-VS_INDEX    = f"{CATALOG}.{SCHEMA}.entities_vs"
-NEO4J_URI   = "neo4j+s://<your-aura>"
-QWEN_EMBED  = "databricks-qwen3-embedding-0-6b"
-WAREHOUSE_HTTP_PATH = "/sql/1.0/warehouses/<warehouse-id>"      # Warehouses → your WH → Connection details → HTTP path
-print("config:", MODEL_NAME, "| endpoint:", ENDPOINT)
+# ===================== 1. CONFIG (widgets — a Job can override via base_parameters) =====================
+_defaults = {
+    "catalog":        "stg_feeds_silver",
+    "schema":         "ml",
+    "endpoint":       "discovery-api-staging",        # client copy defaults to discovery-api-staging-v2
+    "scope":          "feedsai_staging",              # secret scope (neo4j_password, voyage_api_key, databricks_token)
+    "parquet":        "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen.parquet",
+    "vs_endpoint":    "feedsai-staging-vs",
+    "vs_index":       "stg_feeds_silver.ml.entities_vs",
+    "neo4j_uri":      "neo4j+s://17aa0e8d.databases.neo4j.io",
+    "qwen_embed":     "databricks-qwen3-embedding-0-6b",
+    "warehouse_http": "/sql/1.0/warehouses/321252e45d03563e",   # SQL warehouse HTTP path (LiveDataSource reads)
+    "workload_size":  "Medium",
+    "enable_timing":  "1",                            # "1" → TIMING_BREAKDOWN (source for per-stage latency)
+    # ── observability (OTLP → Grafana Cloud, H1.6) ──
+    "otel_service":   "discovery-api",                # OTEL_SERVICE_NAME
+    "enable_otel":    "0",                            # "1" → push telemetry (needs the grafana_otlp_token secret)
+    "otel_endpoint":  "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
+    "otel_secret":    "grafana_otlp_token",           # secret key in <scope> holding the base64 OTLP token
+    "otel_sampler":   "0.15",                         # fraction of requests traced (metrics stay 100%)
+}
+for k, v in _defaults.items():
+    dbutils.widgets.text(k, v)
+C = {k: dbutils.widgets.get(k) for k in _defaults}
+MODEL_NAME = f"{C['catalog']}.{C['schema']}.{C['endpoint']}"
+print("model:", MODEL_NAME, "| endpoint:", C["endpoint"])
 
 # COMMAND ----------
-# ===================== 1. REGISTER the model =====================
-import mlflow
-mlflow.set_registry_uri("databricks-uc")     # init MLflow before register (runtime mlflow; do NOT pip-install it)
-import os, sys, importlib
+# ===================== 2. REGISTER (E2 engine + E1 substrate + Qwen parquet → UC model) =====================
+import mlflow, sys, importlib
+mlflow.set_registry_uri("databricks-uc")             # runtime mlflow; do NOT pip-install it
 os.environ["UC_MODEL_NAME"]          = MODEL_NAME
-os.environ["EMBEDDINGS_PARQUET_SRC"] = PARQUET
-sys.path.insert(0, f"{REPO}/discovery_api/databricks_deploy/serving")
+os.environ["EMBEDDINGS_PARQUET_SRC"] = C["parquet"]
+sys.modules.pop("register", None)                    # ensure THIS bundle's register is loaded
+sys.path.insert(0, SERVING)
 import register; importlib.reload(register)
-register.main()      # bundles E2 engine + E1 collapsed substrate + Qwen parquet → new UC version
-
-# verify a version was actually created (NOT just the success print)
+register.main()
 from mlflow.tracking import MlflowClient
-print("versions:", sorted(int(v.version) for v in MlflowClient().search_model_versions(f"name='{MODEL_NAME}'")))
+ver = str(max(int(v.version) for v in MlflowClient().search_model_versions(f"name='{MODEL_NAME}'")))
+print("registered version:", ver)
 
 # COMMAND ----------
-# ===================== 2. CREATE the endpoint =====================
+# ===================== 3. CREATE-OR-UPDATE the endpoint (full env) + WAIT FOR READY =====================
+from datetime import timedelta
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.serving import (EndpointCoreConfigInput, ServedEntityInput, TrafficConfig, Route)
-import mlflow
-from mlflow.tracking import MlflowClient
-mlflow.set_registry_uri("databricks-uc")
-ver = str(max(int(v.version) for v in MlflowClient().search_model_versions(f"name='{MODEL_NAME}'")))
-print("model version:", ver)
+wc = WorkspaceClient()
 
-def sec(k): return "{{" + f"secrets/{SCOPE}/{k}" + "}}"
+def sec(k): return "{{" + f"secrets/{C['scope']}/{k}" + "}}"
 ENV = {
-    # ── discovery engine (E2) ──
+    # discovery engine (E2)
     "DISCOVERY_DATA_SOURCE": "live", "DISCOVERY_DEFAULT_ENGINE": "v2", "DISCOVERY_NOW_ISO": "",
-    "DISCOVERY_CATALOG": CATALOG, "SUBSTRATE_MODE": "inprocess",
-    # ── E1 collapsed substrate (the engines E2 reuses) ──
+    "DISCOVERY_CATALOG": C["catalog"], "SUBSTRATE_MODE": "inprocess",
+    # E1 collapsed substrate (engines E2 reuses)
     "ROUTER_ENGINE_MODE": "inprocess", "VECTOR_BACKEND": "databricks",
     "ENTITY_BACKEND": "memory", "DATA_BACKEND": "parquet",
-    "VS_ENDPOINT_NAME": VS_ENDPOINT, "VS_INDEX_NAME": VS_INDEX,
-    "NEO4J_URI": NEO4J_URI, "NEO4J_USER": "neo4j",
+    "VS_ENDPOINT_NAME": C["vs_endpoint"], "VS_INDEX_NAME": C["vs_index"],
+    "NEO4J_URI": C["neo4j_uri"], "NEO4J_USER": "neo4j",
     "NEO4J_PASSWORD": sec("neo4j_password"), "NEO4J_DATABASE": "neo4j",
-    "QUERY_EMBED_ENDPOINT": QWEN_EMBED,                 # query embeds via Qwen (matches the corpus)
-    "VOYAGE_API_KEY": sec("voyage_api_key"),            # dormant import — keep so the module loads
-    # ── auth + the SQL warehouse for LiveDataSource ──
+    "QUERY_EMBED_ENDPOINT": C["qwen_embed"],
+    "VOYAGE_API_KEY": sec("voyage_api_key"),          # dormant import — keep so the module loads
+    # auth + SQL warehouse for LiveDataSource
     "DATABRICKS_HOST": HOST, "DATABRICKS_TOKEN": sec("databricks_token"),
-    "DATABRICKS_HTTP_PATH": WAREHOUSE_HTTP_PATH,
-    # ── latency attribution (per-stage ms in context.timing_breakdown); remove for prod ──
-    "TIMING_BREAKDOWN": "1",
+    "DATABRICKS_HTTP_PATH": C["warehouse_http"],
 }
-wc = WorkspaceClient()
+if C["enable_timing"] == "1":
+    ENV["TIMING_BREAKDOWN"] = "1"
+
+# ── observability (H1.6): OTEL_SERVICE_NAME is always safe; the OTLP push is gated on enable_otel
+# (the secret must exist in the scope, else the endpoint create fails on an unresolvable secret ref). ──
+ENV["OTEL_SERVICE_NAME"] = C["otel_service"]
+if C["enable_otel"] == "1":
+    ENV["OTEL_EXPORTER_OTLP_ENDPOINT"] = C["otel_endpoint"]
+    ENV["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
+    ENV["OTEL_EXPORTER_OTLP_HEADERS"]  = "Authorization=Basic%20" + sec(C["otel_secret"])  # %20 = space (literal space 401s)
+    ENV["OTEL_TRACES_SAMPLER_ARG"]     = C["otel_sampler"]
+
 entities = [ServedEntityInput(name="discovery", entity_name=MODEL_NAME, entity_version=ver,
-            workload_size="Medium", scale_to_zero_enabled=False, environment_vars=ENV)]
+            workload_size=C["workload_size"], scale_to_zero_enabled=False, environment_vars=ENV)]
 traffic = TrafficConfig(routes=[Route(served_model_name="discovery", traffic_percentage=100)])
-if ENDPOINT in [e.name for e in wc.serving_endpoints.list()]:          # re-deploy → update to the new version
-    wc.serving_endpoints.update_config(name=ENDPOINT, served_entities=entities, traffic_config=traffic)
-    print(f"updating existing {ENDPOINT} → v{ver}")
-else:                                                                   # first deploy → create
-    wc.serving_endpoints.create(name=ENDPOINT,
-        config=EndpointCoreConfigInput(served_entities=entities, traffic_config=traffic))
-    print(f"creating {ENDPOINT} → v{ver}")
-print("watch Serving for Ready (~15 min: loads the Qwen parquet + Silver tables)")
+exists = any(e.name == C["endpoint"] for e in wc.serving_endpoints.list())
+print(("updating" if exists else "creating") + f" {C['endpoint']} → v{ver} … waiting for READY (~15 min warm-up)")
+if exists:
+    wc.serving_endpoints.update_config_and_wait(name=C["endpoint"], served_entities=entities,
+        traffic_config=traffic, timeout=timedelta(minutes=50))
+else:
+    wc.serving_endpoints.create_and_wait(name=C["endpoint"],
+        config=EndpointCoreConfigInput(served_entities=entities, traffic_config=traffic),
+        timeout=timedelta(minutes=50))
+print("endpoint state:", wc.serving_endpoints.get(C["endpoint"]).state)
 
 # COMMAND ----------
-# ===================== 3. SMOKE TEST — user 13 (a real game-follower) =====================
-import requests
+# ===================== 4. SMOKE TEST — user 13 (a real game-follower) =====================
+import requests, json
 TOKEN = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
-URL = f"{HOST}/serving-endpoints/{ENDPOINT}/invocations"
-body = {"dataframe_records": [{"user_id": 13, "sort_order": "trending", "limit": 8, "debug": True}]}
+URL = f"{HOST}/serving-endpoints/{C['endpoint']}/invocations"
+body = {"dataframe_records": [{"user_id": 13, "limit": 8, "debug": True}]}
 r = requests.post(URL, headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"},
                   json=body, timeout=300)
 r.raise_for_status()
 feed = r.json()["predictions"][0]
-ctx = feed.get("context", {})
-print("mode:", ctx.get("mode"), "| signal:", ctx.get("signal_strength"), "| path:", ctx.get("path"),
-      "| error:", feed.get("error"))
-print("main_feed count:", feed["main_feed"]["count"])
-for it in feed["main_feed"]["items"][:8]:
-    print(f"  - {str(it.get('vertical')):7} {it.get('property_name')}: {str(it.get('title'))[:48]}  "
-          f"(why: {str(it.get('why_string',''))[:48]})")
-print("carousels:", [(c["reason_string"], len(c["items"])) for c in feed.get("carousels", [])])
-
-# COMMAND ----------
-# MAGIC %md
-# MAGIC **Expected:** `mode: personalized`, a non-empty `main_feed` with "Because you follow …" why-strings,
-# MAGIC and cluster/trending/exploration carousels. A cold-start user (no follows) → `mode: cold_start` + a
-# MAGIC global feed. If `error` is set, check the endpoint **Logs** (`[discovery] …`) — most likely the
-# MAGIC warehouse HTTP path, a secret, or the Qwen/VS/Aura env.
+ctx = feed.get("context", {}) or {}
+print("mode:", ctx.get("mode"), "| signal:", ctx.get("signal_strength"), "| error:", feed.get("error"))
+print("main_feed count:", feed["main_feed"]["count"], "| carousels:", len(feed.get("carousels", [])))
+for it in feed["main_feed"]["items"][:6]:
+    print(f"  - {str(it.get('vertical')):7} {it.get('property_name')}: {str(it.get('title'))[:46]}")
+assert feed.get("error") is None and feed["main_feed"]["count"] > 0, "smoke test failed"
+print("SMOKE OK ✓")

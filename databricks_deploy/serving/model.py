@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 
 # Make sibling modules (parrot_adapter) importable regardless of MLflow's on-disk code layout.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -8,6 +9,9 @@ import mlflow
 from mlflow.models import set_model
 
 import parrot_adapter
+import otel_setup                                # OTLP push telemetry (best-effort, never blocks)
+
+_ENDPOINT = os.getenv("OTEL_SERVICE_NAME", "agent-recs")
 
 
 # Engine wiring for the COLLAPSED deployment. Set BEFORE importing the router (blocks.py reads
@@ -51,6 +55,7 @@ class RouterModel(mlflow.pyfunc.PythonModel):
     def load_context(self, context):
         for k, v in _ENGINE_ENV.items():
             os.environ.setdefault(k, v)
+        otel_setup.init(_ENDPOINT)                       # one-time OTLP provider setup (no-op if env unset)
         _bootstrap_paths()
         import route                                         # noqa: E402  (paths + env set above)
         self._route = route.route
@@ -78,20 +83,46 @@ class RouterModel(mlflow.pyfunc.PythonModel):
             if not row["query"]:
                 preds.append(parrot_adapter.error_response("missing or empty 'query'"))
                 continue
-            try:
-                import timing
-                timing.reset()                               # per-request latency attribution (gated)
-                out = self._route(row["query"], top_k=row["top_k"])
-                bd = timing.snapshot()
-                if bd:
-                    out["timing_breakdown"] = bd             # → response.router.timing_breakdown
-            except Exception as e:                           # never leak a 500 body to M2M callers
-                print(f"[parrot] route failed for {row['query']!r}: {type(e).__name__}: {e}", flush=True)
-                preds.append(parrot_adapter.error_response(
-                    f"{type(e).__name__}: {e}", query=row["query"]))
-                continue
-            preds.append(parrot_adapter.to_parrot_response(out))
+            t0 = time.perf_counter()
+            with otel_setup.span("request", {"endpoint": _ENDPOINT}) as sp:
+                try:
+                    import timing
+                    timing.reset()                               # per-request latency attribution (gated)
+                    out = self._route(row["query"], top_k=row["top_k"])
+                    bd = timing.snapshot()
+                    if bd:
+                        out["timing_breakdown"] = bd             # → response.router.timing_breakdown
+                except Exception as e:                           # never leak a 500 body to M2M callers
+                    print(f"[parrot] route failed for {row['query']!r}: {type(e).__name__}: {e}", flush=True)
+                    otel_setup.record_request(_ENDPOINT, (time.perf_counter() - t0) * 1000.0, "error")
+                    otel_setup.record_error(_ENDPOINT, type(e).__name__)
+                    sp.set_attribute("error", True)
+                    preds.append(parrot_adapter.error_response(
+                        f"{type(e).__name__}: {e}", query=row["query"]))
+                    continue
+                # success — emit the H1.6 signal set (all best-effort; see otel_setup.py)
+                self._emit_metrics(sp, out, bd, (time.perf_counter() - t0) * 1000.0)
+                preds.append(parrot_adapter.to_parrot_response(out))
         return preds
+
+    @staticmethod
+    def _emit_metrics(sp, out, bd, latency_ms):
+        otel_setup.record_request(_ENDPOINT, latency_ms, "ok")
+        otel_setup.record_stage_latencies(_ENDPOINT, bd)
+        path = out.get("path_taken")
+        results = out.get("results") or []
+        evr = out.get("exact_vs_related") or {}
+        exact = evr.get("exact") if isinstance(evr, dict) else None
+        related = evr.get("related") if isinstance(evr, dict) else None
+        otel_setup.record_routing(_ENDPOINT, path=path, extraction_ok=out.get("extraction_ok"),
+                                  result_count=len(results), exact=exact, related=related)
+        # token counts are emitted only if the router surfaces them (not yet wired — see otel_setup.py)
+        tok = out.get("tokens") or {}
+        otel_setup.record_tokens(_ENDPOINT, tok.get("input"), tok.get("output"))
+        if sp is not None:
+            sp.set_attribute("routing.path", str(path))
+            sp.set_attribute("result.count", len(results))
+            sp.set_attribute("extraction.ok", bool(out.get("extraction_ok")))
 
 
 set_model(RouterModel())

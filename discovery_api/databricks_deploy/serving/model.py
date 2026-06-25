@@ -13,6 +13,7 @@ query (no SparkSession in serving). predict() maps {user_id,…} -> the v1.0 dis
 import os
 import sys
 import threading
+import time
 
 import mlflow
 from mlflow.models import set_model
@@ -21,6 +22,12 @@ from mlflow.models import set_model
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import discovery_adapter   # noqa: E402
+try:
+    import otel_setup       # noqa: E402  bundled via E1 serving glue; best-effort OTLP telemetry
+except Exception:
+    otel_setup = None
+
+_ENDPOINT = os.getenv("OTEL_SERVICE_NAME", "discovery-api")
 
 # Engine wiring (set BEFORE the engine imports; setdefault so an endpoint env var still overrides).
 _ENV = {
@@ -71,35 +78,46 @@ def _bootstrap_paths():
 
 
 class _SqlConn:
-    """Persistent databricks-sql-connector connection for LiveDataSource (lock-protected; reconnect on
-    failure). One small query per user request (follows); the heavy global reads run once on load."""
-    def __init__(self):
-        self._lock = threading.Lock()
-        self._conn = None
+    """databricks-sql-connector access for LiveDataSource. A BOUNDED POOL of connections (default size 1,
+    set via DISCOVERY_SQL_POOL_SIZE) so concurrent per-user feed requests don't serialize on a single
+    connection lock — pool size 1 reproduces the original single-locked behavior exactly. One small query
+    per user request (follows); the heavy global reads run once on load. Reconnects a connection on
+    failure. The pool is a simple checkout/return queue; query() blocks only while the pool is empty."""
+    def __init__(self, pool_size: int = None):
+        import queue
+        if pool_size is None:
+            pool_size = max(1, int(os.getenv("DISCOVERY_SQL_POOL_SIZE", "1")))
+        self._size = pool_size
+        self._pool = queue.Queue()
+        for _ in range(pool_size):
+            self._pool.put(None)            # lazily connected on first checkout
 
     def _connect(self):
         from databricks import sql as dbsql
         host = os.environ["DATABRICKS_HOST"].replace("https://", "").replace("http://", "").rstrip("/")
-        self._conn = dbsql.connect(server_hostname=host,
-                                   http_path=os.environ["DATABRICKS_HTTP_PATH"],
-                                   access_token=os.environ["DATABRICKS_TOKEN"])
+        return dbsql.connect(server_hostname=host,
+                             http_path=os.environ["DATABRICKS_HTTP_PATH"],
+                             access_token=os.environ["DATABRICKS_TOKEN"])
 
     def query(self, sql):
-        with self._lock:
+        conn = self._pool.get()             # checkout (blocks only if all connections are in use)
+        try:
             last = None
             for attempt in range(2):
                 try:
-                    if self._conn is None:
-                        self._connect()
-                    cur = self._conn.cursor()
+                    if conn is None:
+                        conn = self._connect()
+                    cur = conn.cursor()
                     cur.execute(sql)
                     cols = [c[0] for c in cur.description]
                     rows = [dict(zip(cols, r)) for r in cur.fetchall()]
                     cur.close()
                     return rows
-                except Exception as e:                       # stale conn → reconnect once
-                    last = e; self._conn = None
+                except Exception as e:       # stale conn → drop it, reconnect next attempt
+                    last = e; conn = None
             raise last
+        finally:
+            self._pool.put(conn)            # return to pool (None if it died → re-lazy-connects next time)
 
 
 class DiscoveryModel(mlflow.pyfunc.PythonModel):
@@ -107,6 +125,14 @@ class DiscoveryModel(mlflow.pyfunc.PythonModel):
         for k, v in _ENV.items():
             os.environ.setdefault(k, v)
         _bootstrap_paths()
+        global otel_setup
+        if otel_setup is None:                               # may resolve only after paths are wired
+            try:
+                import otel_setup as _o; otel_setup = _o
+            except Exception:
+                otel_setup = None
+        if otel_setup is not None:
+            otel_setup.init(_ENDPOINT)                       # one-time OTLP setup (no-op if env unset)
 
         from live_source_dbx import LiveDataSource
         from discovery_api.src.data_access.substrate_client import SubstrateClient
@@ -141,23 +167,50 @@ class DiscoveryModel(mlflow.pyfunc.PythonModel):
         for req in rows:
             if _timing is not None:
                 _timing.reset()                              # per-request; gated by TIMING_BREAKDOWN=1
+            t0 = time.perf_counter()
+            span = otel_setup.span("request", {"endpoint": _ENDPOINT}) if otel_setup is not None else None
+            if span is not None:
+                span.__enter__()
             try:
                 now = self._timeutil.parse_ts(req["now"]) if req.get("now") else self._timeutil.now()
                 uid = req["user_id"]
+                if req.get("date_range") or req.get("time_window"):
+                    build_limit = int(os.getenv("DISCOVERY_DATE_FILTER_BUILD_LIMIT", "1000000"))
+                else:
+                    build_limit = req["offset"] + req["limit"] + 1
                 feed, meta = self._builder.build(
                     (int(uid) if uid is not None else -1), now=now,
-                    limit=1_000_000, offset=0,                 # build whole feed; adapter date-filters+pages
+                    limit=build_limit, offset=0,
                     seen_ids=req["seen_ids"], excluded_property_ids=req["property_ids"])
                 result = discovery_adapter.serialize(feed, meta, req, now, self._ds)
-                if _timing is not None:                      # where the ms went (vector/neo4j/embed); None unless gated on
-                    bd = _timing.snapshot()
-                    if bd:
-                        result.setdefault("context", {})["timing_breakdown"] = bd
+                bd = _timing.snapshot() if _timing is not None else None
+                if bd:                                       # where the ms went (vector/neo4j/embed); None unless gated on
+                    result.setdefault("context", {})["timing_breakdown"] = bd
+                self._emit_metrics(result, bd, (time.perf_counter() - t0) * 1000.0)
                 out.append(result)
+                if span is not None:
+                    span.__exit__(None, None, None)
             except Exception as e:
                 print(f"[discovery] feed failed for user {req.get('user_id')}: {type(e).__name__}: {e}", flush=True)
+                if otel_setup is not None:
+                    otel_setup.record_request(_ENDPOINT, (time.perf_counter() - t0) * 1000.0, "error")
+                    otel_setup.record_error(_ENDPOINT, type(e).__name__)
+                if span is not None:
+                    span.__exit__(type(e), e, None)
                 out.append(discovery_adapter.error_response(f"{type(e).__name__}: {e}", req.get("user_id")))
         return out
+
+    @staticmethod
+    def _emit_metrics(result, bd, latency_ms):
+        """Map the discovery v1.0 envelope onto the shared H1.6 signal set (best-effort)."""
+        if otel_setup is None:
+            return
+        otel_setup.record_request(_ENDPOINT, latency_ms, "ok")
+        otel_setup.record_stage_latencies(_ENDPOINT, bd)
+        ctx = result.get("context") or {}
+        main_feed = result.get("main_feed") or {}
+        otel_setup.record_routing(_ENDPOINT, path=ctx.get("path"),
+                                  result_count=main_feed.get("count"))
 
 
 set_model(DiscoveryModel())

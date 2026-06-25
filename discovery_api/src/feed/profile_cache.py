@@ -24,8 +24,13 @@ class ProfileCache:
         self.hits = 0
         self.misses = 0
 
+    def _key(self, user_id: int, now: datetime):
+        if self.ttl <= 0:
+            return (user_id, now.isoformat())
+        return (user_id, int(now.timestamp() // self.ttl))
+
     def get(self, user_id: int, now: datetime, ds: DataSource, force: bool = False) -> TasteProfile:
-        key = (user_id, now.isoformat())
+        key = self._key(user_id, now)
         ent = self._c.get(key)
         if ent is not None and not force and (self._clock() - ent[0]) < self.ttl:
             self.hits += 1

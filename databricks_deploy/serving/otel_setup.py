@@ -105,16 +105,19 @@ def init(service_name: str = None):
 
 def _build_instruments(meter):
     # Bounded-cardinality instruments per the H1.6 metric catalogue.
+    # NOTE: latency histograms are named WITHOUT a `_ms` suffix — the OTLP→Prometheus exporter appends
+    # the unit ("ms"→`_milliseconds`) automatically, so a `_ms` name double-suffixes to
+    # `..._ms_milliseconds`. Keep unit="ms"; the exported series read clean. (_M keys stay internal.)
     _M["request_latency_ms"] = meter.create_histogram(
-        "request_latency_ms", unit="ms", description="End-to-end request latency")
+        "request_latency", unit="ms", description="End-to-end request latency")
     _M["requests_total"] = meter.create_counter(
         "requests_total", description="Request count by status")
     _M["errors_total"] = meter.create_counter(
         "errors_total", description="Errors by classified type")
     _M["stage_latency_ms"] = meter.create_histogram(
-        "stage_latency_ms", unit="ms", description="Per-stage latency (extract/establish/refine/rerank)")
+        "stage_latency", unit="ms", description="Per-stage latency (llm/nlu/embed/vs/neo4j)")
     _M["llm_call_latency_ms"] = meter.create_histogram(
-        "llm_call_latency_ms", unit="ms", description="Language-model call latency")
+        "llm_call_latency", unit="ms", description="Language-model call latency")
     _M["routing_path_total"] = meter.create_counter(
         "routing_path_total", description="Routing-path distribution")
     _M["extraction_total"] = meter.create_counter(
@@ -132,7 +135,7 @@ def _build_instruments(meter):
     _M["llm_output_tokens_total"] = meter.create_counter(
         "llm_output_tokens_total", description="LLM output tokens (cost driver)")
     _M["dependency_latency_ms"] = meter.create_histogram(
-        "dependency_latency_ms", unit="ms", description="Per-dependency latency")
+        "dependency_latency", unit="ms", description="Per-dependency latency")
     _M["dependency_calls_total"] = meter.create_counter(
         "dependency_calls_total", description="Per-dependency call count")
     _M["dependency_errors_total"] = meter.create_counter(

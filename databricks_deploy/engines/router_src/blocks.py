@@ -371,7 +371,7 @@ def resolve_concepts(terms: List[str]) -> Tuple[List[str], List[str]]:
         else:
             soft.append(t)                               # unknown → mood/quality → fold to soft
     seen = set()
-    hard = [c for c in hard if not (c in seen or seen.add(c))]
+    hard = [c for c in hard if c and not (c in seen or seen.add(c))]   # drop None/empty (graph Concept w/ null name)
     return hard, soft
 
 
@@ -387,7 +387,7 @@ def vector_rerank_within(items: List[Item], semantic: str) -> List[Item]:
     if not ids:
         return list(items)
     data = _post(f"{VECTOR}/api/score_set", {"phrase": semantic, "entity_ids": ids})
-    score_map = {s["entity_id"]: s["score"] for s in data.get("scored", [])}
+    score_map = {s["entity_id"]: (s.get("score") or 0.0) for s in data.get("scored", [])}   # None score → 0.0 (avoid format/sort crash)
     scored, unscored = [], []
     for it in items:
         eid = it.get("entity_id")

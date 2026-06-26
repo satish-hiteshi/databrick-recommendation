@@ -23,6 +23,19 @@
 # MAGIC > `VS_RELEASE_DATE_COL` overrides the column name.
 
 # COMMAND ----------
+# MAGIC %md
+# MAGIC ## Setup — install the Vector Search client (run FIRST)
+# MAGIC `databricks-vectorsearch` (used by Step 1.5's index rebuild) is not bundled on serverless / fresh
+# MAGIC clusters. `%pip install` + `restartPython()` reset Python state (widgets persist), so this runs first.
+# MAGIC Safe to skip if your cluster already has the package. Do NOT add `mlflow` here — the runtime's is integrated.
+
+# COMMAND ----------
+# MAGIC %pip install databricks-vectorsearch
+
+# COMMAND ----------
+dbutils.library.restartPython()
+
+# COMMAND ----------
 # ===================== 0. AUTO-DERIVE repo location + workspace host (no hardcoding) =====================
 import os
 HOST = "https://" + spark.conf.get("spark.databricks.workspaceUrl")
@@ -56,6 +69,7 @@ _defaults = {
     "otel_sampler":  "0.15",                          # fraction of requests traced (metrics stay 100%)
     # ── data sync (Step 1.5) ──
     "rebuild_index": "0",                             # "1" → rebuild ml.entities + entities_vs from `parquet` (carries release_date_ts)
+    "run_full_test": "0",                             # "1" → run the 50-query acceptance set (Section 5, ~3 min)
 }
 for k, v in _defaults.items():
     dbutils.widgets.text(k, v)
@@ -76,8 +90,24 @@ if C["rebuild_index"] != "1":
     print("rebuild_index=0 → skipping entities/entities_vs rebuild (set the widget to 1 to run it).")
 else:
     TABLE = f"{C['catalog']}.{C['schema']}.entities"
-    # (1) verify the parquet schema (must include release_date_ts + the Qwen embedding)
-    df = spark.read.parquet(C["parquet"])
+    # (1) read the parquet with an EXPLICIT schema. Some Spark/serverless sessions honor the parquet's
+    # embedded Spark schema (which can omit release_date_ts) over the physical columns; passing the schema
+    # forces Spark to read the physical release_date_ts. If a session STILL drops it, use the PyArrow
+    # fallback just below — PyArrow always reads the physical columns.
+    from pyspark.sql.types import (StructType, StructField, StringType, ArrayType, FloatType, LongType)
+    _schema = StructType([
+        StructField("entity_id", StringType()),           StructField("name", StringType()),
+        StructField("vertical", StringType()),            StructField("bm25_keywords", ArrayType(StringType())),
+        StructField("embedding", ArrayType(FloatType())), StructField("release_date_ts", LongType()),
+    ])
+    df = spark.read.schema(_schema).parquet(C["parquet"])
+    # ── PyArrow fallback (uncomment these 5 lines + comment the line above if Spark still drops the column) ──
+    # import pyarrow.parquet as pq, pandas as pd
+    # _pdf = pq.read_table(C["parquet"]).to_pandas()
+    # _pdf["embedding"] = _pdf["embedding"].apply(lambda v: [float(x) for x in v])
+    # _pdf["bm25_keywords"] = _pdf["bm25_keywords"].apply(lambda v: [str(x) for x in (v if v is not None else [])])
+    # _pdf["release_date_ts"] = _pdf["release_date_ts"].apply(lambda v: None if pd.isna(v) else int(v))
+    # df = spark.createDataFrame(_pdf[["entity_id","name","vertical","bm25_keywords","embedding","release_date_ts"]], _schema)
     print("parquet rows:", df.count()); df.printSchema()
     _missing = {"entity_id", "name", "vertical", "embedding", "release_date_ts"} - set(df.columns)
     assert not _missing, f"parquet missing required columns: {_missing}"
@@ -228,3 +258,75 @@ resp, rt = ask("cozy non-violent farming roguelike horror games from 2027"); sho
 assert resp.get("error") is None, "H10 errored"
 
 print("\nSMOKE BATTERY DONE — review H3 (0 horror ×2) and H5 (recency window) manually per REVIEW_CHECKLIST.")
+
+# COMMAND ----------
+# ===================== 5. FULL 50-QUERY ACCEPTANCE SET (vs the documented test results) =====================
+# MAGIC %md
+# MAGIC Fires the 50 queries from **Endpoint_1_Test_Set_and_Results** at the endpoint and captures the top-10
+# MAGIC per query. Set the **`run_full_test`** widget to `1` to run (~3 min). It prints a readable per-query
+# MAGIC block AND a compact JSON at the very bottom — paste that JSON back for a query-by-query comparison
+# MAGIC against the documented results (overall 72.1%; franchise/recency/negation should match tightest).
+
+# COMMAND ----------
+if C["run_full_test"] != "1":
+    print("run_full_test=0 → skipping the 50-query set (set the widget to 1 to run it).")
+else:
+    QUERIES = [
+        ("Q1","A","open world RPG games"), ("Q2","A","a sci-fi action movie"),
+        ("Q3","A","a crime drama tv series"), ("Q4","A","a true crime podcast"),
+        ("Q5","A","a survival horror game"), ("Q6","A","a historical drama movie"),
+        ("Q7","B","a cozy game"), ("Q8","B","a dark psychological thriller"),
+        ("Q9","B","a feel-good comedy movie"), ("Q10","B","something relaxing to play"),
+        ("Q11","B","an atmospheric horror movie"), ("Q12","B","an uplifting documentary"),
+        ("Q13","C","games like Hades"), ("Q14","C","movies like Inception"),
+        ("Q15","C","shows like Breaking Bad"), ("Q16","C","games like Stardew Valley"),
+        ("Q17","C","movies like The Notebook"), ("Q18","C","shows like The Office"),
+        ("Q19","D","Star Wars games"), ("Q20","D","Final Fantasy games"),
+        ("Q21","D","Marvel movies"), ("Q22","D","Lego games"),
+        ("Q23","D","Pokemon games"), ("Q24","D","Call of Duty games"),
+        ("Q25","E","games from 2025"), ("Q26","E","recent sci-fi movies"),
+        ("Q27","E","thrillers from the last 2 years"), ("Q28","E","new horror movies"),
+        ("Q29","E","recent indie games"), ("Q30","E","tv shows from 2025"),
+        ("Q31","F","recent co-op games but not horror"), ("Q32","F","female-led sci-fi movies"),
+        ("Q33","F","open world rpg with crafting"), ("Q34","F","a 2025 comedy movie"),
+        ("Q35","F","relaxing farming games"), ("Q36","F","dark fantasy games not turn-based"),
+        ("Q37","G","a comedy but not romantic"), ("Q38","G","games but not horror"),
+        ("Q39","G","movies but not violent"), ("Q40","G","an action game but nothing fantasy"),
+        ("Q41","G","tv shows but not reality tv"), ("Q42","H","something to relax to"),
+        ("Q43","H","something funny"), ("Q44","H","something scary"),
+        ("Q45","H","something epic"), ("Q46","I","a warm hug of a movie"),
+        ("Q47","I","something epic and sweeping"), ("Q48","I","a game to lose yourself in"),
+        ("Q49","I","a mind-bending sci-fi"), ("Q50","I","a cozy mystery to unwind with"),
+    ]
+    import requests as _rq, json as _json, time as _time
+    _TOKEN = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
+    _URL = f"{HOST}/serving-endpoints/{C['endpoint']}/invocations"
+
+    def _ask(q):
+        body = {"dataframe_records": [{"user_id": "13", "query": q, "requesting_agent": "morgan", "top_k": 10}]}
+        r = _rq.post(_URL, headers={"Authorization": f"Bearer {_TOKEN}", "Content-Type": "application/json"},
+                     json=body, timeout=120)
+        r.raise_for_status()
+        inner = r.json()["predictions"][0]
+        resp = inner.get("response"); resp = resp if isinstance(resp, dict) else _json.loads(resp)
+        return resp
+
+    _out = {}
+    for _qid, _cat, _q in QUERIES:
+        try:
+            _resp = _ask(_q); _res = _resp.get("results") or []
+            _rows = [{"name": it.get("name"), "vertical": it.get("vertical"), "id": it.get("entity_id")}
+                     for it in _res[:10]]
+            _out[_qid] = {"cat": _cat, "query": _q, "count": _resp.get("count"),
+                          "error": _resp.get("error"), "top10": _rows}
+            print(f"\n{_qid} [{_cat}] {_q!r}  count={_resp.get('count')} error={_resp.get('error')}")
+            for _i, _it in enumerate(_rows, 1):
+                print(f"  {_i:2d}. {str(_it['vertical']):7} {_it['name']}")
+        except Exception as _e:
+            _out[_qid] = {"cat": _cat, "query": _q, "error": f"{type(_e).__name__}: {_e}", "top10": []}
+            print(f"\n{_qid} [{_cat}] {_q!r}  REQUEST FAILED: {type(_e).__name__}: {_e}")
+        _time.sleep(0.3)
+
+    print("\n\n========== COPY EVERYTHING BELOW THIS LINE AND PASTE BACK FOR COMPARISON ==========")
+    print(_json.dumps({k: {"q": v["query"], "names": [r["name"] for r in v["top10"]]}
+                       for k, v in _out.items()}, ensure_ascii=False))

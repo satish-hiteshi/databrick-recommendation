@@ -1,3 +1,15 @@
+"""The LLM extraction prompt (CONTEXT.MD §3). The LLM's ONLY job is language understanding:
+convert the query into the intent JSON. It does NOT choose engines, plans, or ordering.
+
+Output contract: a single JSON object {"intents": [ <intent>, ... ]}. One intent normally;
+multiple ONLY for genuinely independent multi-intent queries (CONTEXT §7). The word JSON appears
+so output is strict JSON.
+
+07f: the schema now carries an explicit `verticals` SET and a `seed_entities` LIST (each seed tagged
+with the vertical the user tied it to). These guarantee multi-vertical coverage and clean multi-seed
+parsing — the keystone fix for "recommend movies, games AND TV" silently dropping verticals.
+"""
+
 SYSTEM_PROMPT = r"""You convert an entertainment-discovery query into a structured intent as STRICT JSON.
 You ONLY do language understanding. You do NOT choose engines, retrieval, or ordering.
 
@@ -35,8 +47,21 @@ Each intent object has ALL of these fields (use null / [] / {} when absent — n
                                //   tied the title to ("Hollow Knight for games" -> vertical "game";
                                //   "Marvel Zombies as a TV show" -> vertical "tv"); else null.
   "raw_query": "<verbatim query>",
-  "notes": "<one short phrase: your read of the intent>"
+  "notes": "<one short phrase: your read of the intent>",
+  "is_gibberish": false        // true ONLY for genuinely unintelligible input — see the GIBBERISH rule
 }
+
+GIBBERISH (set "is_gibberish": true ONLY in this case):
+- If the input is genuinely unintelligible — random characters, keyboard mashing (e.g. "asdfghjkl",
+  "qwfpgjluy"), pure digits/symbols/punctuation with no request (e.g. "38271 5566", "....."), pure
+  emoji with no meaning, or otherwise carries NO interpretable request for content — return
+  "is_gibberish": true and leave ALL other fields empty/null: verticals [], vertical "any",
+  empty hard_constraints, empty soft_intent, no seed_entities. Do NOT guess a vertical for it.
+- If the input is ANY real request, it is NOT gibberish — set "is_gibberish": false and extract it
+  normally. This INCLUDES: a short title ("Up", "It", "Her"), a vague mood/feel ("something relaxing",
+  "a warm hug", "something that feels cozy"), a single genre/topic word ("horror", "nostalgia"), and
+  NON-ENGLISH phrasings ("películas de terror", "películas de acción"). When unsure, treat it as a
+  REAL request (is_gibberish false) — only flag input you truly cannot interpret at all.
 
 VERTICALS — list EXACTLY the verticals the user asked for (this drives per-vertical coverage):
 - one vertical named -> one-element list; several named ("games and movies") -> exactly those;

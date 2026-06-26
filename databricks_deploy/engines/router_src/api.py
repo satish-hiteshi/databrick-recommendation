@@ -1,3 +1,13 @@
+"""FastAPI service exposing the UNIFIED ROUTER (vector-primary, v2) for the frontend — port 8020.
+
+  POST /router/search {query, top_k}  -> route(query): extract intent (1 Databricks call) → assemble
+                                         (vector establishes by default; graph refines) → tagged results.
+  GET  /router/health                 -> provider + engine reachability.
+
+Calls the graph engine (:8010) and vector engine (:8000) over HTTP, exactly like the eval. Run:
+  ./.venv/bin/uvicorn api:app --app-dir agent_recs/src --port 8020
+"""
+
 import sys
 from pathlib import Path
 
@@ -22,6 +32,8 @@ class SearchRequest(BaseModel):
 
 @app.post("/router/search")
 def search(req: SearchRequest):
+    """Run a query through the full unified router and return the structured response (path_taken,
+    universe_establisher, refinements_applied, results tagged exact|related, intent, timing)."""
     return route(req.query, top_k=req.top_k)
 
 

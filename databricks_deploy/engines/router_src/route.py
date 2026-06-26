@@ -1,3 +1,25 @@
+"""The single entry point for the unified router (ROUTER_PLAN §9 step 5, CONTEXT §1–§7).
+
+    route(query) -> structured response
+
+Flow:  query
+         -> extract           (LLM → intent JSON; the ONLY language-understanding step)
+         -> assemble_query    (deterministic establish-then-refine; picks the bounded path)
+         -> response          { query, path_taken, universe_establisher, refinements_applied,
+                                results (each tagged exact|related) + exact_vs_related, intent }
+
+The LLM only fills the intent JSON; ALL decisioning is the deterministic assembler's. This module
+adds nothing to that logic — it just wires extract→assemble and handles the one failure mode the
+composed system must survive: the LLM being unavailable / emitting unparseable output.
+
+GRACEFUL DEGRADATION (extraction failure):
+  If `extract` raises (LLM down, timeout, or unparseable after its own retry), we DO NOT crash and
+  we DO NOT guess a structured plan. We fall back to a single `vector_constrain` on the RAW query —
+  the safest universe when intent is unknown (vector tolerates free text) — and flag it loudly:
+  `extraction_ok=False`, `path_taken="FALLBACK__VECTOR_CONSTRAIN(raw_query)"`. The caller can always
+  see the system degraded rather than silently returning a different kind of answer.
+"""
+
 import sys
 import time
 from pathlib import Path
@@ -6,21 +28,15 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # allow `python route.py` from anywhere
 
 import blocks as B
-import llm
+import no_signal
 from assembler import assemble_query
 from extract import extract
 
-try:                                   # optional latency-attribution seam (serving only; no-op locally)
-    from timing import span as _tspan
-except Exception:                      # pragma: no cover — `timing` is bundled only in the serving image
-    from contextlib import contextmanager as _cm
-
-    @_cm
-    def _tspan(_category):
-        yield
-
 
 def _fallback_vector(query: str, top_k: int, error: str) -> dict:
+    """Extraction unavailable → degrade to one vector_constrain on the raw query, clearly flagged.
+    (Restored to the pre-gibberish-fix behavior — the ONLY no-signal routing now is the LLM
+    is_gibberish flag handled in route().)"""
     try:
         items = B.vector_constrain(query, vertical=None, top_n=top_k)
     except Exception as e:                                  # even the safe path can fail (engine down)
@@ -40,17 +56,29 @@ def _fallback_vector(query: str, top_k: int, error: str) -> dict:
 
 
 def route(query: str, top_k: int = 10, backfill_threshold: Optional[int] = None) -> dict:
+    """Run a query through the full unified router. Returns one structured response dict.
+
+    `extraction_ok` is True on the normal path (intent JSON → assembled path); False when the LLM
+    failed and we degraded to the raw-query vector fallback. `timing_ms` is wall-clock end to end.
+    """
     t0 = time.time()
-    llm.reset_token_usage()                            # per-request token accounting (cost signal)
 
     # ── 1. EXTRACT (the only LLM step). On failure → graceful vector fallback. ──
     try:
-        with _tspan("llm"):
-            intents = extract(query)
+        intents = extract(query)
     except Exception as e:
         out = _fallback_vector(query, top_k, f"{type(e).__name__}: {e}")
         out["timing_ms"] = round((time.time() - t0) * 1000)
-        out["tokens"] = llm.get_token_usage()
+        return out
+
+    # ── 1b. GIBBERISH (the ONLY no-signal branch): if the LLM flagged the input as genuinely
+    #        unintelligible (is_gibberish=true), serve the recent-mixed fallback. No score/vertical/
+    #        name checks — one branch, driven by the LLM flag. Any real request flows on normally. ──
+    if intents and getattr(intents[0], "is_gibberish", False):
+        out = no_signal.build_response(
+            intents[0], top_k, "LLM flagged input as gibberish (is_gibberish=true) → recent-mixed fallback")
+        out.update({"query": query, "extraction_ok": True, "is_gibberish": True,
+                    "timing_ms": round((time.time() - t0) * 1000)})
         return out
 
     # ── 2. ASSEMBLE (deterministic establish-then-refine; 1 intent → single universe, >1 → merge) ──
@@ -63,7 +91,6 @@ def route(query: str, top_k: int = 10, backfill_threshold: Optional[int] = None)
     out["query"] = query
     out["extraction_ok"] = True
     out["timing_ms"] = round((time.time() - t0) * 1000)
-    out["tokens"] = llm.get_token_usage()              # {input, output, calls} summed over the request
     return out
 
 

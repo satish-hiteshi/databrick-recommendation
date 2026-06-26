@@ -1,13 +1,55 @@
+"""Deterministic assembler: intent JSON -> bounded execution path.
+
+VECTOR-PRIMARY architecture (07b, after the honest 06b eval showed graph-primary regressed against the
+full vector pipeline). Reads an Intent and composes the blocks into ONE establish-then-refine path;
+assembly is dynamic but every result is a NAMED, testable composition.
+
+THE NEW DEFAULT — VECTOR establishes, GRAPH refines (vector has the semantic recall; graph does what
+vector provably cannot: enforce relational/structural constraints, filter negations, contribute a
+structural rerank). GRAPH establishes FIRST only for the proven structural niche.
+
+Establisher selection (exactly one, runs first):
+  1. seed(s) present:
+       specific target vertical -> vector_seed / multiseed   (combined seed vector neighborhood; handles
+                                                               single cross-vertical game->movie)
+       vertical=any / multi-target -> vector_constrain(raw)   (/api/query NLU targets the right verticals)
+  2. structural NICHE (franchise / developer_relation.also_made / explicit structural) -> graph_constrain
+       (sparse-franchise safety: a tiny franchise node, e.g. "Warhammer", re-establishes via vector recall)
+  3. negation present -> establish the BROAD POSITIVE set then graph apply_negations removes the category
+       (concepts -> graph_constrain broad; else positive phrase -> vector; else vertical universe). The
+       phrase sent to vector is POSITIVE-ONLY so the vector pipeline never over-negates to empty (07a).
+  4. DEFAULT (anything with semantic/thematic/descriptive character) -> vector_constrain (full /api/query)
+  5. bare "<vertical>" with no other signal -> vector on the vertical word, else graph vertical universe
+  6. last resort (no signal but raw text) -> vector_constrain(raw_query); EMPTY only if truly nothing.
+
+Refine the established set (refiners only reorder/shrink it): semantic rerank WITHIN a graph/seed set
+(vector-established sets are already semantically ranked) -> vector_rerank_within; soft.structural_prefs
+-> graph_rerank_within; negations -> apply_negations (final hard exclusion). Too-small -> anchored backfill.
+
+INVARIANT (enforced structurally + at runtime): exactly one establisher runs first; every refiner is
+called only on the handed set and its output is asserted ⊆ the established ids (a refiner can never
+introduce a new entity / act as an establisher).
+
+NAMED PATHS (path_taken): establisher token ∈ {VECTOR_CONSTRAIN, GRAPH_CONSTRAIN, GRAPH_VERTICAL,
+SEED_VECTOR, MULTISEED}; only-name ∈ {VECTOR_ONLY, GRAPH_ONLY, GRAPH_VERTICAL_ONLY, SEED_VECTOR_ONLY,
+MULTISEED_ONLY}; with refiners -> "TOKEN__VECTOR_RERANK", "TOKEN__GRAPH_RERANK",
+"TOKEN__VECTOR_RERANK__GRAPH_RERANK"; + optional trailing "__BACKFILL". apply_negations runs on any path
+when present (recorded in refinements_applied[], not a path token, so the named-path set stays bounded).
+"""
+
 import re
 import statistics
 from typing import List, Optional
 
 import blocks as B
 import config
+import recency
 from backfill import backfill
 from intent import Intent
 
 BACKFILL_THRESHOLD = 10   # "too small" -> backfill (CONTEXT §6, tunable)
+MIN_RESULTS = 3           # over-constraint relaxation fires when a multi-constraint result is thinner than
+                          # this (and it is NOT a B4 no-signal query, which route() handles before assemble)
 VLABEL = {"game": "Games", "movie": "Movies", "tv": "TV Shows", "podcast": "Podcasts", "any": "All"}
 
 
@@ -26,6 +68,9 @@ _VERTICAL_FILLER = {
 
 
 def _has_signal_beyond_vertical(raw_query: str, vertical: Optional[str]) -> bool:
+    """True if the raw query carries retrievable content beyond the bare vertical word + trivial framing
+    filler. Used to salvage a topic the LLM dropped (e.g. 'business podcasts' extracted as only
+    verticals=[podcast]) — establish on the raw query instead of the meaningless bare vertical word."""
     toks = re.findall(r"[a-z0-9']+", (raw_query or "").lower())
     stop = _VERTICAL_FILLER | {(vertical or "").lower()}
     content = [t for t in toks if t not in stop and len(t) > 1]
@@ -33,6 +78,8 @@ def _has_signal_beyond_vertical(raw_query: str, vertical: Optional[str]) -> bool
 
 
 def _split_seeds(seed_entity) -> List[str]:
+    """A seed_entity string may name MULTIPLE entities ('Hades II, Hollow Knight', 'X and Y').
+    NOTE: do NOT split on '&' — it appears inside single titles ('Dungeons & Dragons')."""
     if not seed_entity:
         return []
     if isinstance(seed_entity, list):
@@ -45,6 +92,10 @@ _ENFORCEABLE_STRUCT = ("developer", "publisher")
 
 
 def _split_structural(structural):
+    """(enforceable_dict, feature_terms_str). developer/publisher are real graph nodes graph_constrain
+    enforces (the niche); everything else (mode, feature, multiplayer, crafting, player_count, …) is a
+    preference-like signal — graph-establishing on it yields an influence dump, so it must drive VECTOR
+    establishment + a graph rerank instead (07b v2 loss #100)."""
     structural = structural or {}
     enforceable = {k: v for k, v in structural.items() if k in _ENFORCEABLE_STRUCT and v}
     terms = []
@@ -62,6 +113,9 @@ def _split_structural(structural):
 
 # ── selective-rerank GATE (07f) — decide per query whether the cross-encoder fires (RERANK=auto) ──
 def _topk_cv(items, k: int = 10):
+    """Coefficient of variation (std/mean — scale-free) of the top-K establisher scores. LOW CV = flat,
+    uninformative ordering (cosine/influence bunched ≈ noise) → reranking helps; HIGH CV = a clear
+    gradient → ordering already meaningful. None if too few / non-positive."""
     scores = [it.get("score") for it in items[:k] if isinstance(it.get("score"), (int, float))]
     if len(scores) < 3:
         return None
@@ -72,6 +126,11 @@ def _topk_cv(items, k: int = 10):
 
 
 def should_rerank(intent, established, establisher, refiner_order, signal=None):
+    """Per-query gate: fire the cross-encoder? Returns (fire: bool, reason: str).
+    GUARD 3 (both signals): NEVER rerank where the establisher's ORDER encodes correctness the text-only
+    cross-encoder can't see — negation (graph set-exclusion) and graph-established structural+semantic.
+    Signal A (preferred, general): rerank when Stage-1 top-K scores are FLAT (low CV). Signal B (fallback):
+    rerank the vector-established semantic paths only."""
     sig = (signal or config.RERANK_GATE_SIGNAL).upper()
     h = intent.hard_constraints
     if h.negations:
@@ -99,10 +158,16 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     #    wrappers so the depth threads through every establisher uniformly. ──
     rk = recall_k if recall_k is not None else (config.RECALL_K or None)
     _gk = rk or 500
+    # RECENCY: convert the (now date-correct, per Prompt 1) temporal window to UTC epoch bounds and pass
+    # them to EVERY vector establish so the vector search range-filters `release_date_ts` natively.
+    # None/None when no temporal → no filter (non-recency queries unchanged).
+    _dfrom, _dto = recency.epoch_window(h.temporal, raw_query=intent.raw_query,
+                                        has_anchor=bool(intent.seed_entity or h.franchise))
     def _gconstrain(hard, vertical=None):
         return B.graph_constrain(hard, vertical=vertical, top_k=_gk)
     def _vconstrain(phrase, vertical=None):
-        return B.vector_constrain(phrase, vertical=vertical, recall_k=rk)
+        return B.vector_constrain(phrase, vertical=vertical, recall_k=rk,
+                                  date_from_ts=_dfrom, date_to_ts=_dto)
     def _seed(seeds, vertical=None):
         return B.vector_seed_constrain(seeds, vertical=vertical, top_k=(rk or 200))
 
@@ -110,7 +175,30 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     #       deterministically). Graph-recognised terms stay HARD; mood/quality words the graph has no
     #       node for ("dark", "intense", "psychological") are folded into SOFT semantic so they REFINE
     #       instead of zeroing the universe — correcting the LLM's residual hard-vs-soft mis-bucketing. ──
-    hard_concepts, leftover_soft = B.resolve_concepts(h.concepts)
+    # Drop negation phrases the LLM sometimes leaks into POSITIVE concepts (e.g. "a movie but not horror"
+    # → concepts=['not horror']) AND recover the negated term into negations. The LLM intermittently swallows
+    # the negation into the concept field and leaves `negations` EMPTY, so without recovery apply_negations
+    # gets nothing and the excluded genre (horror!) reaches a user who explicitly excluded it — the worst
+    # failure mode. Move "not X"/"no X"/"without X" → negations (deduped by canonical concept, so apply_negations
+    # canonicalises consistently, e.g. "not romantic"→Romance). A "not X" is never a positive concept.
+    _neg_prefixes = ("not ", "no ", "non-", "without ", "nothing ")
+    _pos_concepts, _recovered_negs = [], []
+    for _c in (h.concepts or []):
+        _cl = (_c or "").strip().lower()
+        _pfx = next((p for p in _neg_prefixes if _cl.startswith(p)), None)
+        if _pfx:
+            _term = _cl[len(_pfx):].strip().lstrip("-").strip()    # "not horror"→"horror", "non-violent"→"violent"
+            if _term:
+                _recovered_negs.append(_term)
+        else:
+            _pos_concepts.append(_c)
+    if _recovered_negs:
+        _seen = {B._canon_concept(n).lower() for n in h.negations}
+        for _term in _recovered_negs:
+            if B._canon_concept(_term).lower() not in _seen:       # dedup vs existing negations by canonical form
+                h.negations.append(_term)
+                _seen.add(B._canon_concept(_term).lower())
+    hard_concepts, leftover_soft = B.resolve_concepts(_pos_concepts)
     hard_dict["concepts"] = hard_concepts
     soft_semantic = soft.semantic
     if leftover_soft:
@@ -118,6 +206,8 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
         soft_semantic = f"{soft_semantic}, {extra}" if soft_semantic else extra
 
     refinements = []          # human-readable log
+    if _recovered_negs:
+        refinements.append(f"recovered negation {_recovered_negs} leaked into concepts → negations={h.negations}")
     refiner_order = []        # distinct refiner TYPES in application order (for the path name)
     establisher = None
     semrefine = None          # SEMANTIC phrase to vector-rerank WITHIN a graph/seed-established set
@@ -193,11 +283,23 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
         elif positive_phrase:                               # semantic positive (negation stripped) → vector
             established = _vconstrain(positive_phrase, vertical=vertical)
             establisher = "vector_constrain"
-        elif vertical and vertical != "any":                # bare "vertical but not X" → vertical universe
-            established = _gconstrain({"vertical": vertical}, vertical=vertical)
-            establisher = "graph_vertical"
         else:
-            established = []
+            # No positive concept/phrase. Before falling back to a bare-vertical pagerank dump, RECOVER a
+            # positive genre the LLM dropped (e.g. "a comedy but not romantic" → concepts=[]). Establish that
+            # genre via the graph like the working concept paths. The negated genre is excluded from recovery,
+            # so "games but not horror" / "tv but not reality tv" recover nothing and keep the bare-vertical
+            # universe (which is the CORRECT positive for those asks).
+            _rec = B.recover_positive_genres(intent.raw_query, h.negations)
+            if _rec:
+                established = _gconstrain({"vertical": vertical, "concepts": _rec}, vertical=vertical)
+                establisher = "graph_constrain"
+                semrefine = sem_only or ", ".join(_rec)
+                refinements.append(f"recovered positive genre {_rec} from raw query (LLM dropped it)")
+            elif vertical and vertical != "any":            # bare "vertical but not X" → vertical universe
+                established = _gconstrain({"vertical": vertical}, vertical=vertical)
+                establisher = "graph_vertical"
+            else:
+                established = []
 
     elif positive_phrase:
         # DEFAULT (most queries): vector establishes the semantic/thematic/descriptive universe — already
@@ -229,12 +331,57 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     else:
         established = []
 
-    # last resort — never EMPTY when there is ANY text to retrieve on (graceful; vector recall)
-    if not established and (intent.raw_query or positive_phrase):
-        established = _vconstrain(intent.raw_query or positive_phrase, vertical=vertical)
+    # last resort — recall ONLY on a genuine semantic signal. B4: we deliberately DROPPED the bare
+    # `intent.raw_query` fallback. When the LLM extracted no usable signal (no concepts, entities,
+    # semantic phrase, or vertical), embedding the raw query produced broad junk recall ("Dirty Movie",
+    # "Jackass" for "to watch with parents"). No signal now returns EMPTY (handled just below) rather
+    # than a junk pool. Legitimate thin-result queries are unaffected: any query that yields a semantic
+    # phrase still recalls here, and queries that established a small set still flow to backfill.
+    if not established and positive_phrase:
+        established = _vconstrain(positive_phrase, vertical=vertical)
         establisher = "vector_constrain"
 
+    def _relaxed_response(found_n):
+        """OVER-CONSTRAINT RELAXATION: when a real multi-constraint query (>=2 active constraints; not a
+        B4 no-signal query — route() handles those first) collapses below MIN_RESULTS, relax the SOFTEST
+        constraints in order and return the best partial set, tagged. Order: (1) drop RECENCY (date
+        filter); (2) drop secondary POSITIVE concepts (establish on the bare vertical). VERTICAL and
+        NEGATIONS are kept through every step. Returns a tagged response dict, or None to not relax."""
+        n_constraints = sum(bool(x) for x in (hard_concepts, h.negations, (_dfrom or _dto),
+                                              h.franchise, intent.seed_entity))
+        if found_n >= MIN_RESULTS or n_constraints < 2:
+            return None
+        base = positive_phrase or (intent.raw_query or "").strip() or (vertical or "")
+        relaxed, cand = [], []
+        if _dfrom or _dto:                                   # 1) drop recency (softest) — no date filter
+            relaxed = ["recency"]
+            cand = B.vector_constrain(base, vertical=vertical, recall_k=rk)
+            if h.negations:
+                cand = B.apply_negations(cand, h.negations)  # negation kept through relaxation
+        if len(cand) < MIN_RESULTS and (hard_concepts or base.strip().lower() != (vertical or "").lower()):
+            relaxed = relaxed + ["concepts"]                 # 2) drop secondary concepts → bare vertical
+            c2 = B.vector_constrain(vertical or base, vertical=vertical)
+            if not c2 and vertical and vertical != "any":
+                c2 = B.graph_constrain({"vertical": vertical}, vertical=vertical)
+            if h.negations:
+                c2 = B.apply_negations(c2, h.negations)
+            if len(c2) > len(cand):
+                cand = c2
+        if not relaxed or not cand:
+            return None
+        return {
+            "path_taken": "RELAXED[" + ",".join(relaxed) + "]",
+            "universe_establisher": establisher, "confidence": "low", "relaxed": relaxed,
+            "refinements_applied": refinements + [f"over-constrained ({found_n}<{MIN_RESULTS}) → relaxed {relaxed} "
+                                                  f"(kept vertical{' + negation ' + str(h.negations) if h.negations else ''})"],
+            "results": [dict(it, result_type="relaxed", confidence="low") for it in cand[:top_k]],
+            "exact_vs_related": {"exact": 0, "related": len(cand), "backfill": False},
+            "intent": intent.model_dump()}
+
     if not established:
+        rr = _relaxed_response(0)                            # over-constrained to empty → relax, don't return []
+        if rr is not None:
+            return rr
         return {"path_taken": "EMPTY", "universe_establisher": establisher,
                 "refinements_applied": refinements, "results": [],
                 "exact_vs_related": {"exact": 0, "related": 0, "backfill": False},
@@ -248,6 +395,7 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     working = list(established)
 
     def _refine(label, new_set, kind):
+        """Apply a refiner result, asserting the invariant (output ⊆ established set)."""
         out_ids = {it["entity_id"] for it in new_set}
         assert out_ids <= established_ids, f"INVARIANT VIOLATED: {label} introduced new entities"
         refinements.append(label)
@@ -289,12 +437,20 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
                           B.rerank_cross_encoder(intent.raw_query or positive_phrase, working, top_k=top_k),
                           "RERANK_XENC")
     elif config.RERANK == "auto" and working:
-        fire, reason = should_rerank(intent, established, establisher, refiner_order)
+        # B2: graceful degrade — if the gate or the cross-encoder model can't load (offline / no model),
+        # keep the pre-rerank order rather than 500-ing. `auto` needs no graph or external service.
+        try:
+            fire, reason = should_rerank(intent, established, establisher, refiner_order)
+        except Exception as e:
+            fire, reason = False, f"gate unavailable ({type(e).__name__}) — held"
         refinements.append(f"gate[{config.RERANK_GATE_SIGNAL}]: {'FIRE' if fire else 'hold'} — {reason}")
         if fire:
-            working = _refine(f"rerank_cross_encoder(top_k={top_k})",
-                              B.rerank_cross_encoder(intent.raw_query or positive_phrase, working, top_k=top_k),
-                              "RERANK_XENC")
+            try:
+                working = _refine(f"rerank_cross_encoder(top_k={top_k})",
+                                  B.rerank_cross_encoder(intent.raw_query or positive_phrase, working, top_k=top_k),
+                                  "RERANK_XENC")
+            except Exception as e:
+                refinements.append(f"rerank_cross_encoder degraded ({type(e).__name__}) — kept pre-rerank order")
     elif config.RERANK == "learned" and working:
         working = _refine(f"rerank_learned(top_k={top_k})",
                           B.rerank_learned(intent.raw_query or positive_phrase, working, top_k=top_k),
@@ -318,6 +474,11 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     if needs_backfill:
         path += "__BACKFILL"
 
+    if (len(working) + len(related)) < MIN_RESULTS:          # thin after all constraints → try relaxation
+        rr = _relaxed_response(len(working) + len(related))
+        if rr is not None:
+            return rr
+
     results = [dict(it, result_type="exact") for it in working[:top_k]] + \
               [dict(it, result_type="related") for it in related]
 
@@ -332,19 +493,15 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     }
 
 
-def _parallel_assemble(jobs):
-    if len(jobs) <= 1:
-        return [assemble(*j) for j in jobs]
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=min(len(jobs), 4)) as ex:
-        return list(ex.map(lambda j: assemble(*j), jobs))
-
-
 def assemble_multi(intents, top_k: int = 10, backfill_threshold: int = BACKFILL_THRESHOLD) -> dict:
-    subs = _parallel_assemble([(it, top_k, backfill_threshold) for it in intents])
+    """Independent multi-intent (CONTEXT §7) — the RARE case where extraction emits >1 intent object
+    (two genuinely independent universes, e.g. 'horror games AND cozy podcasts'). Run each as its own
+    establish→refine sub-plan and MERGE into clearly-grouped sections. Distinct from the default
+    single-universe path."""
     groups, merged = [], []
     seen_labels = {}
-    for i, (intent, sub) in enumerate(zip(intents, subs)):
+    for i, intent in enumerate(intents):
+        sub = assemble(intent, top_k=top_k, backfill_threshold=backfill_threshold)
         label = VLABEL.get(intent.vertical, (intent.vertical or "Group").title())
         seen_labels[label] = seen_labels.get(label, 0) + 1
         if seen_labels[label] > 1:               # disambiguate two intents of the same vertical
@@ -360,6 +517,10 @@ def assemble_multi(intents, top_k: int = 10, backfill_threshold: int = BACKFILL_
 
 
 def _vertical_subintent(intent: Intent, v: str) -> Intent:
+    """Derive a single-vertical sub-intent for vertical `v` from a multi-vertical intent (07f Fix 2).
+    Seeds tagged for `v` are used same-vertical; if none are tagged for `v` but seeds exist, ALL seeds are
+    used as cross-vertical anchors (recommend `v` based on the user's seeds); shared hard/soft (incl.
+    negations) are carried so EVERY vertical's sub-plan is negation-filtered."""
     d = intent.model_dump()
     seeds = [s for s in d["seed_entities"] if s.get("vertical") == v] or list(d["seed_entities"])
     d["verticals"] = [v]
@@ -371,11 +532,13 @@ def _vertical_subintent(intent: Intent, v: str) -> Intent:
 
 def assemble_multivertical(intent: Intent, top_k: int = 10,
                            backfill_threshold: int = BACKFILL_THRESHOLD) -> dict:
-    verticals = list(intent.verticals)
-    subs = _parallel_assemble(
-        [(_vertical_subintent(intent, v), top_k, backfill_threshold) for v in verticals])
+    """Multi-vertical coverage (07f Fix 2): a request spanning >1 vertical runs ONE establish→refine
+    sub-plan PER requested vertical (so every vertical is represented, instead of one blended universe the
+    largest seed-group dominates), merged into vertical-grouped sections. Reuses the MULTI_INTENT merge
+    shape."""
     groups, merged = [], []
-    for v, sub in zip(verticals, subs):
+    for v in intent.verticals:
+        sub = assemble(_vertical_subintent(intent, v), top_k=top_k, backfill_threshold=backfill_threshold)
         label = VLABEL.get(v, v.title())
         groups.append({"group": label, "vertical": v, "path_taken": sub["path_taken"],
                        "universe_establisher": sub["universe_establisher"],
@@ -389,6 +552,8 @@ def assemble_multivertical(intent: Intent, top_k: int = 10,
 
 
 def assemble_query(intents, top_k: int = 10, backfill_threshold: int = BACKFILL_THRESHOLD) -> dict:
+    """Dispatcher: >1 intent object -> independent multi-intent merge (CONTEXT §7); 1 intent spanning
+    >1 vertical -> per-vertical coverage merge (07f); else the default single-universe assemble."""
     if not intents:
         return {"path_taken": "EMPTY", "universe_establisher": None, "refinements_applied": [],
                 "results": [], "exact_vs_related": {"exact": 0, "related": 0, "backfill": False},

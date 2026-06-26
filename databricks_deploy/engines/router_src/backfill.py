@@ -1,3 +1,17 @@
+"""Anchored backfill (CONTEXT.MD §6) — graceful expansion when the exact universe is too small.
+
+THE ANCHORED METHOD (the subtle part — get it exactly right):
+  * Do NOT embed the raw query and pull its neighbors (that reintroduces garbage — vector ignores the
+    structural constraint and drifts off-theme).
+  * Instead: take the EXACT-match entities, fetch THEIR stored vectors (by id, no re-embed), and find
+    THEIR nearest vector neighbors (Qdrant), excluding the exact set itself.
+  * Because the anchors already embody the full intent, their neighbors stay on-theme — relaxing only
+    the structural constraint vectors can't see, not the semantic character.
+  * Return them labeled `related`, separate from `exact`.
+
+Wraps the vector engine's `/api/neighbors` hook (neighbors-of-anchors, NOT raw-query neighbors).
+"""
+
 from typing import List, Optional
 
 from blocks import _item, _post, VECTOR, Item
@@ -5,6 +19,8 @@ from blocks import _item, _post, VECTOR, Item
 
 def backfill(exact_set: List[Item], intent, top_k: int = 10,
              exclude: Optional[set] = None) -> List[Item]:
+    """Return `related` items = nearest vector neighbors OF the exact-match entities (anchored),
+    excluding the exact set. Empty if there are no usable anchors (e.g. anchors with no stored vector)."""
     anchor_ids = [it["entity_id"] for it in exact_set if it.get("entity_id")]
     if not anchor_ids:
         return []

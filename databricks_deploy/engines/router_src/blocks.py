@@ -1,3 +1,22 @@
+"""Composable building blocks (CONTEXT.MD §4). Each wraps a REAL engine over HTTP and returns a
+uniform list of result items:
+
+    {"entity_id", "name", "vertical", "score", "why", "source_engine"}
+
+THE INVARIANT (what makes the architecture work):
+  * Universe-establishers — graph_constrain, vector_constrain — RETRIEVE (define the candidate set).
+  * Refiners — vector_rerank_within, graph_rerank_within, graph_filter_within, apply_negations —
+    NEVER retrieve. They operate ONLY on the set passed in: the output is always a subset/reordering
+    of the input (no new entity is ever introduced).
+
+Engines (URLs from config):
+  graph  (:8010): POST /graph/structured (constrain) · POST /graph/score_within (per-id attrs +
+                  influence + pref boost, NO retrieval — powers the graph refiners).
+  vector (:8000): POST /api/query (constrain — the only place free retrieval is allowed) ·
+                  POST /api/score_set (score a FIXED id set vs a phrase, NO retrieval) ·
+                  POST /api/embed (vectors by id / fresh text).
+"""
+
 import json
 import os
 import re
@@ -11,9 +30,9 @@ GRAPH = config.GRAPH_API_URL
 VECTOR = config.VECTOR_API_URL
 T = config.HTTP_TIMEOUT_S
 
-# Deployment: when collapsed into one Model Serving container (ROUTER_ENGINE_MODE=inprocess) there are
-# no engine servers — _post/_get dispatch the SAME calls in-process (databricks_deploy/serving/
-# inprocess_engines.py). Default "http" keeps the local two-engine microservice behavior unchanged.
+# Deployment: collapsed into one Model Serving container (ROUTER_ENGINE_MODE=inprocess) -> no engine
+# servers; _post/_get dispatch the SAME calls in-process (serving/inprocess_engines.py). Default
+# 'http' keeps the local two-engine microservice behavior unchanged.
 _INPROC = os.getenv("ROUTER_ENGINE_MODE", "http").lower() == "inprocess"
 
 Item = Dict[str, Any]
@@ -38,6 +57,11 @@ _CONCEPT_SYNONYMS = {
     "science-fiction": "Science Fiction",
     "animated": "Animation", "anime": "Animation",
     "rom-com": "Romance", "romantic comedy": "Romance", "rom coms": "Romance",
+    "romantic": "Romance", "romance": "Romance",   # so a "not romantic" negation hard-excludes the Romance genre
+    "comedies": "Comedy", "comedic": "Comedy", "funny": "Comedy", "thrillers": "Thriller", "scary": "Horror",
+    # NOTE: a non-genre descriptor like "violent" deliberately has NO mapping — it is not a graph genre/theme/
+    # concept node, so apply_negations cannot hard-exclude it. We do NOT fake a proxy (e.g. violent→Horror would
+    # over-suppress non-violent horror and miss violent thrillers/war). Such negations conservatively no-op.
     "docs": "Documentary", "documentaries": "Documentary",
     "puzzle": "Puzzle & Trivia", "point and click": "Point-and-click",
     "reality tv": "Reality / Unscripted", "reality": "Reality / Unscripted",
@@ -50,9 +74,43 @@ _STOPWORDS = {"the", "and", "with", "for", "from", "into", "that", "this", "your
 
 
 def _canon_concept(term: str) -> str:
+    """Map a vernacular concept/genre term to the graph's canonical name (identity if unknown)."""
     if not term:
         return term
     return _CONCEPT_SYNONYMS.get(term.strip().lower(), term)
+
+
+# Genre words → the graph Concept.key (lowercased canonical genre) they establish. Used ONLY to RECOVER a
+# positive genre the LLM dropped on a "<genre> but not <X>" query (e.g. "a comedy but not romantic" came
+# back with concepts=[], negations=['romantic'] → the positive "comedy" was lost, so the establish became a
+# generic bare-vertical pagerank dump). Keyed on whole-word query matches; the negated genre is excluded so
+# the working bare-vertical paths ("games but not horror") are NEVER affected (horror is the negation here).
+_GENRE_WORDS = {
+    "comedy": "comedy", "comedies": "comedy", "comedic": "comedy",
+    "horror": "horror", "romance": "romance", "romantic": "romance", "rom-com": "romance",
+    "thriller": "thriller", "thrillers": "thriller", "action": "action",
+    "drama": "drama", "dramas": "drama", "dramatic": "drama",
+    "sci-fi": "science fiction", "scifi": "science fiction", "science fiction": "science fiction",
+    "fantasy": "fantasy", "documentary": "documentary", "documentaries": "documentary",
+    "crime": "crime", "western": "western", "war": "war",
+    "animated": "animation", "animation": "animation", "family": "family",
+    "adventure": "adventure", "mystery": "mystery", "musical": "music",
+}
+
+
+def recover_positive_genres(raw_query, negations):
+    """Genre words present in the raw query as a WHOLE WORD but NOT among the negations → their canonical
+    Concept keys. For the negation path where the LLM dropped the positive genre. Returns [] when the only
+    genre word is the negated one (so 'games but not horror' / 'tv but not reality tv' are unchanged)."""
+    r = (raw_query or "").lower()
+    neg = {_GENRE_WORDS.get((n or "").strip().lower(), (n or "").strip().lower()) for n in (negations or [])}
+    found = []
+    for word, concept in _GENRE_WORDS.items():
+        if concept in neg or concept in found:
+            continue
+        if re.search(r"\b" + re.escape(word) + r"\b", r):
+            found.append(concept)
+    return found
 
 
 def _post(url: str, body: dict) -> dict:
@@ -84,6 +142,7 @@ def _ids(items: List[Item]) -> List[str]:
 
 
 def _graph_attrs(items: List[Item]) -> Dict[str, dict]:
+    """Fetch per-id graph attributes for a FIXED set (no retrieval). Returns {entity_id: attrs}."""
     ids = _ids(items)
     if not ids:
         return {}
@@ -94,6 +153,10 @@ def _graph_attrs(items: List[Item]) -> Dict[str, dict]:
 # ═════════════════════════ universe establishers (retrieve) ═════════════════════════
 
 def graph_constrain(hard: dict, vertical: Optional[str] = None, top_k: int = 500) -> List[Item]:
+    """Translate structural hard_constraints into the graph engine's structured query
+    (wraps cypher_structured via POST /graph/structured). Returns ALL entities satisfying the
+    structural constraints. UNIVERSE-ESTABLISHER. (concepts/franchise/developer_relation/developer/
+    publisher/vertical are graph-checkable; temporal/non-graph structural are not — handled elsewhere.)"""
     hard = hard or {}
     vert = vertical or hard.get("vertical")
     filters: Dict[str, Any] = {"top_k": top_k}
@@ -117,6 +180,9 @@ def graph_constrain(hard: dict, vertical: Optional[str] = None, top_k: int = 500
 
 
 def _resolve(name: str, vertical: Optional[str] = None) -> Optional[str]:
+    """Resolve an entity NAME -> entity_id via the graph engine (for seed similarity).
+    NOTE: omit the `vertical` param entirely when None — httpx serialises None as `vertical=` (empty
+    string), which the endpoint treats as a real (empty) filter that matches nothing."""
     params = {"q": name, "limit": 1}
     if vertical and vertical != "any":
         params["vertical"] = vertical
@@ -125,6 +191,9 @@ def _resolve(name: str, vertical: Optional[str] = None) -> Optional[str]:
 
 
 def graph_similar(seed_entity: str, vertical: Optional[str] = None, top_k: int = 200) -> List[Item]:
+    """Establish a universe by SIMILARITY to a seed (wraps graph /graph/similar via :SIMILAR_TO).
+    Resolves the seed name -> id, then returns its similar entities. UNIVERSE-ESTABLISHER.
+    Returns [] if the seed can't be resolved or has no graph signal (e.g. a podcast seed)."""
     rid = _resolve(seed_entity, vertical)
     if not rid:
         return []
@@ -137,20 +206,50 @@ def graph_similar(seed_entity: str, vertical: Optional[str] = None, top_k: int =
                   r.get("why"), "graph_similar") for r in data.get("results", [])]
 
 
+def _date_payload(date_from_ts, date_to_ts) -> dict:
+    """Recency: pass UTC epoch bounds to the vector search so it range-filters `release_date_ts`
+    natively at search time (payload range filter). Empty when no window → no filter."""
+    d = {}
+    if date_from_ts is not None:
+        d["date_from_ts"] = date_from_ts
+    if date_to_ts is not None:
+        d["date_to_ts"] = date_to_ts
+    return d
+
+
 def vector_constrain(semantic_core: str, vertical: Optional[str] = None, top_n: int = 50,
-                     recall_k: Optional[int] = None) -> List[Item]:
+                     recall_k: Optional[int] = None,
+                     date_from_ts: Optional[int] = None, date_to_ts: Optional[int] = None) -> List[Item]:
+    """Establish a SEMANTIC universe via the FULL vector pipeline (`/api/query`: Databricks NLU + anchor
+    resolution + hybrid BM25/vector retrieval + ranking) — the strong path (06b/07a showed the full
+    pipeline materially beats no-NLU retrieval). UNIVERSE-ESTABLISHER.
+
+    TWO-STAGE (07e): when `recall_k` is set, cast a WIDE embedding recall net instead — pure Qdrant
+    vector search at depth recall_k via /api/retrieve (more neighbors than /api/query's fixed 10), to be
+    reranked by the cross-encoder (Stage 2). Default recall_k=None → the current /api/query behavior.
+
+    IMPORTANT (07a): multi-vertical / cross-vertical / "all categories" queries return their results under
+    `results_by_vertical` with an EMPTY top-level `results` — we read BOTH so vector-establish never
+    returns a fake-empty universe on multi-vertical queries.
+    The phrase passed here MUST be POSITIVE-ONLY (negations are applied later by graph apply_negations) so
+    the vector NLU never over-negates to empty. Falls back to no-NLU /api/retrieve only if /api/query is
+    down."""
     phrase = (semantic_core or "").strip()
     vert = vertical if (vertical and vertical != "any") else None
+    dp = _date_payload(date_from_ts, date_to_ts)   # recency: epoch bounds → native payload range filter
     if recall_k:                                   # WIDE recall net for two-stage (Qdrant embedding recall)
-        data = _post(f"{VECTOR}/api/retrieve", {"phrase": phrase, "vertical": vert, "top_k": recall_k})
+        data = _post(f"{VECTOR}/api/retrieve", {"phrase": phrase, "vertical": vert, "top_k": recall_k, **dp})
         return [_item(r.get("entity_id"), r["name"], r["vertical"], r.get("score"),
                       f"wide recall '{semantic_core}' (cosine {r.get('score'):.3f})", "vector(wide)")
                 for r in data.get("results", [])]
-    q = f"{phrase} {vert}s".strip() if vert else phrase
+    # B1 (query-mangling fix): embed the POSITIVE PHRASE verbatim — never concatenate the pluralised
+    # vertical word into the query text ("a movie to watch tonight" must NOT become "…tonight movies").
+    # The vertical is passed as an explicit FILTER instead; the vector engine applies it without
+    # polluting the embedded text.
     try:
-        data = _post(f"{VECTOR}/api/query", {"query": q})
+        data = _post(f"{VECTOR}/api/query", {"query": phrase, "vertical": vert, **dp})
     except httpx.HTTPError:
-        data = _post(f"{VECTOR}/api/retrieve", {"phrase": phrase, "vertical": vert, "top_k": top_n})
+        data = _post(f"{VECTOR}/api/retrieve", {"phrase": phrase, "vertical": vert, "top_k": top_n, **dp})
         return [_item(r.get("entity_id"), r["name"], r["vertical"], r.get("score"),
                       f"semantic match '{semantic_core}'", "vector(retrieve-fallback)")
                 for r in data.get("results", [])]
@@ -175,20 +274,16 @@ def vector_constrain(semantic_core: str, vertical: Optional[str] = None, top_n: 
         out.append(it)
         if len(out) >= top_n:
             break
-    # ESTABLISHER SAFETY: an establisher must NEVER zero a POPULATED universe. The NLU pipeline can yield
-    # nothing for `vert` on a SPARSE phrase — it re-targets "co-op, not too competitive" across verticals
-    # and the vertical post-filter above then drops every row. Fall back to pure embedding recall
-    # (/api/retrieve), which returns nearest neighbors for any phrase the vertical can answer, so a
-    # legitimate game query never returns EMPTY just because the NLU spread it thin.
-    if not out and phrase:
-        data = _post(f"{VECTOR}/api/retrieve", {"phrase": phrase, "vertical": vert, "top_k": top_n})
-        out = [_item(r.get("entity_id"), r["name"], r["vertical"], r.get("score"),
-                     f"semantic match '{semantic_core}' (recall fallback)", "vector(retrieve-fallback)")
-               for r in data.get("results", [])]
     return out
 
 
 def vector_seed_constrain(seed_entities, vertical: Optional[str] = None, top_k: int = 200) -> List[Item]:
+    """Establish a universe from one or MORE seed entities' COMBINED vector neighborhood (multi-seed union,
+    CONTEXT §7-ish). Resolve each seed name → entity_id (graph), then `/api/neighbors(anchor_ids=[…],
+    vertical=target)` which fetches each anchor's STORED vector, Qdrant-searches with it, merges by best
+    cosine, and excludes the anchors. Handles single-seed, multi-seed union, AND cross-vertical
+    (anchor=game, vertical=movie → movies near the game). UNIVERSE-ESTABLISHER. Returns [] if NO seed
+    resolves (caller falls back to a raw-query vector establish)."""
     if isinstance(seed_entities, str):
         names = [s.strip() for s in re.split(r",|\band\b", seed_entities) if s.strip()]   # NOT '&' (D&D)
     else:
@@ -227,6 +322,7 @@ _concept_vocab: Optional[Dict[str, str]] = None
 
 
 def _known_concepts() -> Dict[str, str]:
+    """{lowercased key -> display name} of the graph's REAL concept vocabulary (cached)."""
     global _concept_vocab
     if _concept_vocab is None:
         try:
@@ -238,6 +334,12 @@ def _known_concepts() -> Dict[str, str]:
 
 
 def resolve_concepts(terms: List[str]) -> Tuple[List[str], List[str]]:
+    """Split LLM-extracted concept terms into (hard graph-concepts, leftover soft terms) using the
+    graph's REAL vocabulary as ground truth. A term that IS a graph concept (after synonym +
+    hyphen normalisation, or via a known token inside a compound phrase) becomes a HARD constraint;
+    a term the graph doesn't recognise (mood/quality words like 'dark', 'intense', 'psychological')
+    is returned as a leftover for the assembler to fold into SOFT intent — so it refines rather than
+    zeroing the universe. This deterministically corrects the LLM's residual hard-vs-soft mis-bucketing."""
     known = _known_concepts()
     if not known:                                       # vocab unavailable → keep concepts hard (safe)
         return ([_canon_concept(t) for t in (terms or []) if t and t.strip()], [])
@@ -276,6 +378,9 @@ def resolve_concepts(terms: List[str]) -> Tuple[List[str], List[str]]:
 # ═════════════════════════ refiners (NEVER retrieve; output ⊆ input) ════════════════
 
 def vector_rerank_within(items: List[Item], semantic: str) -> List[Item]:
+    """Reorder the PASSED-IN set by semantic similarity to `semantic` (cosine of the phrase vs each
+    entity's STORED vector, via POST /api/score_set). Does NOT retrieve. Returns exactly the input
+    members, reordered; entities with no stored vector keep their place at the end."""
     if not semantic or not items:
         return list(items)
     ids = _ids(items)
@@ -300,6 +405,9 @@ def vector_rerank_within(items: List[Item], semantic: str) -> List[Item]:
 
 def graph_rerank_within(items: List[Item], structural_prefs: Optional[dict] = None,
                         seed_entity: Optional[str] = None) -> List[Item]:
+    """Reorder the PASSED-IN set by structural signals (PageRank influence, structural_prefs match,
+    optional shared-concept overlap with a seed) via POST /graph/score_within. Does NOT retrieve.
+    Returns exactly the input members, reordered; non-graph entities keep their place at the end."""
     if not items:
         return []
     ids = _ids(items)
@@ -328,6 +436,11 @@ def graph_rerank_within(items: List[Item], structural_prefs: Optional[dict] = No
 
 
 def graph_filter_within(items: List[Item], hard: dict) -> List[Item]:
+    """Remove members of the PASSED-IN set that VIOLATE a structural hard constraint (concepts /
+    franchise / developer), using per-id attributes from POST /graph/score_within. Does NOT retrieve;
+    output is strictly a subset of the input. Entities whose attributes can't be verified (e.g. a
+    podcast with no concepts) are dropped when a constraint is present — a hard constraint must be
+    provably satisfied."""
     hard = hard or {}
     req_concepts = {c.lower() for c in (hard.get("concepts") or [])}
     fr = (hard.get("franchise") or "").lower() or None
@@ -353,6 +466,10 @@ def graph_filter_within(items: List[Item], hard: dict) -> List[Item]:
 
 
 def apply_negations(items: List[Item], negations: Optional[List[str]]) -> List[Item]:
+    """Hard-exclude members matching any negation term (against the entity's concepts / genres /
+    themes / keywords, or a name substring). Does NOT retrieve; output ⊆ input. Best-effort: a
+    negation only excludes structurally when it maps to a graph attribute (e.g. 'sports', 'animated');
+    name-substring catches the rest."""
     raw = [n.strip().lower() for n in (negations or []) if n and n.strip()]
     if not raw:
         return list(items)
@@ -388,6 +505,13 @@ _RERANK_SYS = (
 
 
 def rerank_learned(query: str, items: List[Item], top_k: int = 10, pool: int = 40) -> List[Item]:
+    """FINAL-STAGE learned reranker (REFINER — reorders the established set, never retrieves/adds).
+    Scores the query against each candidate's ENRICHED text via the LLM and returns the top_k reordered.
+    Output is always a subset/permutation of the input (asserted by construction). Degrades to the input
+    order on any failure (LLM/parse/text-fetch), so it is never worse than no-rerank on availability.
+
+    NOTE: this is a SECOND LLM call on reranked paths (the cross-encoder dep — torch/sentence-transformers
+    — is not installed; per the task this is the sanctioned fallback). Latency cost is measured in eval."""
     if not items:
         return []
     pool_items = items[:pool]
@@ -432,6 +556,7 @@ _XENC_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 
 def _cross_encoder():
+    """Lazy singleton — loads the local cross-encoder once (~31s first call, then in-process)."""
     global _XENC
     if _XENC is None:
         from sentence_transformers import CrossEncoder
@@ -440,6 +565,10 @@ def _cross_encoder():
 
 
 def rerank_cross_encoder(query: str, items: List[Item], top_k: int = 10, pool: int = 100) -> List[Item]:
+    """FINAL-STAGE cross-encoder reranker (REFINER — reorders the established set, never retrieves/adds).
+    Scores (query, candidate_enriched_text) pairs JOINTLY with a local cross-encoder and returns the
+    top_k reordered. Deterministic, no extra LLM call (unlike 09's LLM reranker). Output is a strict
+    subset of the input (asserted by construction); degrades to input order on any failure."""
     if not items:
         return []
     pool_items = items[:pool]

@@ -1,3 +1,10 @@
+"""Config for the unified router: the two engine base URLs + the LLM settings.
+
+Reuses the existing Groq key/pattern from the vector pipeline (../vector/.env) so the secret
+is not duplicated. A router-local router/.env can override anything (engine URLs, model, key).
+All values are read from env with sensible local-dev defaults.
+"""
+
 import os
 from pathlib import Path
 
@@ -6,7 +13,7 @@ from dotenv import load_dotenv
 _ROUTER_DIR = Path(__file__).resolve().parent.parent          # router/
 _PROJECT_DIR = _ROUTER_DIR.parent                             # feedsai-graphdb/
 
-# 1) reuse the vector pipeline's .env (Groq key lives here); 2) router-local override wins.
+# 1) reuse the shared vector pipeline's .env (LLM/Voyage keys live here); 2) router-local override wins.
 load_dotenv(_PROJECT_DIR / "vector" / ".env")
 load_dotenv(_ROUTER_DIR / ".env", override=True)
 
@@ -39,18 +46,25 @@ LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1100"))
 LLM_TIMEOUT_S = float(os.getenv("LLM_TIMEOUT_S", "120"))   # Databricks endpoints can cold-start slowly
 
 # ── Two-stage retrieval (07e): wide recall (Stage 1) + final-stage reranker (Stage 2). Off by default. ──
-RERANK = os.getenv("RERANK", "none").lower()               # none | learned | cross_encoder | auto
+RERANK = os.getenv("RERANK", "auto").lower()               # none | learned | cross_encoder | auto
+# B2: default flipped none->auto so a quality reranker reorders noisy retrieval by default. `auto` is the
+# SELECTIVE cross-encoder (gated by should_rerank, signal B) — it needs NO graph/services, and the
+# assembler degrades gracefully (keeps the pre-rerank order) if the cross-encoder model can't load.
 RECALL_K = int(os.getenv("RECALL_K", "0"))                 # 0 = current depth; >0 = wide establisher pool
 
 # ── Selective-rerank GATE (07f): when RERANK=auto, decide per query whether the cross-encoder fires. ──
 RERANK_GATE_SIGNAL = os.getenv("RERANK_GATE_SIGNAL", "B").upper()   # B = path-based (won 07f); A = score-spread (non-discriminative)
 RERANK_GATE_CV = float(os.getenv("RERANK_GATE_CV", "0.55"))         # Signal A: rerank when top-K CV < this (flat → uninformative order)
 
+# ── B4 no-signal: the ONLY trigger is the LLM's is_gibberish flag (see extract.py / route.route).
+#    No score, threshold, or heuristic to configure here.
+
 # ── HTTP ──────────────────────────────────────────────────────────────
 HTTP_TIMEOUT_S = float(os.getenv("ROUTER_HTTP_TIMEOUT_S", "30"))
 
 
 def summary() -> dict:
+    """Non-secret config view (key/token PRESENCE only — never the values)."""
     return {
         "graph_api_url": GRAPH_API_URL,
         "vector_api_url": VECTOR_API_URL,

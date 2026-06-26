@@ -1,3 +1,12 @@
+"""Intent JSON schema (CONTEXT.MD §3) as validated pydantic models + a strict parser.
+
+The keystone artifact: the LLM converts a query into one (or, for genuinely independent
+multi-intent queries, several) of these objects. The pipeline — not the LLM — does all
+downstream decisioning. The decisive job of the schema is the **hard vs soft** split:
+hard_constraints DEFINE the universe; soft_intent RANKS within it. `semantic_core` flags a
+hard requirement that is itself semantic (flips which engine establishes the universe).
+"""
+
 from __future__ import annotations
 
 import re
@@ -28,6 +37,7 @@ def _empty_to_none(v: Any) -> Any:
 
 
 class HardConstraints(BaseModel):
+    """Requirements that MUST be satisfied — they define the universe of valid results."""
     model_config = ConfigDict(extra="ignore")
 
     concepts: List[str] = Field(default_factory=list)          # genre/theme-level, must hold
@@ -60,6 +70,7 @@ class HardConstraints(BaseModel):
 
 
 class SoftIntent(BaseModel):
+    """Preferences — they RANK/REFINE within the universe, never expand it."""
     model_config = ConfigDict(extra="ignore")
 
     semantic: Optional[str] = None                              # → vector reranks within the set
@@ -77,6 +88,7 @@ class SoftIntent(BaseModel):
 
 
 class Seed(BaseModel):
+    """A named title to be similar to, tagged with the vertical the user associated it with (or null)."""
     model_config = ConfigDict(extra="ignore")
     name: str
     vertical: Optional[str] = None
@@ -99,10 +111,16 @@ class Intent(BaseModel):
     seed_entity: Optional[str] = None                        # back-compat (derived: comma-joined names)
     raw_query: str = ""
     notes: str = ""
+    is_gibberish: bool = False                                # LLM flag: input is genuinely unintelligible
+                                                             # (random chars / pure symbols / no request) →
+                                                             # route() serves the recent-mixed fallback.
 
     @model_validator(mode="before")
     @classmethod
     def _reconcile(cls, data):
+        """Reconcile the new explicit fields (verticals, seed_entities) with the old back-compat fields
+        (vertical, seed_entity), accepting EITHER shape from the LLM. verticals is the source of truth for
+        coverage; vertical/seed_entity are derived so nothing downstream breaks."""
         if not isinstance(data, dict):
             return data
         d = dict(data)
@@ -154,6 +172,8 @@ class Intent(BaseModel):
 
 
 def parse_intents(data: Any) -> List[Intent]:
+    """Accept {"intents":[...]} | a bare list | a bare object; return List[Intent].
+    Raises ValueError on structurally invalid output (the caller treats this as a parse failure)."""
     if isinstance(data, dict) and isinstance(data.get("intents"), list):
         items = data["intents"]
     elif isinstance(data, dict):

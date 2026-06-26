@@ -15,13 +15,12 @@
 # MAGIC
 # MAGIC **Do NOT `%pip install mlflow`** — the runtime's MLflow is integrated; reinstalling it breaks registration.
 # MAGIC
-# MAGIC > ✅ **Recency:** `vector_search/vs_store.py` now range-filters `release_date_ts` (epoch). Recency
-# MAGIC > works **iff the `entities` table + `entities_vs` index are rebuilt from the new parquet carrying
-# MAGIC > `release_date_ts`** — verify H5. Date bounds reach `vs_store` via the vector NLU
-# MAGIC > (`date_filter_start/end` → `retrieval` → `vector_search`). Gates: `VS_DATE_FILTER=0` disables it;
-# MAGIC > `VS_RELEASE_DATE_COL` overrides the column. (The router's own `recency.py` window — new/newest/
-# MAGIC > latest — is currently re-derived by the vector NLU; routing its `date_from_ts/to_ts` straight
-# MAGIC > through `_vec_query`→`process_query` is a further optional step.)
+# MAGIC > ✅ **Recency (fully wired):** `vector_search/vs_store.py` range-filters `release_date_ts` (epoch),
+# MAGIC > and the router's `recency.py` window (new/newest/latest + today-clamp) is now passed **straight
+# MAGIC > through** `inprocess_engines._vec_query`→`query_engine.process_query` (it overrides the vector
+# MAGIC > NLU's own date guess). Works **iff the `entities`/`entities_vs` index is rebuilt from the new
+# MAGIC > parquet carrying `release_date_ts`** — verify H5. Gates: `VS_DATE_FILTER=0` disables the filter;
+# MAGIC > `VS_RELEASE_DATE_COL` overrides the column name.
 
 # COMMAND ----------
 # ===================== 0. AUTO-DERIVE repo location + workspace host (no hardcoding) =====================
@@ -82,6 +81,9 @@ else:
     print("parquet rows:", df.count()); df.printSchema()
     _missing = {"entity_id", "name", "vertical", "embedding", "release_date_ts"} - set(df.columns)
     assert not _missing, f"parquet missing required columns: {_missing}"
+    _dim = len(df.select("embedding").first()["embedding"])
+    assert _dim == 1024, f"embedding dim {_dim} != 1024 — wrong parquet/model (Qwen embeds are 1024)?"
+    print(f"schema OK — {len(df.columns)} cols, embedding dim {_dim}, release_date_ts present.")
     # (2) parquet → Delta table (+ Change Data Feed, required for a Delta-Sync index)
     (df.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(TABLE))
     spark.sql(f"ALTER TABLE {TABLE} SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
@@ -191,12 +193,20 @@ def show(tag, query, resp, rt):
     print(f"   error={resp.get('error')} count={resp.get('count')} path={rt.get('path_taken') or rt.get('universe_establisher')} "
           f"timing_ms={rt.get('timing_ms')}")
     for it in res[:6]:
-        print(f"     - {str(it.get('vertical')):7} {it.get('entity_id'):>14}  {str(it.get('name'))[:42]}")
+        print(f"     - {str(it.get('vertical')):7} {str(it.get('entity_id')):>14}  {str(it.get('name'))[:42]}")
     return res
+
+_PREFIXES = {"Game", "Movie", "TV", "Podcast"}
+def check_id_prefix(res):
+    """REVIEW_CHECKLIST block B (HARD): entity_ids must be Capital-prefixed verbatim (else feeds-api
+    drops non-game rows). Catches the lowercase/mangled-id silent regression."""
+    bad = [it.get("entity_id") for it in res if str(it.get("entity_id", "")).split(":")[0] not in _PREFIXES]
+    print(f"   ↳ id-prefix (block B): {'OK — all Capital-prefixed' if not bad else 'FAIL → ' + str(bad[:5])}")
 
 # H1 — franchise (graph establish): Final Fantasy
 resp, rt = ask("Final Fantasy games"); r1 = show("H1 franchise", "Final Fantasy games", resp, rt)
 assert resp.get("error") is None and (resp.get("count") or 0) > 0, "H1 failed"
+check_id_prefix(r1)
 
 # H3 — negation, RUN TWICE (extraction varies — the G38 lesson): games but not horror → expect 0 horror
 for run in (1, 2):

@@ -50,9 +50,24 @@ def _db():
 
 
 # ════════════════════════════════ vector handlers ════════════════════════════════
+def _epoch_to_ymd(ts):
+    """Router epoch seconds → 'YYYY-MM-DD' (UTC) for the vector pipeline's string date filter. None-safe."""
+    if ts is None:
+        return None
+    try:
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
 def _vec_query(body):
     from pipeline.query_engine import process_query
-    return process_query(body["query"])
+    # Router recency passthrough: the router (recency.py) computes the AUTHORITATIVE date window and sends
+    # epoch bounds; convert to YYYY-MM-DD and override the vector NLU's own date guess (None → NLU keeps its).
+    return process_query(body["query"],
+                         date_start=_epoch_to_ymd(body.get("date_from_ts")),
+                         date_end=_epoch_to_ymd(body.get("date_to_ts")))
 
 
 def _vec_retrieve(body):

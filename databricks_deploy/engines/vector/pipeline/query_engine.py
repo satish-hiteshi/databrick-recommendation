@@ -47,12 +47,18 @@ def _add_similarity_pct(results):
         r["similarity_percentage"] = round((r["rrf_score"] / max_rrf) * 100) if max_rrf > 0 else 0
 
 
-def process_query(user_query: str) -> dict:
+def process_query(user_query: str, date_start=None, date_end=None) -> dict:
     timings = {}
 
     # 1. NLU
     t0 = time.time()
     nlu = parse_query(user_query)
+    # Router recency passthrough: an authoritative date window from the caller (router recency.py via
+    # inprocess_engines._vec_query) OVERRIDES the NLU's own date guess — recency.py handles new/newest/
+    # latest + the today-clamp better than the in-NLU heuristic. None bounds → the NLU keeps its own.
+    if date_start is not None or date_end is not None:
+        nlu["date_filter_start"] = date_start
+        nlu["date_filter_end"] = date_end
     timings["nlu_ms"] = (time.time() - t0) * 1000
 
     # 2. Retrieval

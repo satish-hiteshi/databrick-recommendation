@@ -24,6 +24,19 @@
 
 # COMMAND ----------
 # MAGIC %md
+# MAGIC ## ⚠️ BEFORE YOU RUN — sync the fixed code into THIS workspace folder
+# MAGIC `register.main()` (Step 2) bundles the code that lives **next to this notebook on Databricks**
+# MAGIC (`serving/`, `engines/`) — **NOT your laptop**. Local edits to `blocks.py` / `vs_store.py` reach the
+# MAGIC served model ONLY after you sync them here, e.g.:
+# MAGIC - **Databricks Git Repo:** commit + push locally, then **Pull** in the Repos UI.
+# MAGIC - **Asset Bundle:** `databricks bundle deploy -t staging`.
+# MAGIC
+# MAGIC This is the #1 reason a redeploy can still serve the OLD code (e.g. the `None`-concept crash persists).
+# MAGIC Then set **`rebuild_index=1`** so `entities_vs` is rebuilt from the new Qwen parquet. Skipping either =
+# MAGIC old code and/or a stale index.
+
+# COMMAND ----------
+# MAGIC %md
 # MAGIC ## Setup — install the Vector Search client (run FIRST)
 # MAGIC `databricks-vectorsearch` (used by Step 1.5's index rebuild) is not bundled on serverless / fresh
 # MAGIC clusters. `%pip install` + `restartPython()` reset Python state (widgets persist), so this runs first.
@@ -61,6 +74,10 @@ _defaults = {
     "qwen_embed":    "databricks-qwen3-embedding-0-6b",
     "workload_size": "Medium",
     "enable_timing": "1",                             # "1" → TIMING_BREAKDOWN (source for per-stage latency)
+    "rerank":        "auto",                          # auto|learned|cross_encoder|none. The doc used the CROSS-ENCODER;
+                                                      #   it needs sentence-transformers+torch in serving/requirements.txt.
+                                                      #   "learned" = LLM reranker (no heavy deps, +1 LLM call) — closest
+                                                      #   without the cross-encoder; "auto" = cross-encoder if installed else no-op.
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
     "otel_service":  "agent-recs",                    # OTEL_SERVICE_NAME
     "enable_otel":   "0",                             # "1" → push telemetry (needs the grafana_otlp_token secret)
@@ -178,6 +195,7 @@ ENV = {
 }
 if C["enable_timing"] == "1":
     ENV["TIMING_BREAKDOWN"] = "1"
+ENV["RERANK"] = C["rerank"]                            # rerank strategy — drives open-ended (vector) ranking quality
 
 # ── observability (H1.6): OTEL_SERVICE_NAME is always safe; the OTLP push is gated on enable_otel
 # (the secret must exist in the scope, else the endpoint create fails on an unresolvable secret ref). ──

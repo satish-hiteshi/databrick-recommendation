@@ -25,23 +25,40 @@ def _parquet_path():
     raise FileNotFoundError(f"{_PARQUET_NAME} not found (set EMBEDDINGS_PARQUET)")
 
 
+def _ts_to_ymd(ts):
+    """release_date_ts (epoch seconds) -> 'YYYY-MM-DD' (UTC) for the vector date filter. None-safe."""
+    if ts is None:
+        return None
+    try:
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
 def _load():
     global _INDEX
     if _INDEX is None:
         import pyarrow.parquet as pq
-        t = pq.read_table(_parquet_path(),
-                          columns=["entity_id", "name", "vertical", "embedding", "bm25_keywords"])
+        path = _parquet_path()
+        # carry release_date_ts if the parquet has it → so the (Qdrant) vector backend can date-filter;
+        # without it, recency vector-establishes return empty and the router falls back to a bare-vertical dump.
+        has_date = "release_date_ts" in set(pq.read_schema(path).names)
+        t = pq.read_table(path, columns=["entity_id", "name", "vertical", "embedding", "bm25_keywords"]
+                          + (["release_date_ts"] if has_date else []))
         eids = t.column("entity_id").to_pylist()
         names = t.column("name").to_pylist()
         verts = t.column("vertical").to_pylist()
         kws = t.column("bm25_keywords").to_pylist()
+        dts = t.column("release_date_ts").to_pylist() if has_date else [None] * len(eids)
         mat = (t.column("embedding").combine_chunks().flatten()
                .to_numpy(zero_copy_only=False).reshape(len(eids), -1).astype(np.float32))
         by_id, name_list, exact_names, emb = {}, [], {}, {}
         for i, eid in enumerate(eids):
             v = mat[i]
             by_id[eid] = {"entity_id": eid, "name": names[i], "vertical": verts[i],
-                          "embedding": v, "bm25_keywords": kws[i] or []}
+                          "embedding": v, "bm25_keywords": kws[i] or [],
+                          "release_date": _ts_to_ymd(dts[i])}     # 'YYYY-MM-DD' for the date filter
             emb[eid] = v
             nm = (names[i] or "").lower()
             name_list.append((nm, eid))
@@ -97,5 +114,6 @@ def all_records():
     return [{"entity_id": e["entity_id"], "name": e["name"], "vertical": e["vertical"],
              "composed_text": "", "bm25_keywords": e.get("bm25_keywords") or [], "word_count": None,
              "description": None, "canonical_genres": [], "themes": [], "franchise": None,
-             "developer": None, "publisher": None, "directors": [], "cast": [], "release_date": None}
+             "developer": None, "publisher": None, "directors": [], "cast": [],
+             "release_date": e.get("release_date")}                # carried from release_date_ts (date filter)
             for e in _load()["by_id"].values()]

@@ -29,3 +29,10 @@ pyarrow
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-http
+
+# Cross-encoder reranker (RERANK=auto/cross_encoder) — reproduces the doc's vector ranking by reranking
+# the candidate pool. HEAVY: torch adds ~2GB to the serving image + ~30s model load on first call
+# (model: cross-encoder/ms-marco-MiniLM-L-6-v2, downloaded at runtime). Remove both lines to fall back
+# to raw vector order (the RERANK path no-ops gracefully without them).
+sentence-transformers
+torch

@@ -78,6 +78,9 @@ _defaults = {
                                                       #   it needs sentence-transformers+torch in serving/requirements.txt.
                                                       #   "learned" = LLM reranker (no heavy deps, +1 LLM call) — closest
                                                       #   without the cross-encoder; "auto" = cross-encoder if installed else no-op.
+    "vector_backend":"databricks",                    # "databricks" → Databricks Vector Search (entities_vs). Anything else
+                                                      #   (e.g. "qdrant") → in-memory Qdrant built from the bundled parquet —
+                                                      #   the SAME engine as the local stack; needs no entities_vs index.
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
     "otel_service":  "agent-recs",                    # OTEL_SERVICE_NAME
     "enable_otel":   "0",                             # "1" → push telemetry (needs the grafana_otlp_token secret)
@@ -188,8 +191,8 @@ ENV = {
     "DATABRICKS_LLM_ENDPOINT": f"{HOST}/serving-endpoints/{C['llm_endpoint']}/invocations",
     "DATABRICKS_HOST": HOST, "DATABRICKS_TOKEN": sec("databricks_token"),
     "QUERY_EMBED_ENDPOINT": C["qwen_embed"],           # queries embed via Qwen (instruction-prefixed; matches corpus)
-    "VECTOR_BACKEND": "databricks",
-    "VS_ENDPOINT_NAME": C["vs_endpoint"], "VS_INDEX_NAME": C["vs_index"],
+    "VECTOR_BACKEND": C["vector_backend"],             # databricks=Vector Search · else=in-memory Qdrant from bundled parquet
+    "VS_ENDPOINT_NAME": C["vs_endpoint"], "VS_INDEX_NAME": C["vs_index"],   # (ignored on the qdrant backend)
     "NEO4J_URI": C["neo4j_uri"], "NEO4J_USER": "neo4j",
     "NEO4J_PASSWORD": sec("neo4j_password"), "NEO4J_DATABASE": "neo4j",
 }

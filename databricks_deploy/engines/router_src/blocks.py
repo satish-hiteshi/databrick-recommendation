@@ -240,7 +240,7 @@ def vector_constrain(semantic_core: str, vertical: Optional[str] = None, top_n: 
     if recall_k:                                   # WIDE recall net for two-stage (Qdrant embedding recall)
         data = _post(f"{VECTOR}/api/retrieve", {"phrase": phrase, "vertical": vert, "top_k": recall_k, **dp})
         return [_item(r.get("entity_id"), r["name"], r["vertical"], r.get("score"),
-                      f"wide recall '{semantic_core}' (cosine {r.get('score'):.3f})", "vector(wide)")
+                      f"wide recall '{semantic_core}' (cosine {(r.get('score') or 0.0):.3f})", "vector(wide)")
                 for r in data.get("results", [])]
     # B1 (query-mangling fix): embed the POSITIVE PHRASE verbatim — never concatenate the pluralised
     # vertical word into the query text ("a movie to watch tonight" must NOT become "…tonight movies").
@@ -423,7 +423,7 @@ def graph_rerank_within(items: List[Item], structural_prefs: Optional[dict] = No
         if r is not None:
             ni = dict(it)
             ni["score"] = r["score"]
-            bits = [f"influence {r.get('influence', 0):.2f}"]
+            bits = [f"influence {(r.get('influence') or 0):.2f}"]   # None-safe: .get(key,0) keeps a None value
             if r.get("pref_hits"):
                 bits.append("prefs: " + ", ".join(r["pref_hits"]))
             ni["why"] = "graph rerank (" + "; ".join(bits) + ")"

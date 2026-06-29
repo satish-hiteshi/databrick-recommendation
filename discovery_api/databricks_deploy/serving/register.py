@@ -3,9 +3,10 @@
 models-from-code: model.py is the pyfunc; code_paths bundle everything it needs into one artifact:
   • E2 serving:   model.py + discovery_adapter + live_source_dbx
   • E2 engine:    discovery_api/src  (the taste-learning feed engine, vendored as-is)
-  • E1 collapsed substrate (REUSED read-only via SUBSTRATE_MODE=inprocess):
+  • collapsed substrate, VENDORED into discovery_api/_substrate/ so E2 deploys INDEPENDENTLY (no reach
+    into databricks_deploy/); run via SUBSTRATE_MODE=inprocess:
         inprocess_engines + inmemory_store + timing + vs_store + router_src + vector(pipeline) + graph_src
-  • the Qwen embeddings parquet (staged from a Volume) → E1's in-memory matrix + BM25.
+  • the Qwen embeddings parquet (staged from a Volume) → the in-memory matrix + BM25.
 
 Registers UC_MODEL_NAME. Run in a notebook:
     import os, sys, importlib
@@ -34,8 +35,8 @@ MODEL_NAME = os.getenv("UC_MODEL_NAME", "stg_feeds_silver.ml.discovery-api-stagi
 
 _HERE = os.path.dirname(os.path.abspath(__file__))            # discovery_api/databricks_deploy/serving
 _DISC_ROOT = os.path.dirname(os.path.dirname(_HERE))          # discovery_api/
-_REPO = os.path.dirname(_DISC_ROOT)                           # repo root
-_E1 = os.path.join(_REPO, "databricks_deploy")               # E1's deploy bundle (engines + serving)
+_REPO = os.path.dirname(_DISC_ROOT)                           # repo root (no longer used for the substrate)
+_E1 = os.path.join(_DISC_ROOT, "_substrate")                 # VENDORED copy of E1's substrate -> independent deploy
 _E1_SERVING = os.path.join(_E1, "serving")
 _E1_ENG = os.path.join(_E1, "engines")
 

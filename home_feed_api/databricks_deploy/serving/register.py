@@ -79,10 +79,10 @@ _SIGNATURE = ModelSignature(
 def _stage():
     s = tempfile.mkdtemp(prefix="home_feed_")
     shutil.copy(os.path.join(_HERE, "model.py"), s)
-    # best-effort: bundle E1's otel_setup for shared telemetry (optional — model.py degrades if absent)
-    e1_otel = os.path.join(_REPO, "databricks_deploy", "serving", "otel_setup.py")
-    if os.path.isfile(e1_otel):
-        shutil.copy(e1_otel, s)
+    # otel_setup is vendored beside this file -> independent (no reach into databricks_deploy/)
+    otel = os.path.join(_HERE, "otel_setup.py")
+    if os.path.isfile(otel):
+        shutil.copy(otel, s)
 
     # engine trees, vendored as-is (sibling layout preserved so the relative paths in data.py/home_api.py work)
     shutil.copytree(os.path.join(_E3_ROOT, "home_feed"), os.path.join(s, "home_feed"),

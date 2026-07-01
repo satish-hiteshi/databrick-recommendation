@@ -29,14 +29,16 @@ _defaults = {
     "parquet":       "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen.parquet",
     "vs_endpoint":   "feedsai-staging-vs",
     "vs_index":      "stg_feeds_silver.ml.entities_vs",
+    "vector_backend": "qdrant",   # "qdrant" (in-memory from parquet) | "databricks" (Vector Search)
     "neo4j_uri":     "neo4j+s://17aa0e8d.databases.neo4j.io",
+    "enable_graph": "1",         # "1" = graph refine via Aura | "0" = vector-only
     "llm_endpoint":  "llama_v3_3_70b_instruct",       # LLM serving-endpoint NAME (URL built from HOST)
     "qwen_embed":    "databricks-qwen3-embedding-0-6b",
     "workload_size": "Medium",
     "enable_timing": "1",                             # "1" → TIMING_BREAKDOWN (source for per-stage latency)
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
     "otel_service":  "agent-recs",                    # OTEL_SERVICE_NAME (discovery sets discovery-api)
-    "enable_otel":   "0",                             # "1" → push telemetry (needs the grafana_otlp_token secret)
+    "enable_otel":   "1",                             # "1" → push telemetry (needs the grafana_otlp_token secret)
     "otel_endpoint": "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
     "otel_secret":   "grafana_otlp_token",            # secret key in <scope> holding the base64 OTLP token
     "otel_sampler":  "0.15",                          # fraction of requests traced (metrics stay 100%)
@@ -74,10 +76,18 @@ ENV = {
     "DATABRICKS_LLM_ENDPOINT": f"{HOST}/serving-endpoints/{C['llm_endpoint']}/invocations",
     "DATABRICKS_HOST": HOST, "DATABRICKS_TOKEN": sec("databricks_token"),
     "QUERY_EMBED_ENDPOINT": C["qwen_embed"],          # queries embed via Qwen (matches the corpus)
-    "VS_ENDPOINT_NAME": C["vs_endpoint"], "VS_INDEX_NAME": C["vs_index"],
-    "NEO4J_URI": C["neo4j_uri"], "NEO4J_USER": "neo4j",
-    "NEO4J_PASSWORD": sec("neo4j_password"), "NEO4J_DATABASE": "neo4j",
+    "VECTOR_BACKEND": C["vector_backend"],            # switch: qdrant (default) | databricks
 }
+# ── vector switch: Databricks VS needs the endpoint/index; qdrant (default) needs neither ──
+if C["vector_backend"] == "databricks":
+    ENV["VS_ENDPOINT_NAME"] = C["vs_endpoint"]
+    ENV["VS_INDEX_NAME"]    = C["vs_index"]
+# ── graph switch: "1" wires this env's Aura; "0" -> router degrades to vector-only ──
+if C["enable_graph"] == "1":
+    ENV["NEO4J_URI"]      = C["neo4j_uri"]
+    ENV["NEO4J_USER"]     = "neo4j"
+    ENV["NEO4J_PASSWORD"] = sec("neo4j_password")
+    ENV["NEO4J_DATABASE"] = "neo4j"
 if C["enable_timing"] == "1":
     ENV["TIMING_BREAKDOWN"] = "1"
 

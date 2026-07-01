@@ -37,7 +37,7 @@ _defaults = {
     "test_user":      "13",                           # a user who FOLLOWS properties (else feed is empty)
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
     "otel_service":   "home-feed",                    # OTEL_SERVICE_NAME
-    "enable_otel":    "0",                            # "1" → push telemetry (needs the grafana_otlp_token secret)
+    "enable_otel":    "1",                            # "1" → push telemetry (needs the grafana_otlp_token secret)
     "otel_endpoint":  "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
     "otel_secret":    "grafana_otlp_token",
     "otel_sampler":   "0.15",

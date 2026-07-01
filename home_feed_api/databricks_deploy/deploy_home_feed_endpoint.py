@@ -39,7 +39,7 @@ _defaults = {
     "otel_service":   "home-feed",                    # OTEL_SERVICE_NAME
     "enable_otel":    "1",                            # "1" → push telemetry (needs the grafana_otlp_token secret)
     "otel_endpoint":  "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":    "grafana_otlp_token",
+    "otel_secret":    "grafana_otlp_headers",
     "otel_sampler":   "0.15",
 }
 for k, v in _defaults.items():
@@ -84,7 +84,7 @@ ENV["OTEL_SERVICE_NAME"] = C["otel_service"]
 if C["enable_otel"] == "1":
     ENV["OTEL_EXPORTER_OTLP_ENDPOINT"] = C["otel_endpoint"]
     ENV["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
-    ENV["OTEL_EXPORTER_OTLP_HEADERS"]  = "Authorization=Basic%20" + sec(C["otel_secret"])  # %20 = space
+    ENV["OTEL_EXPORTER_OTLP_HEADERS"]  = sec(C["otel_secret"])   # whole-value secret ref (embedded refs are NOT resolved); secret holds: Authorization=Basic%20<base64(instanceID:token)>
     ENV["OTEL_TRACES_SAMPLER_ARG"]     = C["otel_sampler"]
 
 entities = [ServedEntityInput(name="home_feed", entity_name=MODEL_NAME, entity_version=ver,

@@ -40,6 +40,7 @@ class ThematicIndex:
         self.names: List[str] = []
         self.verticals: List[str] = []
         self._vert_idx: Dict[str, np.ndarray] = {}      # vertical → row indices (pre-grouped at startup)
+        self._eid_to_row: Dict[str, int] = {}           # entity_id → matrix row (for stored-vector lookups)
 
     def load(self) -> "ThematicIndex":
         if self._loaded:
@@ -56,12 +57,21 @@ class ThematicIndex:
         for i, v in enumerate(self.verticals):
             grouped.setdefault(v, []).append(i)
         self._vert_idx = {v: np.asarray(ix, dtype=np.int64) for v, ix in grouped.items()}
+        self._eid_to_row = {eid: i for i, eid in enumerate(self.entity_ids)}
         self._loaded = True
         return self
 
     @property
     def size(self) -> int:
         return len(self.entity_ids)
+
+    def vector_for(self, entity_id: str) -> Optional[np.ndarray]:
+        """The STORED (L2-normalized) Qwen vector for an entity_id, or None if it has no parquet row
+        (the ~239 bridged-but-unvectored). Enables 'more like this' with NO live embed call."""
+        if self._mat is None:
+            self.load()
+        row = self._eid_to_row.get(str(entity_id))
+        return self._mat[row] if row is not None else None
 
     @property
     def verticals_present(self) -> List[str]:

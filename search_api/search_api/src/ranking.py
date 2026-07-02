@@ -35,6 +35,7 @@ class SearchResult:
     final_score: float = 0.0
     disambiguation_confidence: float = 0.0
     tier: int = 1                 # 0 = exact-identity tier (pinned above all non-exact); 1 = fuzzy/thematic
+    twin_demoted: bool = False    # a name match whose title has a much-more-popular UNBRIDGED twin → framed "Named …", never "Best match" / MLT
 
 
 def recency_score(rd: Optional[date], now: datetime) -> float:
@@ -51,12 +52,17 @@ def recency_score(rd: Optional[date], now: datetime) -> float:
     return float(0.5 ** (age_days / config.RECENCY_HALFLIFE_DAYS))
 
 
+#   exact > prefix > fuzzy_typo > fuzzy/thematic. fuzzy_typo (a whole-name typo, Fix 2) is pinned ABOVE thematic
+#   so a misspelled NAME ("fortnight"→Fortnite) leads over high-cosine thematic; plain fuzzy stays tied w/ thematic.
+_TIER_MAP = {"exact": 0, "prefix": 1, "fuzzy_typo": 2, "fuzzy": 3, "thematic": 3}
+
+
 def _scoring_mode(match_type: str) -> str:
-    return "name" if match_type in ("exact", "fuzzy") else "thematic"
+    return "name" if match_type in ("exact", "prefix", "fuzzy_typo", "fuzzy") else "thematic"
 
 
 def score_result(r: SearchResult, store, now: datetime) -> SearchResult:
-    r.tier = 0 if r.match_type == "exact" else 1     # exact-identity tier dominates (UC4 Story 1)
+    r.tier = _TIER_MAP.get(r.match_type, 2)          # exact(0) > prefix(1) > fuzzy/thematic(2); UC4 Story 1
     w = config.weights_for(_scoring_mode(r.match_type), r.vertical)
     r.centrality_pct = store.centrality_pct(r.property_id)
     r.popularity_pct = store.popularity_pct(r.property_id)

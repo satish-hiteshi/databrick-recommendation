@@ -115,6 +115,81 @@ FAIRNESS_SINGLE_VERTICAL_DOMINANCE = float(os.getenv("SEARCH_FAIRNESS_SINGLE_DOM
 # verticals injected). The 0.5 output cap itself is unchanged; this only gates WHEN the exemption applies.
 FAIRNESS_ONBOARDING_FORCES_SPREAD = os.getenv("SEARCH_FAIRNESS_ONBOARDING_SPREAD", "true").lower() in ("1", "true", "yes")
 
+# ── VERTICAL-WORD INTENT (soft boost) ────────────────────────────────────────
+# Detect a vertical keyword in the query (case-insensitive, word-boundary), STRIP it from the embed text
+# (so relevance is on the real topic — "comedy movies" → embed "comedy"), and BOOST that vertical's results
+# so they lead. Longest keyword wins when stripping ("tv show" before "tv"/"show"). Extend by adding to a
+# vertical's list. The boost is additive + SOFT: the exact tier still dominates, and it NEVER hard-filters —
+# other verticals backfill the tail when the named vertical is thin (graceful fallback, never empty).
+VERTICAL_KEYWORDS = {
+    "game": ["gaming", "games", "game"],
+    "movie": ["movies", "movie", "films", "film"],
+    "tv": ["tv shows", "tv show", "shows", "show", "series", "tv"],
+    "podcast": ["podcasts", "podcast", "pod"],
+}
+VERTICAL_WORD_BOOST = float(os.getenv("SEARCH_VERTICAL_WORD_BOOST", "0.2"))  # additive score bump for the named vertical
+
+# ── "MORE LIKE THIS" (mode auto, on a confident single exact match) ──────────
+# When auto finds ONE exact match, backfill from that entity's OWN stored Qwen vector (no live embed) and
+# soft-boost neighbours that share the matched entity's vertical (Fortnite → other games lead). Softer than
+# the vertical-word boost so a standout cross-vertical neighbour (e.g. a great gaming podcast) can still
+# appear below. Never a hard filter — other verticals backfill the tail.
+MLT_SAME_VERTICAL_BOOST = float(os.getenv("SEARCH_MLT_SAME_VERTICAL_BOOST", "0.15"))
+
+# ── PREFIX MATCHING (search-as-you-type) ─────────────────────────────────────
+# An in-memory edge-token PREFIX tier ranked BETWEEN exact and fuzzy (exact > prefix > fuzzy), built at
+# startup. match-boolean-prefix: every query token but the last must be a name token; the LAST token is a
+# prefix of a name token (single-token query → prefix of the name's LEADING token). Reuses NAME_MIN_QUERY_LEN
+# (2) as the floor — no prefix matching under 2 chars.
+PREFIX_BASE_RELEVANCE = float(os.getenv("SEARCH_PREFIX_BASE_RELEVANCE", "0.7"))            # prefix is a strong signal (high base)
+PREFIX_COMPLETENESS_WEIGHT = float(os.getenv("SEARCH_PREFIX_COMPLETENESS_WEIGHT", "0.3"))  # + how much of the name the query covers
+# ADMISSION GATE: a candidate only enters the PREFIX TIER (tier 1, boosted above thematic) if the query covers
+# at least this fraction of the matched name (char-based completeness = len(query)/len(name)). This stops a
+# SHORT CONCEPT WORD that happens to be a name-prefix from hijacking THEMATIC queries: "sci-fi" covers only
+# ≤0.20 of "Old Time Sci-Fi Radio"/"Sci-Fi & Fantasy…" → excluded; but "fortn"→Fortnite (0.625),
+# "fortni"→Fortnite (0.75), "elden rin"→Elden Ring (0.90) → admitted. Empirical window is (0.583, 0.625]:
+# above the fantasy/space concept cluster (Fantasy Life 0.583, Space Jam 0.556) yet at/below fortn (0.625).
+PREFIX_MIN_COMPLETENESS = float(os.getenv("SEARCH_PREFIX_MIN_COMPLETENESS", "0.6"))        # concept-word ≠ name-prefix guard
+PREFIX_POOL = int(os.getenv("SEARCH_PREFIX_POOL", "200"))                                  # cap kept prefix candidates (by popularity) — stops a short prefix flooding
+PREFIX_MLT_MARGIN = float(os.getenv("SEARCH_PREFIX_MLT_MARGIN", "0.15"))                   # top prefix must beat the runner-up by this (blend) to uniquely resolve → MLT
+
+# ── CONFIDENT-PIN GUARDS (structural; stop auto from confidently mis-pinning a coincidental match) ──
+# Root finding: no absolute floor on relevance/completeness/popularity separates a genuine confident pin from a
+# coincidental one (the genuine "Elden Ring"→movie sits at pop 0.581, BELOW the wrong "Friends"→Friendship 0.786).
+# So we gate more-like-this on STRUCTURE, not tuned score floors:
+#   • leading-substring: a PREFIX candidate must be a true leading prefix (name startswith query) — enforced in
+#     name_index, kills "The Godfather"→"The Black Godfather" (a token-subset, not a leading prefix).
+#   • MLT_MIN_QUERY_LEN: never SEED more-like-this from an ultra-short query. "fo" (2 chars) uniquely-resolves to
+#     "Foe" and would amplify it; 2–3 chars carry too little intent to justify amplification. 4 = the shortest
+#     length at which a query is a plausible whole word/name (keeps "news"/"halo"; blocks "fo"/"foo").
+MLT_MIN_QUERY_LEN = int(os.getenv("SEARCH_MLT_MIN_QUERY_LEN", "4"))
+#   • catalog cross-check (PREFIX): suppress a prefix confident pin + MLT when the query EXACTLY matches an
+#     UNBRIDGED catalog entity STRICTLY more popular than the pinned bridged match ("Friends"→Friendship while the
+#     real Friends is unbridged at 0.996). SIGNAL ONLY: unbridged entities never enter results. Bare comparison.
+#   • catalog cross-check (EXACT), Break-1 fix: the exact branch is NOT blanket-spared — suppress the exact pin +
+#     MLT when a same-name unbridged twin is MUCH more popular (RELATIVE gap ≥ EXACT_TWIN_GAP_MARGIN). This catches
+#     the obscure bridged namesakes ("Game of Thrones"→pop-0 game, "Scent of a Woman"→K-drama; gap 0.87–0.999)
+#     while sparing the genuine "Elden Ring"→movie (gap 0.392 < 0.6) and "mine"→"Mine" (no twin). The GAP encodes
+#     both conditions at once — the pin is a near-invisible nobody AND a famous twin exists. Proven window
+#     (0.407, 0.873]; 0.6 sits mid-window (+0.19 above Tracker, −0.27 below the lowest catch). NOT caught (proven
+#     unseparable, documented): "Tracker"/"The Boys" (real mid-pop movie / no twin) — margin is NOT tuned to chase them.
+EXACT_TWIN_GAP_MARGIN = float(os.getenv("SEARCH_EXACT_TWIN_GAP_MARGIN", "0.6"))
+
+# ── FUZZY WHOLE-NAME-TYPO PROMOTION (Fix 2, narrow) ───────────────────────────
+# A fuzzy hit is promoted ABOVE thematic (its own sub-tier) ONLY when it is a genuine typo of the WHOLE name —
+# i.e. the query covers ≥ this fraction of the matched name. "fortnight"→"Fortnite" (completeness 1.0) qualifies;
+# a CONCEPT word that is merely a TOKEN inside a longer title ("comedy" ⊂ "Sex is Comedy" = 0.46, "space" ⊂
+# "Space Chef" = 0.5) does NOT, so concept queries stay thematic-led. 0.8 sits well above the concept-subset
+# cluster (≤0.6) and below any real typo (≈1.0).
+FUZZY_TYPO_MIN_COMPLETENESS = float(os.getenv("SEARCH_FUZZY_TYPO_MIN_COMPLETENESS", "0.8"))
+# DOMINANCE (Break-3 fix): promote a fuzzy_typo only if it resolves to ONE dominant title. A genuine typo has a
+# single distinct candidate name ("fortnight"→Fortnite, "amoung us"→Among Us); a coincidental TOKEN-OVERLAP matches
+# SEVERAL distinct titles ("the last of us"→{The Story of Us, The Rest of Us}, "the bear movie"→{X/ABBA/Bluey: The
+# Movie}) — demote all of those back to plain fuzzy. If MORE than this many DISTINCT candidate names carry the
+# fuzzy_typo mark, none promote. (Edit-distance/popularity can't help here: "witchr"→"Switch" is edit-ratio 0.333 /
+# pop 0.867 / 1 name — numerically identical to genuine typos — so it stays a documented false-positive limitation.)
+FUZZY_TYPO_MAX_DISTINCT_NAMES = int(os.getenv("SEARCH_FUZZY_TYPO_MAX_DISTINCT_NAMES", "1"))
+
 # ── DEDUP (serve-time composite-identity collapse) ───────────────────────────
 DEDUP_ENABLED = os.getenv("SEARCH_DEDUP_ENABLED", "true").lower() in ("1", "true", "yes")
 

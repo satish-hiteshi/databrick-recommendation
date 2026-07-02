@@ -4,8 +4,9 @@
 # MAGIC Builds the popularity + recency table that E4's `store.py` reads when `SEARCH_DATA_SOURCE=live`.
 # MAGIC Source = the client's per-vertical query over the Silver source tables (igdb / watchmode / podchaser)
 # MAGIC joined to `public_properties`, wrapped with:
-# MAGIC   • **`popularity_pct`** = per-vertical `PERCENT_RANK` × 100 — normalizes the mixed raw units
-# MAGIC     (games=`hype_count`, movies/TV=`popularity_percentile`, podcasts=`power_score`) to a 0–100 scale.
+# MAGIC   • **`popularity_pct`** = per-vertical `PERCENT_RANK` in **0..1** (the ranker uses it raw and treats
+# MAGIC     every signal as 0..1) — normalizes the mixed raw units (games=`hype_count`,
+# MAGIC     movies/TV=`popularity_percentile`, podcasts=`power_score`) to a per-vertical percentile 0..1.
 # MAGIC   • **`dedup_key`** = normalized name — lets the search ranker collapse duplicate titles.
 # MAGIC
 # MAGIC Output columns match `store.py`'s live query: `property_id, name, vertical, popularity_pct, recency_date,
@@ -80,8 +81,9 @@ WITH base AS (
 SELECT
   property_id, name, vertical, media_source_guid, media_source_id, media_type_id,
   raw_popularity, pop_source, recency_date,
-  -- popularity_pct: per-vertical PERCENT_RANK (0..100). Highest raw -> ~100; null_source -> ~0.
-  ROUND(100 * PERCENT_RANK() OVER (PARTITION BY vertical ORDER BY raw_popularity ASC), 4) AS popularity_pct,
+  -- popularity_pct: per-vertical PERCENT_RANK in 0..1 (the ranker treats EVERY signal as 0..1 and uses this
+  -- value raw — a 0..100 scale inflates the popularity term 100x). Highest raw -> ~1; null_source -> ~0.
+  ROUND(PERCENT_RANK() OVER (PARTITION BY vertical ORDER BY raw_popularity ASC), 6) AS popularity_pct,
   -- dedup_key: normalized name so the ranker can collapse duplicate titles across sources
   lower(trim(regexp_replace(coalesce(name, ''), '[^A-Za-z0-9]+', ' '))) AS dedup_key
 FROM base
@@ -92,7 +94,7 @@ print("built", OUT)
 # ── verify: per-vertical counts + how many rows had no popularity source, and a sample top-N ──
 display(spark.sql(f"""
   SELECT vertical, count(*) AS n,
-         round(avg(popularity_pct), 1) AS avg_pct,
+         round(avg(popularity_pct), 3) AS avg_pct,
          sum(CASE WHEN pop_source = 'null_source' THEN 1 ELSE 0 END) AS null_pop
   FROM {OUT} GROUP BY vertical ORDER BY vertical
 """))

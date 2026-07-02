@@ -93,7 +93,7 @@ nn AS (
 SELECT b.property_id, b.name, b.vertical, b.media_source_guid, b.media_source_id, b.media_type_id,
        b.raw_popularity, b.pop_source, b.recency_date, b.game_rating_count,
        ROUND(COALESCE(nn.pct, 0.0), 6) AS popularity_pct,   -- the value ranking uses (0..1)
-       -- dedup_key: composite identity "{guid}:{media_source_id|NA}:{media_type_id|NA}"; NULL if guid NULL
+       -- dedup_key: composite identity  guid : media_source_id(or NA) : media_type_id(or NA) ; NULL when guid is NULL
        CASE WHEN b.media_source_guid IS NULL THEN NULL
             ELSE concat_ws(':', b.media_source_guid,
                            coalesce(cast(b.media_source_id AS string), 'NA'),

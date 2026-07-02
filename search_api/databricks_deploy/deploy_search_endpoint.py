@@ -39,7 +39,7 @@ _defaults = {
     "warehouse_http": "/sql/1.0/warehouses/321252e45d03563e",   # SQL warehouse HTTP path (Silver store + follows)
     "silver_catalog": "stg_feeds_silver",             # SEARCH_SILVER_CATALOG (precompute tables + public_property_followers)
     "neo4j_uri":      "neo4j+s://17aa0e8d.databases.neo4j.io",   # MUST be the 44k :Entity bridge graph (property_id/entity_id)
-    "qwen_endpoint":  "qwen3-embedding-0-6b",         # Qwen query-embed serving endpoint NAME (URL built below)
+    "qwen_endpoint":  "databricks-qwen3-embedding-0-6b",  # Qwen query-embed serving endpoint NAME (same one parrot uses; URL built below)
     "workload_size":  "Small",
     "test_query":     "elden ring",                   # a name-mode smoke query (should hit the name index)
     # ── observability (OTLP → Grafana Cloud) ──

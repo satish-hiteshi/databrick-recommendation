@@ -78,9 +78,14 @@ class LiveFollowSource(FollowSource):
 
     def active_followed_property_ids(self, follow_user_id: int) -> Set[int]:
         try:
+            # user_id often lands NULL in the typed column (ingestion bug) with the real value in
+            # _rescued_data JSON — match on COALESCE(typed, rescued), else a raw `user_id = N` misses
+            # every rescued row and the user reads as following nothing (mirrors E2's LiveDataSource).
             rows = self._q(
                 f"SELECT property_id FROM {self._pg}.public_property_followers "
-                f"WHERE user_id = {int(follow_user_id)} AND deleted_at IS NULL AND property_id IS NOT NULL")
+                f"WHERE COALESCE(CAST(user_id AS BIGINT), "
+                f"CAST(get_json_object(_rescued_data, '$.user_id') AS BIGINT)) = {int(follow_user_id)} "
+                f"AND deleted_at IS NULL AND property_id IS NOT NULL")
         except Exception as e:  # never 500 the feed on a follows read failure — degrade to no follows
             print(f"[follow_source] live follows read failed for user {follow_user_id}: {str(e)[:120]}", flush=True)
             return set()

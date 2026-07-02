@@ -26,12 +26,18 @@ def _norm_add(by_id: Dict[str, Candidate], items, path: str, cluster_id: int,
     scores = [float(i.get("score", 0) or 0) for i in items]
     if scores:
         mn, mx = min(scores), max(scores)
-        rng = (mx - mn) or 1.0
+        span = mx - mn
     for it in items:
         eid = it.get("entity_id")
         if not eid or eid in exclude:
             continue
-        norm = (float(it.get("score", 0) or 0) - mn) / rng if scores else 0.0
+        if not scores:
+            norm = 0.0
+        elif span > 0:
+            norm = (float(it.get("score", 0) or 0) - mn) / span
+        else:
+            norm = 0.5          # all source scores equal → neutral; the old (score-mn)/1.0 zeroed them ALL,
+                                # which cascaded to a flat maxsc fallback and undifferentiated (1.0/0.0) items
         cand = by_id.get(eid)
         if cand is None:
             cand = Candidate(entity_id=eid, name=it.get("name", "") or "",

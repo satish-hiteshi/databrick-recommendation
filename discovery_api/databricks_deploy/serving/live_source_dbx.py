@@ -280,9 +280,15 @@ class LiveDataSource(DataSource):
 
     # ── personal signals (follows = public_property_followers) ──
     def _load_follows(self):
-        sql = f"""SELECT user_id, property_id, created_at
+        # user_id often lands NULL in the typed column (ingestion bug) with the real value in _rescued_data
+        # JSON — recover it exactly as _load_reactions does, else authed users read as having ZERO follows
+        # (typed user_id NULL → the old `user_id IS NOT NULL` filter dropped every rescued row).
+        sql = f"""SELECT COALESCE(CAST(user_id AS BIGINT),
+                                  CAST(get_json_object(_rescued_data, '$.user_id') AS BIGINT)) AS user_id,
+                         property_id, created_at
                   FROM {self.pg}.public_property_followers
-                  WHERE deleted_at IS NULL AND user_id IS NOT NULL AND property_id IS NOT NULL"""
+                  WHERE deleted_at IS NULL AND property_id IS NOT NULL
+                    AND COALESCE(user_id, get_json_object(_rescued_data, '$.user_id')) IS NOT NULL"""
         for r in self._q(sql):
             uid, pid = r.get("user_id"), r.get("property_id")
             if uid is None or pid is None:

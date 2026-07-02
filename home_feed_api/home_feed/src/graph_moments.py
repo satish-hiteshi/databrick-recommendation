@@ -38,8 +38,16 @@ RETURN e.property_id   AS property_id,
 
 
 def _native(v):
-    """neo4j temporal -> python datetime (driver returns DateTime); passthrough for everything else."""
-    return v.to_native() if hasattr(v, "to_native") else v
+    """neo4j temporal -> python datetime (driver returns DateTime). ISO STRINGS (the Aura moments were
+    CSV-loaded, so event_starts_at/published_at/created_at can arrive as text) -> datetime via E2's
+    parse_ts; unparseable/'null'/'' -> None. Passthrough for everything else. Without this, a string
+    date reaches suppression/recency and raises 'datetime <= str'."""
+    if hasattr(v, "to_native"):
+        return v.to_native()
+    if isinstance(v, str):
+        from .reuse import timeutil            # lazy import: avoids any import cycle; called only at query time
+        return timeutil.parse_ts(v)
+    return v
 
 
 class GraphMoments:

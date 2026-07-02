@@ -56,9 +56,10 @@ TRENDING_POOL_SIZE = int(os.getenv("DISCOVERY_TRENDING_POOL_SIZE", "500"))      
 RECENCY_HALFLIFE_DAYS = float(os.getenv("DISCOVERY_RECENCY_HALFLIFE_DAYS", "21"))  # soft-window half-life
 RECENCY_HARD_CUTOFF_DAYS = os.getenv("DISCOVERY_RECENCY_HARD_CUTOFF_DAYS")          # default None = no cutoff
 RECENCY_HARD_CUTOFF_DAYS = float(RECENCY_HARD_CUTOFF_DAYS) if RECENCY_HARD_CUTOFF_DAYS else None
-# Optional fixed "now" for reproducible dev runs over the (June-2026) dev data; None = wall clock.
-DEFAULT_NOW_ISO = os.getenv("DISCOVERY_NOW_ISO", "2026-06-18T00:00:00Z")  # fixed for dev reproducibility;
-# at deploy set DISCOVERY_NOW_ISO="" (empty → falsy) so timeutil.now() uses the wall clock.
+# Reference "now". Default "" → wall clock (the PRODUCTION default; a hardcoded snapshot froze the clock
+# ~13 days stale and also collapsed the trending window). Set DISCOVERY_NOW_ISO to a fixed ISO ONLY for
+# reproducible dev runs over the (June-2026) dev data.
+DEFAULT_NOW_ISO = os.getenv("DISCOVERY_NOW_ISO", "")
 
 # ── Feed / carousel shaping ────────────────────────────────────────────
 MOMENT_CAP_PER_PROPERTY = int(os.getenv("DISCOVERY_MOMENT_CAP", "3"))   # episode-heavy podcasts can't flood

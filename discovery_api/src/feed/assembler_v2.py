@@ -210,11 +210,18 @@ def assemble_feed_v2(profile, bundle, ds: DataSource, trending: TrendingTable, n
         if n >= config.V2_MAX_CLUSTER_CAROUSELS:
             break
         repr_name = repr_by_cluster.get(cs.cluster_id)
-        items = [citem(c.entity_id, _norm(c.score, maxsc),
+        _cands = cs.candidates[:config.V2_CLUSTER_CAROUSEL_SIZE]
+        _scores = [_norm(c.score, maxsc) for c in _cands]
+        # tiebreak: when a cluster's candidates all normalize to the SAME value (tied/clipped substrate
+        # scores → every item renders an identical, often 1.0, score), preserve the upstream order with a
+        # tiny positional decay so the carousel still differentiates. No-op when scores already vary.
+        if len(_scores) > 1 and (max(_scores) - min(_scores)) < 1e-9:
+            _scores = [max(0.0, s - i * 1e-3) for i, s in enumerate(_scores)]
+        items = [citem(c.entity_id, s,
                        why_v2.cluster_reason(genre=_top_genre(ds, c.entity_id), repr_name=repr_name),
-                       "content", {"taste_match": round(_norm(c.score, maxsc), 4), "cluster_id": cs.cluster_id,
-                                   "final_score": round(_norm(c.score, maxsc), 4)})
-                 for c in cs.candidates[:config.V2_CLUSTER_CAROUSEL_SIZE]]
+                       "content", {"taste_match": round(s, 4), "cluster_id": cs.cluster_id,
+                                   "final_score": round(s, 4)})
+                 for c, s in zip(_cands, _scores)]
         if len(items) >= config.V2_CLUSTER_CAROUSEL_MIN:
             carousels.append(Carousel(
                 f"cluster_{cs.cluster_id}", ReasonType.similar_to_followed,

@@ -174,6 +174,17 @@ def _date_filter(items, lo, hi):
     return out
 
 
+def _followed_count(ds, user_id):
+    """Best-effort count of the user's active follows (observability). None (not 0) when unknown, so a
+    real 'no follows' is distinguishable from 'field not populated'."""
+    if user_id is None:
+        return None
+    try:
+        return len(ds.get_followed_property_ids(user_id))
+    except Exception:
+        return None
+
+
 def serialize(feed, meta, req, now, ds) -> Dict[str, Any]:
     """DiscoveryFeed (+ V2FeedBuilder meta) -> the v1.0 envelope, date-filtered + paginated like api.py."""
     dbg = req["debug"]
@@ -186,6 +197,7 @@ def serialize(feed, meta, req, now, ds) -> Dict[str, Any]:
         "version": "1.0", "endpoint": "discovery-api", "user_id": req["user_id"],
         "generated_at": now.isoformat(),
         "context": {"mode": feed.mode, "signal_strength": feed.signal_strength,
+                    "followed_count": _followed_count(ds, req.get("user_id")),
                     "substrate_reachable": True, "engine": "v2", "path": meta.get("path")},
         "request_echo": {"sort_order": req["sort_order"], "time_window": req.get("time_window"),
                          "limit": lim, "offset": off,

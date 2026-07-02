@@ -74,10 +74,10 @@ _defaults = {
     "qwen_embed":    "databricks-qwen3-embedding-0-6b",
     "workload_size": "Medium",
     "enable_timing": "1",                             # "1" → TIMING_BREAKDOWN (source for per-stage latency)
-    "rerank":        "auto",                          # auto|learned|cross_encoder|none. The doc used the CROSS-ENCODER;
-                                                      #   it needs sentence-transformers+torch in serving/requirements.txt.
-                                                      #   "learned" = LLM reranker (no heavy deps, +1 LLM call) — closest
-                                                      #   without the cross-encoder; "auto" = cross-encoder if installed else no-op.
+    "rerank":        "none",                          # none|learned|cross_encoder|auto. OFF to match local (local runs
+                                                      #   with no cross-encoder installed, so its "auto" no-ops → effectively off).
+                                                      #   "auto" = selective cross-encoder if installed (needs sentence-transformers
+                                                      #   +torch); "learned" = LLM reranker (no heavy deps, +1 LLM call).
     "vector_backend":"databricks",                    # "databricks" → Databricks Vector Search (entities_vs). Anything else
                                                       #   (e.g. "qdrant") → in-memory Qdrant built from the bundled parquet —
                                                       #   the SAME engine as the local stack; needs no entities_vs index.

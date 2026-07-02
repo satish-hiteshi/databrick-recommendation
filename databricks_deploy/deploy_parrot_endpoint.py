@@ -91,6 +91,10 @@ if C["enable_graph"] == "1":
 if C["enable_timing"] == "1":
     ENV["TIMING_BREAKDOWN"] = "1"
 
+# ── reranker OFF (match local): local runs with no cross-encoder installed, so its "auto" no-ops.
+# Env var (not a re-register): overrides the config.py default "auto". Set to "auto"/"learned"/"cross_encoder" to enable.
+ENV["RERANK"] = "none"
+
 # ── observability (H1.6): OTEL_SERVICE_NAME is always safe; the OTLP push is gated on enable_otel
 # (the secret must exist in the scope, else the endpoint create fails on an unresolvable secret ref). ──
 ENV["OTEL_SERVICE_NAME"] = C["otel_service"]

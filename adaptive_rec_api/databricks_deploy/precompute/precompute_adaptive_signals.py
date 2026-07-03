@@ -1,7 +1,10 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Adaptive-Rec (UC6) precompute — signal tables  (part of the adaptive_rec bundle)
-# MAGIC Builds the three signal tables the engine's `data.py` loads when `ADAPTIVE_DATA_SOURCE=live`:
+# MAGIC Builds the three signal tables the engine's `data.py` loads when `ADAPTIVE_DATA_SOURCE=live`. **All three
+# MAGIC are keyed by `property_id` = the corpus id (`public_properties.media_source_guid`)** — the same id the
+# MAGIC parquet/endpoint use — NOT `public_properties.id` / Aura `e.property_id` (the Databricks internal id;
+# MAGIC keying by that makes the serving lookups miss ~100% → every signal reads 0.0):
 # MAGIC   • **`adaptive_property_centrality`** (`property_id, wdegree, pagerank`) ← the Aura `:Entity` graph
 # MAGIC     (`e.degree` is the weighted-degree hub signal; data.py ranks it WITHIN-vertical at load = S4).
 # MAGIC   • **`adaptive_property_proximity`** (`property_id, franchises[], genres[]`) ← the graph's
@@ -65,17 +68,28 @@ _PROX_SCHEMA = StructType([StructField("property_id", LongType()),
 cent_rows = [(r.get("property_id"), r.get("wdegree"), r.get("pagerank")) for r in rows]
 prox_rows = [(r.get("property_id"), r.get("franchises") or [], r.get("genres") or []) for r in rows]
 
-# ── 1. centrality (wdegree = graph degree) ──
+# ── KEY BRIDGE: Aura e.property_id == public_properties.id (Databricks id), but the vector corpus + the endpoint
+#    key by the SOURCE-native id = media_source_guid. Re-map every signal from the Databricks id to the corpus id
+#    (media_source_guid) so the serving lookups actually hit — otherwise the overlap is ~0 and every signal reads
+#    0.0. (Verified: 44052/44052 Aura property_ids ∈ public_properties.id; corpus id == media_source_guid.) ──
+_bridge = (spark.table(f"{S}.feedspostgres.public_properties")
+           .select(F.col("id").alias("_ppid"), F.col("media_source_guid").cast("long").alias("property_id"))
+           .where(F.col("property_id").isNotNull())
+           .dropDuplicates(["_ppid"]))
+
+# ── 1. centrality (wdegree = graph degree), re-keyed to the corpus id (media_source_guid) ──
 cent = (spark.createDataFrame(cent_rows, _CENT_SCHEMA)
-        .dropna(subset=["property_id"]).dropDuplicates(["property_id"])
-        .where(F.col("wdegree").isNotNull()))
+        .dropna(subset=["property_id"]).where(F.col("wdegree").isNotNull())
+        .withColumnRenamed("property_id", "_ppid").join(_bridge, "_ppid").drop("_ppid")
+        .dropDuplicates(["property_id"]))
 cent.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{NS}.adaptive_property_centrality")
 print("adaptive_property_centrality:", cent.count())
 
-# ── 2. proximity (franchises / genres from edges) ──
+# ── 2. proximity (franchises / genres from edges), re-keyed to the corpus id ──
 prox = (spark.createDataFrame(prox_rows, _PROX_SCHEMA)
-        .dropna(subset=["property_id"]).dropDuplicates(["property_id"])
-        .where((F.size("franchises") > 0) | (F.size("genres") > 0)))
+        .dropna(subset=["property_id"]).where((F.size("franchises") > 0) | (F.size("genres") > 0))
+        .withColumnRenamed("property_id", "_ppid").join(_bridge, "_ppid").drop("_ppid")
+        .dropDuplicates(["property_id"]))
 prox.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{NS}.adaptive_property_proximity")
 print("adaptive_property_proximity:", prox.count())
 
@@ -86,39 +100,44 @@ print("adaptive_property_proximity:", prox.count())
 spark.sql(f"""
 CREATE OR REPLACE TABLE {NS}.adaptive_property_popularity AS
 WITH base AS (
-  SELECT p.id AS property_id, 'game' AS vertical, CAST(g.game_hypes AS DOUBLE) AS raw_popularity
+  -- key by media_source_guid (the SOURCE-native id the vector corpus uses), NOT public_properties.id
+  SELECT CAST(p.media_source_guid AS BIGINT) AS property_id, 'game' AS vertical, CAST(g.game_hypes AS DOUBLE) AS raw_popularity
   FROM {S}.feedspostgres.public_properties p
   LEFT JOIN {S}.igdb.core_games_extended g
     ON CAST(g.igdb_game_id AS STRING) = CAST(p.media_source_guid AS STRING)
    AND p.media_source_id = 1 AND p.media_source_id IS NOT NULL
   WHERE p.media_type_id = 1
   UNION ALL
-  SELECT p.id, 'movie', CAST(w.popularity_percentile AS DOUBLE)
+  SELECT CAST(p.media_source_guid AS BIGINT), 'movie', CAST(w.popularity_percentile AS DOUBLE)
   FROM {S}.feedspostgres.public_properties p
   LEFT JOIN {S}.watchmode.titles_titles_extended w
     ON CAST(w.id AS STRING) = CAST(p.media_source_guid AS STRING)
    AND p.media_source_id = 2 AND p.media_source_id IS NOT NULL
   WHERE p.media_type_id = 3
   UNION ALL
-  SELECT p.id, 'tv', CAST(w.popularity_percentile AS DOUBLE)
+  SELECT CAST(p.media_source_guid AS BIGINT), 'tv', CAST(w.popularity_percentile AS DOUBLE)
   FROM {S}.feedspostgres.public_properties p
   LEFT JOIN {S}.watchmode.titles_titles_extended w
     ON CAST(w.id AS STRING) = CAST(p.media_source_guid AS STRING)
    AND p.media_source_id = 3 AND p.media_source_id IS NOT NULL
   WHERE p.media_type_id = 4
   UNION ALL
-  SELECT p.id, 'podcast', CAST(pc.powerScore AS DOUBLE)
+  SELECT CAST(p.media_source_guid AS BIGINT), 'podcast', CAST(pc.powerScore AS DOUBLE)
   FROM {S}.feedspostgres.public_properties p
   LEFT JOIN {S}.podchaser.core_podcasts_extended pc
     ON CAST(pc.id AS STRING) = CAST(p.media_source_guid AS STRING)
    AND p.media_source_id = 4 AND p.media_source_id IS NOT NULL
   WHERE p.media_type_id = 5
+),
+dedup AS (   -- media_source_guid can repeat across legacy public_properties rows -> one row per (id, vertical)
+  SELECT property_id, vertical, MAX(raw_popularity) AS raw_popularity
+  FROM base WHERE property_id IS NOT NULL
+  GROUP BY property_id, vertical
 )
 SELECT property_id,
        -- per-vertical PERCENT_RANK in 0..1 (highest raw rating -> ~1; no source -> ~0). data.py reads `popularity`.
        ROUND(PERCENT_RANK() OVER (PARTITION BY vertical ORDER BY raw_popularity ASC), 6) AS popularity
-FROM base
-WHERE property_id IS NOT NULL
+FROM dedup
 """)
 print("adaptive_property_popularity: built")
 

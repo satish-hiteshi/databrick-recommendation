@@ -12,6 +12,7 @@ scores name-hits with name weights and thematic-hits with thematic weights.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import List, Optional
@@ -61,29 +62,46 @@ def _scoring_mode(match_type: str) -> str:
     return "name" if match_type in ("exact", "prefix", "fuzzy_typo", "fuzzy") else "thematic"
 
 
+def _finite(x: float, default: float = 0.0) -> float:
+    """Coerce NaN/Inf (or a non-number) to a JSON-safe finite value. A single non-finite score makes the
+    Databricks serving layer reject the whole response with a 400 (invalid JSON), so every value that can
+    reach the envelope passes through this."""
+    try:
+        x = float(x)
+    except (TypeError, ValueError):
+        return default
+    return x if math.isfinite(x) else default
+
+
 def score_result(r: SearchResult, store, now: datetime) -> SearchResult:
     r.tier = _TIER_MAP.get(r.match_type, 2)          # exact(0) > prefix(1) > fuzzy/thematic(2); UC4 Story 1
     w = config.weights_for(_scoring_mode(r.match_type), r.vertical)
-    r.centrality_pct = store.centrality_pct(r.property_id)
-    r.popularity_pct = store.popularity_pct(r.property_id)
-    rec = recency_score(store.recency_date(r.property_id), now)
+    r.centrality_pct = _finite(store.centrality_pct(r.property_id))
+    r.popularity_pct = _finite(store.popularity_pct(r.property_id))
+    rec = _finite(recency_score(store.recency_date(r.property_id), now))
     r.signals = {
-        "relevance": round(r.relevance, 6),
+        "relevance": round(_finite(r.relevance), 6),
         "centrality": round(r.centrality_pct, 6),
         "popularity": round(r.popularity_pct, 6),
         "recency": round(rec, 6),
         "trending": config.TRENDING_INERT,
         "proximity": config.PROXIMITY_INERT,
     }
-    r.final_score = round(sum(w[k] * r.signals[k] for k in config.SIGNALS), 6)
+    r.final_score = round(_finite(sum(w[k] * r.signals[k] for k in config.SIGNALS)), 6)
     return r
 
 
 def minmax_relevance(cosines: List[float]) -> List[float]:
-    """Min-max normalize thematic cosines over the candidate set → relevance in [0,1] (top = 1.0)."""
+    """Min-max normalize thematic cosines over the candidate set → relevance in [0,1] (top = 1.0).
+    NaN-safe: a non-finite cosine (e.g. from a degenerate query vector) is treated as no-signal (0.0) and
+    never propagates — otherwise a NaN slips past the ``hi - lo`` guard (NaN comparisons are always False)
+    and poisons final_score, which the Databricks serving layer rejects with a 400."""
     if not cosines:
         return []
-    lo, hi = min(cosines), max(cosines)
+    finite = [c for c in cosines if math.isfinite(c)]
+    if not finite:
+        return [0.0 for _ in cosines]
+    lo, hi = min(finite), max(finite)
     if hi - lo < 1e-9:
-        return [1.0 for _ in cosines]
-    return [(c - lo) / (hi - lo) for c in cosines]
+        return [1.0 if math.isfinite(c) else 0.0 for c in cosines]
+    return [((c - lo) / (hi - lo)) if math.isfinite(c) else 0.0 for c in cosines]

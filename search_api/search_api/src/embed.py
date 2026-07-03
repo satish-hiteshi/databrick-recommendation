@@ -41,15 +41,31 @@ class QwenQueryEmbedder:
         q = (query or "").strip()
         if q in self._cache:
             return self._cache[q]
+        import time
         import httpx
-        try:
-            r = httpx.post(self._url, json={"input": [config.QWEN_INSTRUCTION + q]},
-                           headers={"Authorization": f"Bearer {self._tok}"},
-                           timeout=config.QWEN_EMBED_TIMEOUT)
-            r.raise_for_status()
-            v = np.asarray(r.json()["data"][0]["embedding"], dtype=np.float32)
-        except Exception as e:  # network / auth / shape
-            raise EmbedUnavailable(f"Qwen embed failed: {type(e).__name__}: {e}") from e
-        v = v / (np.linalg.norm(v) + 1e-9)
-        self._cache[q] = v
-        return v
+        # Retry-with-validation. A transient bad response — a non-200, a malformed body, OR a non-finite /
+        # degenerate embedding — is RE-FETCHED. A degenerate vector poisons cosine → NaN score → the
+        # Databricks serving layer rejects the whole response with a 400 ("Out of range float values are not
+        # JSON compliant"). Most of these failures are transient (embed endpoint cold-start / scale-to-zero),
+        # so a retry returns a good vector and the query gets its REAL thematic result. Only after every
+        # attempt fails do we degrade thematic gracefully (EmbedUnavailable → empty) — never a 400.
+        attempts = getattr(config, "QWEN_EMBED_RETRIES", 3)
+        last = "?"
+        for i in range(attempts):
+            try:
+                r = httpx.post(self._url, json={"input": [config.QWEN_INSTRUCTION + q]},
+                               headers={"Authorization": f"Bearer {self._tok}"},
+                               timeout=config.QWEN_EMBED_TIMEOUT)
+                r.raise_for_status()
+                v = np.asarray(r.json()["data"][0]["embedding"], dtype=np.float32)
+                norm = float(np.linalg.norm(v))
+                if v.size and np.all(np.isfinite(v)) and norm >= 1e-6:      # good vector → done
+                    v = v / (norm + 1e-9)
+                    self._cache[q] = v
+                    return v
+                last = f"non-finite/degenerate vector (norm={norm:.3g})"     # bad vector → retry
+            except Exception as e:                                          # network / auth / shape → retry
+                last = f"{type(e).__name__}: {e}"
+            if i < attempts - 1:
+                time.sleep(0.4 * (i + 1))                                   # brief backoff before re-fetch
+        raise EmbedUnavailable(f"Qwen embed failed after {attempts} attempts for {q!r}: {last}")

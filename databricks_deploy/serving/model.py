@@ -18,7 +18,7 @@ _ENDPOINT = os.getenv("OTEL_SERVICE_NAME", "agent-recs")
 # ROUTER_ENGINE_MODE at import). setdefault so an endpoint env var can still override any of them.
 _ENGINE_ENV = {
     "ROUTER_ENGINE_MODE": "inprocess",   # blocks._post/_get → in-process dispatch (no engine servers)
-    "VECTOR_BACKEND": "databricks",       # dense ANN via Databricks Vector Search
+    "VECTOR_BACKEND": "qdrant",           # DEFAULT: in-memory qdrant from the parquet (set VECTOR_BACKEND=databricks for Vector Search)
     "ENTITY_BACKEND": "memory",           # Postgres-free entity resolution (parquet-backed)
     "DATA_BACKEND": "parquet",            # get_all_entities() ← 57k embeddings parquet (BM25 corpus)
 }

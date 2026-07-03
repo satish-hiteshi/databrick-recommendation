@@ -36,7 +36,7 @@ _ENV = {
     "DISCOVERY_DEFAULT_ENGINE": "v2",   # the taste-learning engine
     "DISCOVERY_NOW_ISO": "",            # wall-clock now in prod (dev pins a fixed date)
     "ROUTER_ENGINE_MODE": "inprocess",  # E1 engine collapse flags (also settable via endpoint env)
-    "VECTOR_BACKEND": "databricks",
+    "VECTOR_BACKEND": "qdrant",         # DEFAULT: in-memory qdrant from the parquet (set =databricks for Vector Search)
     "ENTITY_BACKEND": "memory",
     "DATA_BACKEND": "parquet",
 }

@@ -29,7 +29,9 @@ def _driver():
         # verify_connectivity round-trip / failure point at init).
         _DRIVER = GraphDatabase.driver(
             NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD),
-            max_connection_lifetime=180, connection_acquisition_timeout=5,
+            # liveness_check_timeout discards a connection Aura has already dropped before a query uses it.
+            max_connection_lifetime=180, liveness_check_timeout=30,
+            connection_acquisition_timeout=5,
             connection_timeout=5, keep_alive=True)
     return _DRIVER
 

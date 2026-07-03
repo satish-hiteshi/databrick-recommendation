@@ -56,8 +56,14 @@ class GraphMoments:
 
     def __init__(self, uri: Optional[str] = None, user: Optional[str] = None,
                  password: Optional[str] = None, database: Optional[str] = None):
-        self._driver = GraphDatabase.driver(uri or config.NEO4J_URI,
-                                            auth=(user or config.NEO4J_USER, password or config.NEO4J_PASSWORD))
+        self._driver = GraphDatabase.driver(
+            uri or config.NEO4J_URI,
+            auth=(user or config.NEO4J_USER, password or config.NEO4J_PASSWORD),
+            # Singleton (built once at warm-up). liveness_check_timeout discards a connection Aura has
+            # already dropped BEFORE it is handed to a query — kills the intermittent "defunct connection"
+            # error; execute_read (below) additionally retries transient failures.
+            max_connection_lifetime=300, liveness_check_timeout=30,
+            connection_acquisition_timeout=30, keep_alive=True)
         self._database = database or config.NEO4J_DATABASE
 
     def __enter__(self) -> "GraphMoments":
@@ -85,9 +91,10 @@ class GraphMoments:
                [(e)-[:HAS_KEYWORD]->(k)|k.name] AS keywords
         """
         with self._driver.session(database=self._database) as s:
-            return {r["property_id"]: {"entity_id": r["entity_id"], "vertical": r["vertical"],
-                                       "name": r["name"], "genres": r["genres"], "themes": r["themes"],
-                                       "keywords": r["keywords"]} for r in s.run(q, pids=pids).data()}
+            rows = s.execute_read(lambda tx: tx.run(q, pids=pids).data())
+        return {r["property_id"]: {"entity_id": r["entity_id"], "vertical": r["vertical"],
+                                   "name": r["name"], "genres": r["genres"], "themes": r["themes"],
+                                   "keywords": r["keywords"]} for r in rows}
 
     def moments_for_properties(self, property_ids: Iterable[int]) -> List[CandidateMoment]:
         """Traverse to every moment of the given followed properties. Returns the RAW pool (no
@@ -96,7 +103,7 @@ class GraphMoments:
         if not pids:
             return []
         with self._driver.session(database=self._database) as s:
-            rows = s.run(_TRAVERSAL, pids=pids).data()
+            rows = s.execute_read(lambda tx: tx.run(_TRAVERSAL, pids=pids).data())
         return [CandidateMoment(
             moment_id=r["moment_id"], property_id=r["property_id"], entity_id=r["entity_id"],
             vertical=r["vertical"], property_name=r["property_name"], title=r["title"] or "",

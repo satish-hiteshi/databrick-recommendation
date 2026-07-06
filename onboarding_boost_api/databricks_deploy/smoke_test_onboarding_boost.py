@@ -44,9 +44,9 @@ for g in groups:
     ps = g.get("properties", [])
     print(f"  ── {str(g.get('vertical')):8} [{g.get('kind') or g.get('reason') or '?'}]  {len(ps)} ──")
     for p in ps[:6]:
-        m = p.get("moment_count", p.get("moments"))
-        print(f"     {str(p.get('name'))[:38]:38} score={p.get('score')} pop={p.get('popularity')} "
-              f"rich={p.get('richness')} moments={m}")
+        print(f"     {str(p.get('name'))[:34]:34} score={p.get('score')} "
+              f"pop={p.get('popularity_score')} rich={p.get('moment_richness_score')} "
+              f"moments={p.get('moment_count')} {p.get('badge') or ''}")
 
 # COMMAND ----------
 # ===================== 2. ACCEPTANCE CHECKS (UC8 report §9) =====================

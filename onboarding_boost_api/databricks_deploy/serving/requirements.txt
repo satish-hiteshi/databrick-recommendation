@@ -1,0 +1,8 @@
+mlflow
+numpy
+pandas
+pyarrow
+databricks-sql-connector
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http

@@ -29,10 +29,10 @@ def _driver():
         # verify_connectivity round-trip / failure point at init).
         _DRIVER = GraphDatabase.driver(
             NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD),
-            # liveness_check_timeout discards a connection Aura has already dropped before a query uses it.
-            max_connection_lifetime=180, liveness_check_timeout=30,
-            connection_acquisition_timeout=5,
-            connection_timeout=5, keep_alive=True)
+            # Client Neo4j spec: liveness_check_timeout discards a connection Aura has already dropped before
+            # a query uses it; queries route through session.execute_read (managed, auto-retry on transient).
+            max_connection_lifetime=300, liveness_check_timeout=30,
+            connection_acquisition_timeout=30, keep_alive=True)
     return _DRIVER
 
 
@@ -220,11 +220,12 @@ def _graph_score_within(body):
     seed = body.get("seed_entity")
     pref_vals = [str(v).lower() for v in prefs.values()]
     with _driver().session(database=_db()) as s:
-        rows = [r.data() for r in s.run(_SCORE_WITHIN_CYPHER, ids=ids)]
+        rows = s.execute_read(lambda tx: tx.run(_SCORE_WITHIN_CYPHER, ids=ids).data())
         seed_concepts = set()
         if seed:
-            rec = s.run("MATCH (e:Entity {entity_id:$id})-[:HAS_CONCEPT]->(c) "
-                        "RETURN collect(c.key) AS cs", id=seed).single()
+            rec = s.execute_read(lambda tx: tx.run(
+                "MATCH (e:Entity {entity_id:$id})-[:HAS_CONCEPT]->(c) "
+                "RETURN collect(c.key) AS cs", id=seed).single())
             if rec and rec["cs"]:
                 seed_concepts = set(rec["cs"])
     infl = [(r["influence"] or 0.0) for r in rows]
@@ -260,7 +261,7 @@ def _graph_entity_search(params):
         "size([(e)-[:HAS_CONCEPT]->()|1]) AS concept_count "
         "ORDER BY (toLower(e.name) = toLower($q)) DESC, e.influence DESC LIMIT $limit")
     with _driver().session(database=_db()) as s:
-        rows = [r.data() for r in s.run(cypher, q=q, v=vertical, limit=limit)]
+        rows = s.execute_read(lambda tx: tx.run(cypher, q=q, v=vertical, limit=limit).data())
     return {"query": q, "count": len(rows), "entities": rows}
 
 
@@ -271,7 +272,7 @@ def _graph_concepts(params):
         "WITH c, count(e) AS n WHERE n >= $min_count "
         "RETURN c.key AS key, c.name AS name, n ORDER BY n DESC")
     with _driver().session(database=_db()) as s:
-        rows = [r.data() for r in s.run(cypher, min_count=min_count)]
+        rows = s.execute_read(lambda tx: tx.run(cypher, min_count=min_count).data())
     return {"count": len(rows), "concepts": rows}
 
 

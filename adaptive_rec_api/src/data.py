@@ -216,6 +216,17 @@ class Data:
                 ranks = np.empty(order.size, dtype=np.float64)
                 ranks[order] = np.arange(order.size)
                 self.centrality[pos] = (ranks / (order.size - 1)).astype(np.float32)
+        # Observability guard (ported from the dev reference): never let a signals-off state degrade to a
+        # TASTE-ONLY pass silently — this is exactly the signal-key regression the UC6 report hit (~0% overlap
+        # -> popularity & centrality read 0.0). Behaviour-neutral (logging only).
+        nz_pop = int((self.popularity > 0).sum())
+        nz_cen = int((self.centrality > 0).sum())
+        if nz_pop == 0 and nz_cen == 0:
+            print("[adaptive.data] WARNING: 0 popularity AND 0 centrality — ranking is TASTE-ONLY "
+                  "(popularity-dominant blend DISABLED). Check the adaptive_property_* Silver tables "
+                  "(precompute_adaptive_signals) / re-key to media_source_guid.", flush=True)
+        else:
+            print(f"[adaptive.data] graph signals active: popularity={nz_pop}, centrality={nz_cen} properties", flush=True)
 
     def _load_pg(self):
         try:

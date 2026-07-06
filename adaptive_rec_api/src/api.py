@@ -19,6 +19,7 @@ DECISION LOGIC (genuine, tested on real embeddings):
 Skip = candidate-exclusion ONLY (follow-count / interest strength untouched); accumulation happens naturally
 via gate-exhaustion. Session memory (server-side, Postgres) persists `suggested` so nothing repeats.
 """
+import os
 import re
 import time
 from collections import Counter
@@ -57,6 +58,104 @@ W_TREND = 0.07  # S3 trending   (population engagement velocity — NO event dat
 W_CENT = 0.16   # S4 centrality (graph PageRank)
 W_POP = 0.48    # S5 popularity (graph user_rating) — DOMINANT
 W_PROX = 0.04   # S6 proximity  (franchise/genre overlap with the user's follows)
+
+# ── EXPERIMENTAL FLAGS (E6-COREXP-1) — env-driven; ALL DEFAULT = current behaviour (byte-identical) ──
+RELEVANCE_MODE = os.getenv("E6X_RELEVANCE_MODE", "max")        # max | coherence | clustered
+ESTABLISH_MODE = os.getenv("E6X_ESTABLISH_MODE", "threshold")  # threshold | topn
+RANK_MODE      = os.getenv("E6X_RANK_MODE", "pop_dominant")    # pop_dominant | taste_led
+TOPN           = int(os.getenv("E6X_TOPN", "200"))            # topn pool size
+NULL_FLOOR     = float(os.getenv("E6X_NULL_FLOOR", "0.45"))   # topn: null if best ranking-relevance < this
+COH_MAX_W      = float(os.getenv("E6X_COH_MAX_W", "0.6"))     # coherence: COH_MAX_W*max + COH_MEAN_W*mean_topk
+COH_MEAN_W     = float(os.getenv("E6X_COH_MEAN_W", "0.4"))
+CLU_THRESH     = float(os.getenv("E6X_CLU_THRESH", "0.75"))   # clustered: start new cluster if cos-to-mean < this
+CLU_MAX        = int(os.getenv("E6X_CLU_MAX", "4"))
+TL_CENT, TL_PROX, TL_REC = 0.06, 0.03, 0.03                   # taste_led: small non-relevance priors (rel = residual)
+TL_POP_START = float(os.getenv("E6X_TL_POP_START", "0.35"))   # taste_led popularity ramp: weight at 2 follows
+TL_POP_SLOPE = float(os.getenv("E6X_TL_POP_SLOPE", "0.03"))   #   decrease per extra follow
+TL_POP_FLOOR = float(os.getenv("E6X_TL_POP_FLOOR", "0.15"))   #   never below this (residual safety net)
+
+
+def _taste_pop_weight(nf):
+    """Popularity safety weight for taste_led: starts high while taste is thin, recedes to a floor."""
+    return max(TL_POP_FLOOR, TL_POP_START - TL_POP_SLOPE * (nf - 2))
+
+
+# ── COMPANION-FEED DEDUP (E6-P5 fix) — exclude a spin-off/companion FEED of a followed/skipped property ──
+# e.g. "The Ramsey Show Highlights" when "The Ramsey Show" is followed (cos 0.803 < the 0.97 follow-clone
+# cutoff, and its name isn't an exact/edition match, so it slipped through). Keyed to the user's OWN picks:
+# a candidate is a companion feed iff its normalized name CONTAINS a followed/skipped name (>=2 tokens) as a
+# contiguous phrase AND the extra tokens are all feed-markers/filler with >=1 real marker. Numbered sequels
+# ("Dark Souls III" -> extra "iii") and shared-word titles ("The Daily Beast" -> extra "beast") are KEPT.
+# Default OFF -> baseline byte-identical; enabled alongside the R2 ranking via E6X_FEED_DEDUP=1.
+FEED_DEDUP = os.getenv("E6X_FEED_DEDUP", "0") not in ("0", "", "false", "False")
+_FEED_MARKERS = {"highlights", "highlight", "clips", "clip", "recap", "recaps", "aftershow", "aftershows",
+                 "condensed", "minisode", "minisodes", "shorts", "bonus", "digest", "roundup", "snippets",
+                 "rewind", "encore", "extras", "uncut"}
+# filler allowed ALONGSIDE a marker but never sufficient alone (a pure cadence suffix like "X Daily" is KEPT):
+_FEED_FILLER = {"the", "of", "a", "an", "and", "with", "daily", "weekly", "monthly", "nightly"}
+
+
+def _companion_feed(cand_norm, parents):
+    """True iff cand_norm is a companion FEED of a parent (followed/skipped) name.
+    parents: list of (parent_norm_str, parent_token_tuple), each parent >=2 tokens."""
+    for pstr, ptoks in parents:
+        if pstr not in cand_norm:                       # fast substring prune (before any tokenizing)
+            continue
+        ct = cand_norm.split()
+        n = len(ptoks)
+        for i in range(len(ct) - n + 1):
+            if tuple(ct[i:i + n]) == ptoks:             # parent name appears as a contiguous phrase
+                extra = ct[:i] + ct[i + n:]             # tokens outside the parent phrase
+                if extra and any(t in _FEED_MARKERS for t in extra) \
+                        and all(t in _FEED_MARKERS or t in _FEED_FILLER for t in extra):
+                    return True
+    return False
+
+
+def _relevance(C, followed, data):
+    """Ranking relevance per RELEVANCE_MODE. Returns (rel_vec (N,), clusters_info|None).
+    'max' returns exactly C.max(axis=1) so the default path is byte-identical to baseline."""
+    if RELEVANCE_MODE == "coherence" and C.shape[1] > 1:
+        k = min(3, C.shape[1])
+        mean_topk = np.sort(C, axis=1)[:, -k:].mean(axis=1)          # mean of each candidate's top-k follow cosines
+        return (COH_MAX_W * C.max(axis=1) + COH_MEAN_W * mean_topk), None
+    if RELEVANCE_MODE == "clustered" and C.shape[1] > 1:
+        fr = [data.emb[data.row_by_pid[p]] for p in followed if p in data.row_by_pid]
+        clusters = []  # each: [sum_vec, count]
+        for v in fr:
+            placed = False
+            for c in clusters:
+                mn = c[0] / c[1]; mn = mn / np.clip(np.linalg.norm(mn), 1e-9, None)
+                if float(v @ mn) >= CLU_THRESH:
+                    c[0] = c[0] + v; c[1] += 1; placed = True; break
+            if not placed:
+                if len(clusters) < CLU_MAX:
+                    clusters.append([v.copy(), 1])
+                else:
+                    best = max(clusters, key=lambda c: float(v @ ((c[0]/c[1]) / np.clip(np.linalg.norm(c[0]/c[1]), 1e-9, None))))
+                    best[0] = best[0] + v; best[1] += 1
+        total = sum(c[1] for c in clusters) or 1
+        cents, wts = [], []
+        for c in clusters:
+            m = c[0] / c[1]; cents.append(m / np.clip(np.linalg.norm(m), 1e-9, None)); wts.append(c[1] / total)
+        S = data.emb @ np.vstack(cents).T                            # (N, ncl) cosine to each interest centroid
+        rel = (S * np.asarray(wts, dtype=np.float32)).max(axis=1)    # max over clusters of size_weight*cosine
+        return rel, [{"size": int(c[1]), "weight": round(w, 3)} for c, w in zip(clusters, wts)]
+    return C.max(axis=1), None
+
+
+def _blend(data, row, vertical, mc, rel, nf, foll_fr, foll_ge, skp):
+    """Winner-ranking score. pop_dominant with rel=max == baseline formula (byte-identical)."""
+    pop = float(data.popularity[row]); cent = float(data.centrality[row]); rec = float(data.recency[row])
+    prox = _prox_overlap(data, row, foll_fr, foll_ge)
+    if RANK_MODE == "taste_led":
+        pw = _taste_pop_weight(nf)                                   # popularity = safety prior, ramps down with follows
+        cw = TL_CENT
+        if vertical == "podcast":                                    # podcast centrality is degenerate/noise -> to popularity
+            pw += cw; cw = 0.0
+        rw = 1.0 - (pw + cw + TL_PROX + TL_REC)                      # relevance leads (residual)
+        return rw * rel + pw * pop + cw * cent + TL_PROX * prox + TL_REC * rec - skp
+    return (W_REL * rel + W_POP * pop + W_CENT * cent + W_PROX * prox + W_REC * rec - skp)
 
 # ── cross-vertical exploration (UC6 Story 3) ────────────────────────────────────
 # For a user CONCENTRATED in one vertical, occasionally surface a DIFFERENT-vertical item that is TOPICALLY
@@ -251,7 +350,8 @@ def adaptive_rec(body: DataframeBody):
         return {"predictions": [_prediction(session_id, 0.0, False, signal_count, None,
                                             debug={"reason": "no embeddings for followed set"} if debug else None)]}
     C = data.emb @ np.vstack(F).T                               # (N, k) cosine to each followed property
-    max_cos = C.max(axis=1)                                     # (N,) S1 relevance = confidence + gate (0..1)
+    max_cos = C.max(axis=1)                                     # (N,) plain max-to-any: surfaced score + gate + clone cutoffs
+    rel_vec, clusters_info = _relevance(C, followed, data)      # (N,) ranking relevance (== max_cos in default 'max' mode)
 
     # SKIP = proportional, LOCAL negative applied to the blended score below (Story 2: a local disinterest
     # signal, not a category ban). Near-identical clones of a skip are excluded outright further down.
@@ -274,6 +374,15 @@ def adaptive_rec(body: DataframeBody):
     exclude_names.discard("")
     # W6: how many suggestions already made per FRANCHISE this session (cap repeats for variety)
     served_fr = Counter(_franchise(data.meta.get(p, {}).get("name")) for p in sess["suggested"] if data.meta.get(p))
+    # E6-P5 (only when FEED_DEDUP): parents for companion-feed exclusion = the user's OWN followed/skipped
+    # names with >=2 tokens (short names skipped to avoid over-matching).
+    feed_parents = []
+    if FEED_DEDUP:
+        for p in set(followed) | set(skipped):
+            pn = _norm_name(data.meta.get(p, {}).get("name"))
+            tk = pn.split()
+            if len(tk) >= 2:
+                feed_parents.append((pn, tuple(tk)))
 
     # user's vertical interest (target) + already-served (from session) — proportional diversity guard
     fvert = {}
@@ -294,13 +403,17 @@ def adaptive_rec(body: DataframeBody):
 
     # best candidate per vertical: tuple = (rank, confidence, pid, is_cross)
     best_per_vert = {}
-    global_top = []   # all gated genuine candidates (blend, cosine, pid) — for top-N fill when limit>1
+    global_top = []   # all established genuine candidates (blend, cosine, pid) — for top-N fill when limit>1
     near_conf = 0.0
+    # ── candidate pass (O(44k)): collect exclusion-survivors (ALL safety filters UNCHANGED) ──
+    survivors = []    # (row, pid, vertical, mc, rel)
     for row, pid in enumerate(data.pids):
         if pid in exclude:
             continue
         m = data.meta[pid]
         if norm_names[row] in exclude_names:                         # W3: duplicate / edition-variant guard (precomputed)
+            continue
+        if feed_parents and _companion_feed(norm_names[row], feed_parents):   # E6-P5: spin-off/companion feed of a follow/skip
             continue
         if served_fr.get(franchises[row], 0) >= FRANCHISE_CAP:       # W6: cap same-franchise suggestions/session
             continue
@@ -314,26 +427,36 @@ def adaptive_rec(body: DataframeBody):
             near_conf = mc
         if skip_sim is not None and float(skip_sim[row]) > NEAR_DUPE_COS:   # near-duplicate of a skipped item
             continue
-        if mc >= threshold:
-            # SAME-VERTICAL / taste path (UNCHANGED): cosine gate, rank by weighted blend, confidence = cosine
-            prox = _prox_overlap(data, row, foll_fr, foll_ge)
-            skp = SKIP_PENALTY * max(float(skip_sim[row]) - SIM_FLOOR, 0.0) if skip_sim is not None else 0.0
-            blended = (W_REL * mc + W_POP * float(data.popularity[row]) + W_CENT * float(data.centrality[row])
-                       + W_PROX * prox + W_REC * float(data.recency[row]) - skp)
-            global_top.append((blended, mc, pid))
-            cur = best_per_vert.get(v)
-            if cur is None or cur[3] or blended > cur[0]:        # a genuine taste pick always beats a cross pick
-                best_per_vert[v] = (blended, mc, pid, False)
-        elif xv_active and v == "podcast" and v not in fvert and xv_mask is not None and xv_mask[row]:
-            # CROSS-VERTICAL EXPLORE (Story 3): "a gaming podcast or YouTube channel" — PODCAST ONLY (spec is
-            # explicit; TV/movie cross picks are out-of-scope and produced irrelevant hits e.g. a kids' cartoon).
-            # Topically about the dominant vertical + a graph HUB. Gate on CENTRALITY; confidence = centrality.
-            # Adds to the podcast explore slot only — never displaces a real taste pick (is_cross comparison above).
-            cen = float(data.centrality[row])
-            if cen >= threshold:
-                cur = best_per_vert.get(v)
-                if cur is None or (cur[3] and cen > cur[0]):     # competes only with other cross picks
-                    best_per_vert[v] = (cen, cen, pid, True)
+        survivors.append((row, pid, v, mc, float(rel_vec[row])))
+
+    # ── ESTABLISH: threshold (mc >= threshold, baseline) | topn (top-N by ranking relevance + null floor) ──
+    if ESTABLISH_MODE == "topn":
+        established = sorted(survivors, key=lambda s: s[4], reverse=True)[:TOPN]
+        if not established or established[0][4] < NULL_FLOOR:
+            established = []
+    else:
+        established = [s for s in survivors if s[3] >= threshold]
+
+    # ── RANK: per-vertical best-blend over established (blend uses the mode's relevance + RANK_MODE weights) ──
+    for row, pid, v, mc, rel in established:
+        skp = SKIP_PENALTY * max(float(skip_sim[row]) - SIM_FLOOR, 0.0) if skip_sim is not None else 0.0
+        blended = _blend(data, row, v, mc, rel, signal_count, foll_fr, foll_ge, skp)
+        global_top.append((blended, mc, pid))
+        cur = best_per_vert.get(v)
+        if cur is None or cur[3] or blended > cur[0]:            # a genuine taste pick always beats a cross pick
+            best_per_vert[v] = (blended, mc, pid, False)
+
+    # ── CROSS-VERTICAL EXPLORE (Story 3): podcast survivors NOT established, centrality-gated (trigger UNCHANGED).
+    # PODCAST ONLY, topical + graph HUB. taste_led ONLY: surface the pick's real max-to-any cosine (not centrality).
+    if xv_active and xv_mask is not None:
+        est_pids = {s[1] for s in established}
+        for row, pid, v, mc, rel in survivors:
+            if v == "podcast" and v not in fvert and pid not in est_pids and xv_mask[row]:
+                cen = float(data.centrality[row])
+                if cen >= threshold:
+                    cur = best_per_vert.get(v)
+                    if cur is None or (cur[3] and cen > cur[0]):     # competes only with other cross picks
+                        best_per_vert[v] = (cen, (mc if RANK_MODE == "taste_led" else cen), pid, True)
 
     if not best_per_vert:
         return {"predictions": [_prediction(session_id, near_conf, False, signal_count, None,
@@ -396,6 +519,24 @@ def adaptive_rec(body: DataframeBody):
                    "weights": {"popularity": W_POP, "relevance": W_REL, "centrality": W_CENT,
                                "proximity": W_PROX, "recency": W_REC, "trending": W_TREND},
                    "winner_signals": _wsig(pid), "top_blend": round(rank, 4)}
+            _exp = {}
+            if RELEVANCE_MODE != "max":
+                _exp["relevance_mode"] = RELEVANCE_MODE
+            if clusters_info is not None:
+                _exp["clusters"] = clusters_info
+            if ESTABLISH_MODE != "threshold":
+                _exp["establish_mode"] = ESTABLISH_MODE
+            if RANK_MODE != "pop_dominant":
+                _exp["rank_mode"] = RANK_MODE
+                _pw = _taste_pop_weight(signal_count)
+                _pod = (data.meta.get(pid, {}).get("vertical") == "podcast")
+                _cw = 0.0 if _pod else TL_CENT
+                _pw2 = _pw + (TL_CENT if _pod else 0.0)
+                _exp["taste_weights"] = {"relevance": round(1.0 - (_pw2 + _cw + TL_PROX + TL_REC), 3),
+                                          "popularity": round(_pw2, 3), "centrality": round(_cw, 3),
+                                          "proximity": TL_PROX, "recency": TL_REC}
+            if _exp:
+                dbg["experimental"] = _exp
         preds.append(_prediction(session_id, conf, True, signal_count, sug, debug=dbg))
     STORE.record(session_id, suggested_ids=[p[2] for p in picks])   # persist ALL surfaced suggestions
     return {"predictions": preds}

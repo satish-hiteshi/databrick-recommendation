@@ -299,8 +299,13 @@ class Data:
             except (TypeError, ValueError):
                 return None
 
-        self._pop_source = f"{NS}.adaptive_property_popularity"
-        for rec in q(f"SELECT property_id, popularity FROM {NS}.adaptive_property_popularity"):
+        # popularity: E8's own boost_property_popularity (precompute_popularity_v2); fall back to UC6's table.
+        pop_rows = q(f"SELECT property_id, popularity FROM {NS}.boost_property_popularity")
+        self._pop_source = f"{NS}.boost_property_popularity"
+        if not pop_rows:
+            pop_rows = q(f"SELECT property_id, popularity FROM {NS}.adaptive_property_popularity")
+            self._pop_source = f"{NS}.adaptive_property_popularity"
+        for rec in pop_rows:
             r = _row(rec.get("property_id"))
             if r is not None and rec.get("popularity") is not None:
                 self.popularity[r] = float(rec["popularity"])

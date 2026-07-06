@@ -318,9 +318,10 @@ class Data:
             if r is None:
                 continue
             fr, ge = rec.get("franchises"), rec.get("genres")
-            if fr:
+            # fr/ge are arrays (databricks-sql returns ARRAY<STRING> as numpy) — use len(), not truthiness.
+            if fr is not None and len(fr) > 0:
                 self.franchises[r] = frozenset(str(x).lower() for x in fr)
-            if ge:
+            if ge is not None and len(ge) > 0:
                 self.genres_sig[r] = frozenset(str(x).lower() for x in ge)
         for rec in q(f"SELECT property_id, moment_count, richness, trending, last_event_at "
                      f"FROM {NS}.boost_property_moments"):

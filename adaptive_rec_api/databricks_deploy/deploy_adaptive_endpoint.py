@@ -78,6 +78,10 @@ ENV = {
     "ADAPTIVE_DATA_SOURCE": "live",
     "ADAPTIVE_SILVER_CATALOG": C["silver_catalog"], "ADAPTIVE_SILVER_SCHEMA": C["schema"],
     "ADAPTIVE_PG": "0",                               # in-memory session (no local Postgres in serving)
+    # E6-P5 companion-feed dedup: excludes a spin-off "Highlights"/"Recap" feed of a followed/skipped show
+    # (e.g. "The Ramsey Show Highlights" when "The Ramsey Show" is followed). Ranking-mode flags stay at
+    # default (max / threshold / pop_dominant) -> only this one quality fix is active. Re-smoke after enabling.
+    "E6X_FEED_DEDUP": "1",
     "DATABRICKS_HOST": HOST, "DATABRICKS_TOKEN": sec("databricks_token"),
     "DATABRICKS_HTTP_PATH": C["warehouse_http"],
     # embeddings: ADAPTIVE_PARQUET is auto-set by model._bootstrap to the staged parquet (no env needed)

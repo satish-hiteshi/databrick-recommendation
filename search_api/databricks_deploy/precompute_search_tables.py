@@ -106,7 +106,7 @@ print("built", POP)
 # COMMAND ----------
 # ===================== 2. search_entity_centrality (CUME_DIST of :Entity.pagerank within vertical) =====================
 from neo4j import GraphDatabase
-PWD = dbutils.secrets.get(C["scope"], "neo4j_password")
+PWD = dbutils.secrets.get(scope="feeds-default-scope", key="neo4j_password")
 CYPHER = """
 MATCH (e:Entity)
 WHERE e.property_id IS NOT NULL AND e.pagerank IS NOT NULL

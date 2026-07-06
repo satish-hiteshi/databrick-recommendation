@@ -38,7 +38,7 @@ print("writing to :", NS, "| silver:", S, "| graph:", C["neo4j_uri"])
 # Property names verified against this Aura: node has `degree` + `pagerank`; franchises/genres are EDGES
 # (IN_FRANCHISE / HAS_GENRE), NOT node arrays. (No user_rating/critic_rating here → popularity from Silver.)
 from neo4j import GraphDatabase
-PWD = dbutils.secrets.get(C["scope"], "neo4j_password")
+PWD = dbutils.secrets.get(scope="feeds-default-scope", key="neo4j_password")
 CYPHER = """
 MATCH (e:Entity)
 WHERE e.property_id IS NOT NULL

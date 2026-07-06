@@ -112,7 +112,7 @@ MATCH (e:Entity)
 WHERE e.property_id IS NOT NULL AND e.pagerank IS NOT NULL
 RETURN toInteger(e.property_id) AS property_id, toString(e.vertical) AS vertical, toFloat(e.pagerank) AS pagerank
 """
-drv = GraphDatabase.driver(C["neo4j_uri"], auth=("neo4j", PWD))
+drv = GraphDatabase.driver(C["neo4j_uri"], auth=("neo4j", PWD), max_connection_lifetime=300, liveness_check_timeout=30, connection_acquisition_timeout=30, keep_alive=True)
 with drv.session() as s:
     crows = [(r["property_id"], r["vertical"], r["pagerank"]) for r in s.run(CYPHER)]
 drv.close()

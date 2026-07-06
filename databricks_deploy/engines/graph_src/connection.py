@@ -18,7 +18,10 @@ _AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 
 
 def get_driver():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=_AUTH)
+    # Client Neo4j spec: liveness_check discards a dropped connection before use; keep_alive + lifetime.
+    driver = GraphDatabase.driver(NEO4J_URI, auth=_AUTH,
+                                  max_connection_lifetime=300, liveness_check_timeout=30,
+                                  connection_acquisition_timeout=30, keep_alive=True)
     driver.verify_connectivity()
     return driver
 

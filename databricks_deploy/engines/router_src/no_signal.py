@@ -25,11 +25,21 @@ RETURN e.vertical AS vertical, e.entity_id AS entity_id, e.name AS name,
 """
 
 
+_DRIVER = None
+
+
 def _graph_driver():
-    uri = os.getenv("NEO4J_URI", "bolt://localhost:7688")
-    user = os.getenv("NEO4J_USER", "neo4j")
-    pw = os.getenv("NEO4J_PASSWORD", "feedsai44kGraph2026")
-    return GraphDatabase.driver(uri, auth=(user, pw))
+    # Client Neo4j spec: singleton (do NOT recreate per call) + liveness_check discards a dropped
+    # connection before a query uses it; execute_read (below) retries transient failures.
+    global _DRIVER
+    if _DRIVER is None:
+        uri = os.getenv("NEO4J_URI", "bolt://localhost:7688")
+        user = os.getenv("NEO4J_USER", "neo4j")
+        pw = os.getenv("NEO4J_PASSWORD", "feedsai44kGraph2026")
+        _DRIVER = GraphDatabase.driver(uri, auth=(user, pw),
+                                       max_connection_lifetime=300, liveness_check_timeout=30,
+                                       connection_acquisition_timeout=30, keep_alive=True)
+    return _DRIVER
 
 
 def recent_mixed(top_k: int = 12, per: int = 3,
@@ -37,11 +47,10 @@ def recent_mixed(top_k: int = 12, per: int = 3,
     """Pull recent-by-release_date entities across all verticals from the 44k graph and interleave."""
     by_vert = {v: [] for v in verticals}
     try:
-        drv = _graph_driver()
-        with drv.session() as s:
-            for r in s.run(_RECENT_CYPHER, verts=list(verticals), per=per):
-                by_vert.setdefault(r["vertical"], []).append(r.data())
-        drv.close()
+        with _graph_driver().session() as s:
+            rows = s.execute_read(lambda tx: tx.run(_RECENT_CYPHER, verts=list(verticals), per=per).data())
+        for r in rows:
+            by_vert.setdefault(r["vertical"], []).append(r)
     except Exception as e:                       # graph unreachable → empty (caller still flags no_signal)
         return []
     # round-robin interleave so the mix isn't front-loaded by one vertical

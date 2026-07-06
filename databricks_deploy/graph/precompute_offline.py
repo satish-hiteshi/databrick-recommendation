@@ -163,7 +163,7 @@ def write_edges(s, edges, reltype):
 
 
 def main():
-    driver = GraphDatabase.driver(URI, auth=(USER, PWD))
+    driver = GraphDatabase.driver(URI, auth=(USER, PWD), max_connection_lifetime=300, liveness_check_timeout=30, connection_acquisition_timeout=30, keep_alive=True)
     driver.verify_connectivity()
     print(f"Connected to {URI} (db={DB}) — GDS-free precompute")
     try:

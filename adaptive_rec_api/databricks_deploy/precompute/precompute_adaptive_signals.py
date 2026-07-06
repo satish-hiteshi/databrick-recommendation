@@ -48,7 +48,7 @@ RETURN toInteger(e.property_id) AS property_id,
        [(e)-[:IN_FRANCHISE]->(f) WHERE coalesce(f.name, f.title) IS NOT NULL | toString(coalesce(f.name, f.title))] AS franchises,
        [(e)-[:HAS_GENRE]->(g)    WHERE g.name IS NOT NULL | toString(g.name)] AS genres
 """
-drv = GraphDatabase.driver(C["neo4j_uri"], auth=("neo4j", PWD))
+drv = GraphDatabase.driver(C["neo4j_uri"], auth=("neo4j", PWD), max_connection_lifetime=300, liveness_check_timeout=30, connection_acquisition_timeout=30, keep_alive=True)
 with drv.session() as s:
     rows = [r.data() for r in s.run(CYPHER)]
 drv.close()

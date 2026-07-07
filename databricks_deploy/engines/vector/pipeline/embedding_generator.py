@@ -138,10 +138,8 @@ def get_query_embedding(query_text):
                                     "Content-Type": "application/json"}, timeout=30)
         r.raise_for_status()
         return np.array(r.json()["data"][0]["embedding"], dtype=np.float32)
-    client = voyageai.Client(api_key=VOYAGE_API_KEY)
-    with _tspan("embed"):              # Voyage query-embedding round-trip
-        result = client.embed([query_text], model=VOYAGE_MODEL, input_type="query")
-    return np.array(result.embeddings[0], dtype=np.float32)
+    raise RuntimeError("QUERY_EMBED_ENDPOINT is not set — Qwen query-embedding is required "
+                       "(Voyage fallback removed; all endpoints are Qwen).")
 
 
 # Session-level cache for query embeddings

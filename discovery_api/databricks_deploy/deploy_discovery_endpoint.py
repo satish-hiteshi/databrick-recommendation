@@ -7,7 +7,7 @@
 # MAGIC or as a Databricks Job (override any value via job `base_parameters` / widgets).
 # MAGIC
 # MAGIC Prereqs: the Qwen parquet on the Volume; a SQL warehouse (for LiveDataSource); the secret scope holds
-# MAGIC `neo4j_password`, `voyage_api_key`, `databricks_token`.
+# MAGIC `neo4j_password`, `databricks_token`.
 # MAGIC **Do NOT `%pip install mlflow`** — the runtime's MLflow is integrated; reinstalling it breaks registration.
 
 # COMMAND ----------
@@ -27,7 +27,7 @@ _defaults = {
     "catalog":        "stg_feeds_silver",
     "schema":         "ml",
     "endpoint":       "discovery-api-staging",        # client copy defaults to discovery-api-staging-v2
-    "scope":          "feeds-default-scope",              # secret scope (neo4j_password, voyage_api_key, databricks_token)
+    "scope":          "feeds-default-scope",              # secret scope (neo4j_password, databricks_token)
     "parquet":        "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet",
     "vs_endpoint":    "feedsai-staging-vs",
     "vs_index":       "stg_feeds_silver.ml.entities_vs",
@@ -81,7 +81,6 @@ ENV = {
     "ROUTER_ENGINE_MODE": "inprocess", "VECTOR_BACKEND": C["vector_backend"], "RERANK": "none",
     "ENTITY_BACKEND": "memory", "DATA_BACKEND": "parquet",
     "QUERY_EMBED_ENDPOINT": C["qwen_embed"],
-    "VOYAGE_API_KEY": sec("voyage_api_key"),          # dormant import — keep so the module loads
     # auth + SQL warehouse for LiveDataSource
     "DATABRICKS_HOST": HOST, "DATABRICKS_TOKEN": sec("databricks_token"),
     "DATABRICKS_HTTP_PATH": C["warehouse_http"],

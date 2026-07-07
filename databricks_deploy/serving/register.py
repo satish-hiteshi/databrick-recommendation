@@ -72,8 +72,8 @@ def _stage():
     data_dst = os.path.join(s, "vector", "data_v2")
     os.makedirs(data_dst)
     parquet_src = os.getenv("EMBEDDINGS_PARQUET_SRC",
-                            "/Volumes/dev_feeds_silver/ml/feedsai_src/embeddings_voyage_57k.parquet")
-    shutil.copy(parquet_src, os.path.join(data_dst, "embeddings_voyage_57k.parquet"))
+                            "/Volumes/dev_feeds_silver/ml/feedsai_src/embeddings.parquet")
+    shutil.copy(parquet_src, os.path.join(data_dst, "embeddings.parquet"))
     print(f"staged parquet from {parquet_src}")
     return s
 

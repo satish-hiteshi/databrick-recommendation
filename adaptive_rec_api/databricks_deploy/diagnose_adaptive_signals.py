@@ -48,7 +48,7 @@ for label, tbl in TABLES.items():
 # reference was built on.
 import os, numpy as np, pyarrow.parquet as pq
 VOL = VOLUME_DIR   # /Volumes/<catalog>/ml/feedsai_src
-CANDIDATES = [f"{VOL}/embeddings_qwen_44k_prefixed.parquet", f"{VOL}/embeddings_qwen.parquet"]
+CANDIDATES = [f"{VOL}/embeddings.parquet", f"{VOL}/embeddings.parquet"]
 
 # reference cases: (label, followed_property_ids, expected pick, reference winner_signals.relevance from UC6 report)
 CASES = [
@@ -98,7 +98,7 @@ for path in CANDIDATES:
 # COMMAND ----------
 # ===================== CHECK 3 — are the signal tables populated + joinable? (why popularity/centrality = 0.0) =====================
 import os as _os, pyarrow.parquet as _pq
-_pq_path = f"{VOLUME_DIR}/embeddings_qwen_44k_prefixed.parquet"
+_pq_path = f"{VOLUME_DIR}/embeddings.parquet"
 _pids = set()
 if _os.path.exists(_pq_path):
     for e in _pq.read_table(_pq_path, columns=["entity_id"]).column("entity_id").to_pylist():

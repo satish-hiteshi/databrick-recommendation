@@ -6,7 +6,7 @@
 # MAGIC   **recency** (`recency.py` — new/newest/latest + epoch date window), graceful **overconstrain
 # MAGIC   relaxation** (`MIN_RESULTS=3`), LLM **no-signal/gibberish** fallback (`no_signal.py` — new),
 # MAGIC   PROMPT2 fixes (raw-query embedding, `RERANK=auto`, verbatim Capital-prefixed ids).
-# MAGIC - **New corpus parquet**: `embeddings_qwen_44k_prefixed.parquet` (Qwen 1024-dim, Capital-prefixed
+# MAGIC - **New corpus parquet**: `embeddings.parquet` (Qwen 1024-dim, Capital-prefixed
 # MAGIC   ids, carries `release_date_ts`). **Freshly-restored graph** (Aura, from dump) — done out of band.
 # MAGIC
 # MAGIC **Self-configuring · job-runnable.** Derives repo path + workspace host, registers the collapsed
@@ -65,8 +65,8 @@ _defaults = {
     "catalog":       "stg_feeds_silver",
     "schema":        "ml",
     "endpoint":      "parrot-api-staging",            # client copy defaults to parrot-api-staging-v2
-    "scope":         "feedsai_staging",               # Databricks secret scope (neo4j_password, databricks_token)
-    "parquet":       "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen_44k_prefixed.parquet",  # NEW corpus
+    "scope":         "feeds-default-scope",               # Databricks secret scope (neo4j_password, databricks_token)
+    "parquet":       "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet",  # NEW corpus
     "vs_endpoint":   "feedsai-staging-vs",
     "vs_index":      "stg_feeds_silver.ml.entities_vs",
     "neo4j_uri":     "neo4j+s://17aa0e8d.databases.neo4j.io",
@@ -83,9 +83,9 @@ _defaults = {
                                                       #   the SAME engine as the local stack; needs no entities_vs index.
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
     "otel_service":  "agent-recs",                    # OTEL_SERVICE_NAME
-    "enable_otel":   "0",                             # "1" → push telemetry (needs the grafana_otlp_token secret)
+    "enable_otel":   "0",                             # "1" → push telemetry (needs the grafana_otlp_headers secret)
     "otel_endpoint": "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":   "grafana_otlp_token",            # secret key in <scope> holding the base64 OTLP token
+    "otel_secret":   "grafana_otlp_headers",            # secret key in <scope> holding the base64 OTLP token
     "otel_sampler":  "0.15",                          # fraction of requests traced (metrics stay 100%)
     # ── data sync (Step 1.5) ──
     "rebuild_index": "0",                             # "1" → rebuild ml.entities + entities_vs from `parquet` (carries release_date_ts)

@@ -11,7 +11,7 @@ models-from-code: model.py is the pyfunc; code_paths bundle everything it needs 
 Registers UC_MODEL_NAME. Run in a notebook:
     import os, sys, importlib
     os.environ["UC_MODEL_NAME"] = "stg_feeds_silver.ml.discovery-api-staging"
-    os.environ["EMBEDDINGS_PARQUET_SRC"] = "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen.parquet"
+    os.environ["EMBEDDINGS_PARQUET_SRC"] = "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet"
     sys.path.insert(0, "<repo>/discovery_api/databricks_deploy/serving"); import register; register.main()
 """
 
@@ -106,8 +106,8 @@ def _stage():
     data_dst = os.path.join(s, "vector", "data_v2")
     os.makedirs(data_dst, exist_ok=True)
     pq = os.getenv("EMBEDDINGS_PARQUET_SRC",
-                   "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen.parquet")
-    shutil.copy(pq, os.path.join(data_dst, "embeddings_voyage_57k.parquet"))
+                   "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet")
+    shutil.copy(pq, os.path.join(data_dst, "embeddings.parquet"))
     print(f"staged parquet from {pq}")
     return s
 

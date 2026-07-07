@@ -25,8 +25,8 @@ _defaults = {
     "catalog":       "stg_feeds_silver",
     "schema":        "ml",
     "endpoint":      "parrot-api-staging",            # client copy defaults to parrot-api-staging-v2
-    "scope":         "feedsai_staging",               # Databricks secret scope (neo4j_password, databricks_token)
-    "parquet":       "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen.parquet",
+    "scope":         "feeds-default-scope",               # Databricks secret scope (neo4j_password, databricks_token)
+    "parquet":       "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet",
     "vs_endpoint":   "feedsai-staging-vs",
     "vs_index":      "stg_feeds_silver.ml.entities_vs",
     "vector_backend": "qdrant",   # "qdrant" (in-memory from parquet) | "databricks" (Vector Search)
@@ -38,9 +38,9 @@ _defaults = {
     "enable_timing": "1",                             # "1" → TIMING_BREAKDOWN (source for per-stage latency)
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
     "otel_service":  "agent-recs",                    # OTEL_SERVICE_NAME (discovery sets discovery-api)
-    "enable_otel":   "1",                             # "1" → push telemetry (needs the grafana_otlp_token secret)
+    "enable_otel":   "1",                             # "1" → push telemetry (needs the grafana_otlp_headers secret)
     "otel_endpoint": "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":   "grafana_otlp_token",            # secret holds ONLY the base64 credential; otel_setup builds the Authorization: Basic <token> header
+    "otel_secret":   "grafana_otlp_headers",            # secret holds ONLY the base64 credential; otel_setup builds the Authorization: Basic <token> header
     "otel_sampler":  "0.15",                          # fraction of requests traced (metrics stay 100%)
 }
 for k, v in _defaults.items():

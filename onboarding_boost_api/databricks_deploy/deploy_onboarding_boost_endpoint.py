@@ -32,8 +32,8 @@ _defaults = {
     "catalog":        "stg_feeds_silver",
     "schema":         "ml",
     "endpoint":       "onboarding-boost-staging",
-    "scope":          "feedsai_staging",
-    "emb_parquet":    "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen.parquet",
+    "scope":          "feeds-default-scope",
+    "emb_parquet":    "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet",
     "warehouse_http": "/sql/1.0/warehouses/321252e45d03563e",   # SQL warehouse HTTP path (Silver signal reads)
     "silver_catalog": "stg_feeds_silver",  # BOOST_SILVER_CATALOG (adaptive_property_* + boost_property_moments)
     "workload_size":  "Small",
@@ -42,7 +42,7 @@ _defaults = {
     "otel_service":   "onboarding-boost-v1",
     "enable_otel":    "1",
     "otel_endpoint":  "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":    "grafana_otlp_token",
+    "otel_secret":    "grafana_otlp_headers",
     "otel_sampler":   "0.15",
 }
 for k, v in _defaults.items():

@@ -76,7 +76,7 @@ HOME_PER_PROPERTY_CAP = int(os.getenv("HOME_PER_PROPERTY_CAP", "10"))
 # ─────────────────────────────────────────────────────────────────────────────
 # Property vectors are NOT on the graph node (Step 0) — they live in the Qwen parquet, entity_id-keyed,
 # dim 1024. Taste reads them live (no precomputed table). Path defaults to the repo-root deploy parquet.
-VECTOR_PARQUET = os.getenv("HOME_VECTOR_PARQUET", str(_ENDPOINT_DIR.parent / "embeddings_qwen_44k_prefixed.parquet"))
+VECTOR_PARQUET = os.getenv("HOME_VECTOR_PARQUET", str(_ENDPOINT_DIR.parent / "embeddings.parquet"))
 
 # RECENCY — smooth past decay (~30-day-dominant), reusing E2 timeutil's exp-decay shape for the past arm.
 HOME_RECENCY_HALFLIFE_DAYS = float(os.getenv("HOME_RECENCY_HALFLIFE_DAYS", "30"))

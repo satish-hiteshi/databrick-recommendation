@@ -35,7 +35,7 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "feedsai44kGraph2026")   # E1 no_si
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
 # ── Qwen vectors + query-embed (the existing deploy embedder; creds from shared/vector/.env) ──
-VECTOR_PARQUET = os.getenv("SEARCH_VECTOR_PARQUET", str(_REPO_ROOT / "embeddings_qwen_44k_prefixed.parquet"))
+VECTOR_PARQUET = os.getenv("SEARCH_VECTOR_PARQUET", str(_REPO_ROOT / "embeddings.parquet"))
 QWEN_ENV_FILE = os.getenv("SEARCH_QWEN_ENV", str(_REPO_ROOT / "shared" / "vector" / ".env"))
 QWEN_INSTRUCTION = os.getenv(
     "SEARCH_QWEN_INSTRUCTION",

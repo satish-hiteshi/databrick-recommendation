@@ -12,7 +12,7 @@ injected databricks-sql query_fn (ADAPTIVE_DATA_SOURCE=live), session in-memory 
 Run in a notebook:
     import os, sys
     os.environ["UC_MODEL_NAME"] = "stg_feeds_silver.ml.onboarding-adaptive-staging"
-    os.environ["EMBEDDINGS_PARQUET_SRC"] = "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen_44k_prefixed.parquet"
+    os.environ["EMBEDDINGS_PARQUET_SRC"] = "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet"
     sys.path.insert(0, "<repo>/adaptive_rec_api/databricks_deploy/serving"); import register; register.main()
 """
 
@@ -80,7 +80,7 @@ def _stage():
     vec = os.path.join(s, "vector", "data_v2")
     os.makedirs(vec, exist_ok=True)
     pq = os.getenv("EMBEDDINGS_PARQUET_SRC",
-                   "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen_44k_prefixed.parquet")
+                   "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet")
     shutil.copy(pq, os.path.join(vec, os.path.basename(pq)))
     print(f"staged parquet: {pq}")
     return s

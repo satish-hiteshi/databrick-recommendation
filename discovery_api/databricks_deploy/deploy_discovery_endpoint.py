@@ -27,8 +27,8 @@ _defaults = {
     "catalog":        "stg_feeds_silver",
     "schema":         "ml",
     "endpoint":       "discovery-api-staging",        # client copy defaults to discovery-api-staging-v2
-    "scope":          "feedsai_staging",              # secret scope (neo4j_password, voyage_api_key, databricks_token)
-    "parquet":        "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen.parquet",
+    "scope":          "feeds-default-scope",              # secret scope (neo4j_password, voyage_api_key, databricks_token)
+    "parquet":        "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet",
     "vs_endpoint":    "feedsai-staging-vs",
     "vs_index":       "stg_feeds_silver.ml.entities_vs",
     "vector_backend": "qdrant",   # "qdrant" (in-memory from parquet) | "databricks" (Vector Search)
@@ -40,9 +40,9 @@ _defaults = {
     "enable_timing":  "1",                            # "1" → TIMING_BREAKDOWN (source for per-stage latency)
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
     "otel_service":   "discovery-api",                # OTEL_SERVICE_NAME
-    "enable_otel":    "1",                            # "1" → push telemetry (needs the grafana_otlp_token secret)
+    "enable_otel":    "1",                            # "1" → push telemetry (needs the grafana_otlp_headers secret)
     "otel_endpoint":  "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":    "grafana_otlp_token",           # secret holds ONLY the base64 credential; otel_setup builds the Authorization: Basic <token> header
+    "otel_secret":    "grafana_otlp_headers",           # secret holds ONLY the base64 credential; otel_setup builds the Authorization: Basic <token> header
     "otel_sampler":   "0.15",                         # fraction of requests traced (metrics stay 100%)
 }
 for k, v in _defaults.items():
@@ -78,7 +78,7 @@ ENV = {
     "DISCOVERY_DATA_SOURCE": "live", "DISCOVERY_DEFAULT_ENGINE": "v2", "DISCOVERY_NOW_ISO": "",
     "DISCOVERY_CATALOG": C["catalog"], "SUBSTRATE_MODE": "inprocess",
     # E1 collapsed substrate (engines E2 reuses)
-    "ROUTER_ENGINE_MODE": "inprocess", "VECTOR_BACKEND": C["vector_backend"],
+    "ROUTER_ENGINE_MODE": "inprocess", "VECTOR_BACKEND": C["vector_backend"], "RERANK": "none",
     "ENTITY_BACKEND": "memory", "DATA_BACKEND": "parquet",
     "QUERY_EMBED_ENDPOINT": C["qwen_embed"],
     "VOYAGE_API_KEY": sec("voyage_api_key"),          # dormant import — keep so the module loads

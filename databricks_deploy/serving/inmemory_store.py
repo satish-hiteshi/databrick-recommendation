@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 
-_PARQUET_NAME = "embeddings_voyage_57k.parquet"
+_PARQUET_NAME = "embeddings.parquet"
 _INDEX = None
 
 

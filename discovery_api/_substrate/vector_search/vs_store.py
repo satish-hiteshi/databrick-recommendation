@@ -16,7 +16,7 @@ _INDEX = None
 
 # Recency (router contract, see engines/router_src/recency.py): range-filter the vector record's
 # `release_date_ts` (Unix epoch seconds, UTC) so `from_ts <= release_date_ts <= to_ts`. The new corpus
-# parquet (embeddings_qwen_44k_prefixed.parquet) carries this column; the entities / entities_vs index
+# parquet (embeddings.parquet) carries this column; the entities / entities_vs index
 # MUST be rebuilt from it for this to work. Gates:
 #   VS_DATE_FILTER=0          → skip the date filter (use against an older index without the column)
 #   VS_RELEASE_DATE_COL=...   → override the column name (default release_date_ts)

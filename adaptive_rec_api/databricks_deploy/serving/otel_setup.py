@@ -79,8 +79,8 @@ def init(service_name: str = None):
             _SERVICE = service_name or os.getenv("OTEL_SERVICE_NAME", "agent-recs")
             resource = Resource.create({"service.name": _SERVICE})
 
-            # Metrics — OTLP/HTTP exporter reads endpoint/headers/protocol from env automatically.
-            reader = PeriodicExportingMetricReader(OTLPMetricExporter())
+            # Metrics — endpoint/protocol from env; Authorization built in code from GRAFANA_OTLP_TOKEN (credential-only).
+            reader = PeriodicExportingMetricReader(OTLPMetricExporter(headers=({"Authorization": "Basic " + os.getenv("GRAFANA_OTLP_TOKEN")} if os.getenv("GRAFANA_OTLP_TOKEN") else None)))
             metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
             meter = metrics.get_meter("feedsai.serving")
 
@@ -90,7 +90,7 @@ def init(service_name: str = None):
             except ValueError:
                 ratio = 0.15
             tp = TracerProvider(resource=resource, sampler=ParentBased(TraceIdRatioBased(ratio)))
-            tp.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+            tp.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(headers=({"Authorization": "Basic " + os.getenv("GRAFANA_OTLP_TOKEN")} if os.getenv("GRAFANA_OTLP_TOKEN") else None))))
             trace.set_tracer_provider(tp)
             _TRACER = trace.get_tracer("feedsai.serving")
 

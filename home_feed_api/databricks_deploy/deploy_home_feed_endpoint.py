@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC Prereqs: the `embeddings_qwen_44k_prefixed.parquet` on a Volume; a SQL warehouse; an **Aura graph that
 # MAGIC contains `:Moment` nodes + `HAS_MOMENT`** (E1/E2's graph is moment-less — point `neo4j_uri` at the moments
-# MAGIC graph); the secret scope holds `databricks_token`, `neo4j_password` (+ `grafana_otlp_headers` if OTLP).
+# MAGIC graph); the secret scope holds `databricks_token`, `neo4j_password` (+ `grafana_otlp_token` if OTLP).
 # MAGIC **Do NOT `%pip install mlflow`** — the runtime's MLflow is integrated.
 
 # COMMAND ----------
@@ -30,7 +30,7 @@ _defaults = {
     "catalog":        "stg_feeds_silver",
     "schema":         "ml",
     "endpoint":       "home-feed-staging",            # client copy defaults to home-feed-staging-v2
-    "scope":          "feedsai_staging",              # secret scope (databricks_token, neo4j_password, grafana_otlp_headers)
+    "scope":          "feedsai_staging",              # secret scope (databricks_token, neo4j_password, grafana_otlp_token)
     "emb_parquet":    "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings_qwen_44k_prefixed.parquet",
     "warehouse_http": "/sql/1.0/warehouses/321252e45d03563e",   # SQL warehouse HTTP path (Silver follows)
     "silver_catalog": "stg_feeds_silver",             # HOME_SILVER_CATALOG (public_property_followers)
@@ -39,9 +39,9 @@ _defaults = {
     "test_user":      "13",                           # a user who FOLLOWS properties (else feed is empty)
     # ── observability (OTLP → Grafana Cloud) ──
     "otel_service":   "home-feed",
-    "enable_otel":    "1",                            # "1" → push telemetry (needs grafana_otlp_headers secret)
+    "enable_otel":    "1",                            # "1" → push telemetry (needs grafana_otlp_token secret)
     "otel_endpoint":  "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":    "grafana_otlp_headers",         # secret holds the FULL header: Authorization=Basic%20<base64>
+    "otel_secret":    "grafana_otlp_token",         # secret holds ONLY the base64 credential; header built in otel_setup
     "otel_sampler":   "0.15",
 }
 for k, v in _defaults.items():
@@ -86,7 +86,7 @@ ENV["OTEL_SERVICE_NAME"] = C["otel_service"]
 if C["enable_otel"] == "1":
     ENV["OTEL_EXPORTER_OTLP_ENDPOINT"] = C["otel_endpoint"]
     ENV["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
-    ENV["OTEL_EXPORTER_OTLP_HEADERS"]  = sec(C["otel_secret"])   # whole-value ref; secret holds the full header
+    ENV["GRAFANA_OTLP_TOKEN"]  = sec(C["otel_secret"])   # whole-value ref (credential only); header built in otel_setup
     ENV["OTEL_TRACES_SAMPLER_ARG"]     = C["otel_sampler"]
 
 entities = [ServedEntityInput(name="home_feed", entity_name=MODEL_NAME, entity_version=ver,

@@ -22,6 +22,7 @@ Pure, stateless given a loaded Data snapshot + a request. Two phases:
   Total payload is capped at total_cap via a fair round-robin across gap verticals (absent before
   underrepresented), so a tight cap never starves a whole vertical.
 """
+import os
 import re
 from collections import Counter, defaultdict
 
@@ -33,6 +34,38 @@ W_MOMENT = 0.16  # S7 moment richness (active-feed guarantee)
 W_TREND = 0.07  # S3 trending    (light freshness)
 W_REC = 0.04    # S2 recency     (near-zero — boost builds a durable follow graph)
 assert abs(W_POP + W_CENT + W_REL + W_MOMENT + W_TREND + W_REC - 1.0) < 1e-9
+
+
+# ── Blend weights — DEFAULT (no env) = ENHANCED taste-led: pop 0.18 / cent 0.20 / rel 0.35 ─────────
+# The single documented fallback flag E8_LEGACY_BASELINE=1 restores the ORIGINAL team weights
+# (pop 0.35 / cent 0.20 / rel 0.18) in full. richness/trending/recency are ALWAYS fixed at 0.16/0.07/0.04
+# (richness is the spec's active-feed guarantee — never touched). The variable triple (rel/pop/cent) always
+# renormalizes to (1 - fixed) = 0.73 so the six weights sum to exactly 1.0. Granular E8X_W_REL/POP/CENT
+# overrides remain for A/B. This changes ONLY the weighting — no scoring-math shape, gate, or selection change.
+ENH_W_POP, ENH_W_CENT, ENH_W_REL = 0.18, 0.20, 0.35   # enhanced default (taste-led)
+
+
+def _legacy():
+    return os.environ.get("E8_LEGACY_BASELINE", "0") == "1"
+
+
+def _weights():
+    er, ep, ec = os.environ.get("E8X_W_REL"), os.environ.get("E8X_W_POP"), os.environ.get("E8X_W_CENT")
+    if er is None and ep is None and ec is None:
+        if _legacy():
+            return W_POP, W_CENT, W_REL, W_MOMENT, W_TREND, W_REC       # legacy -> original team weights
+        rel, pop, cen = ENH_W_REL, ENH_W_POP, ENH_W_CENT               # DEFAULT (no env) -> enhanced (W2)
+    else:
+        rel = float(er) if er is not None else ENH_W_REL               # partial A/B override on the enhanced base
+        pop = float(ep) if ep is not None else ENH_W_POP
+        cen = float(ec) if ec is not None else ENH_W_CENT
+    fixed = W_MOMENT + W_TREND + W_REC                                  # 0.27, held constant
+    s = rel + pop + cen
+    if s > 0:
+        k = (1.0 - fixed) / s                                           # renormalize the triple -> 0.73
+        rel, pop, cen = rel * k, pop * k, cen * k
+    return pop, cen, rel, W_MOMENT, W_TREND, W_REC
+
 
 # ── operator defaults ───────────────────────────────────────────────────────────
 DEFAULT_TARGET_PER_VERTICAL = 5
@@ -128,6 +161,40 @@ def _why(data, seeds):
     return f"Popular with fans of {' and '.join(names)}"
 
 
+# broad, cross-cutting genres — deprioritized in the truthful why_string so a SPECIFIC shared genre wins
+# (e.g. prefer "supernatural"/"soulslike" over "action"). Used only for readability; truthfulness comes
+# from the intersection itself (the tag is on BOTH the candidate and the seed by construction).
+_BROAD_GENRES = {"action", "adventure", "drama", "comedy", "indie", "animation", "family"}
+
+
+def _fmt_tag(t):
+    """Display-normalize a genre tag: lowercase a plain Capitalized word ('Fantasy'->'fantasy') for natural
+    mid-sentence reading, but preserve proper nouns / camelCase / multi-word tags ('FromSoftware',
+    'Feudal Japan', 'science fiction') as-is."""
+    t = t.strip()
+    return t.lower() if (t[:1].isupper() and t[1:].islower()) else t
+
+
+def _why_truthful(data, cand_pid, nseed_pid):
+    """Truthful, seed-referencing why_string for the ENHANCED (max_any_seed) config. The nearest seed is the
+    one that GAVE the winning max-to-any cosine in retrieval (passed in — NOT recomputed as a centroid).
+    Rule: shared = candidate genres present ALSO on that seed, in candidate order (bm25_keywords are genre-
+    salience-ordered) with pure-numeric tags (years) dropped; the most-specific shared tag = first NON-broad,
+    else the earliest shared. Never asserts popularity or a trait not on both; no overlap -> bare seed ref."""
+    sname = data.meta.get(nseed_pid, {}).get("name")
+    if not sname:
+        return "A pick to round out your feed"
+    cand_g = data.meta.get(cand_pid, {}).get("genres") or []
+    seed_g = {str(g).lower() for g in (data.meta.get(nseed_pid, {}).get("genres") or [])}
+    shared = [g for g in cand_g if str(g).lower() in seed_g and not str(g).strip().isdigit()]
+    if shared:
+        non_broad = [g for g in shared if str(g).lower() not in _BROAD_GENRES]
+        tag = _fmt_tag(str((non_broad or shared)[0]))
+        art = "An" if tag[:1].lower() in "aeiou" else "A"
+        return f"{art} {tag} pick, like {sname}"
+    return f"Because you follow {sname}"   # no shared genre -> reference the seed by name, no fabricated reason
+
+
 def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_threshold,
                 exclude_verticals, exclude_ids, richness_floor, id_space="auto",
                 deepen_covered=True, deepen_per_vertical=None, debug=False):
@@ -181,29 +248,33 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
     vert_set = {v for v, _, _ in gaps}
     pool = {v: [] for v in vert_set}    # vertical -> [{pid,row,pop,cen,rel_raw,rich,trd,rec}]
     for v in vert_set:
-        for pid, cosine in store.candidates(taste, v, floor, exclude):
+        for pid, cosine, nseed in store.candidates(taste, v, floor, exclude, seed_pids=seeds):
             row = data.row_by_pid.get(pid)
             if row is None or norm_names[row] in exclude_norm:
                 continue
             pool[v].append({"pid": pid, "row": row, "pop": float(data.popularity[row]),
                             "cen": float(data.centrality[row]), "rel_raw": max(0.0, float(cosine)),
                             "rich": float(data.richness[row]), "trd": float(data.trending[row]),
-                            "rec": float(data.recency[row])})
+                            "rec": float(data.recency[row]), "nseed": nseed})
 
     # ── score (pass 2): relevance is WITHIN-VERTICAL percentile of seed cosine, so the 18% weight
     # actually discriminates. Cross-vertical raw cosine is compressed into a narrow band (~0.02–0.48),
     # which would otherwise wash relevance out entirely while centrality/richness/trending (already
     # percentile-normalized) dominate. Popularity stays RAW — it is genuine absolute social proof.
+    w_pop, w_cent, w_rel, w_mom, w_trd, w_rec = _weights()   # team weights when E8X_W_* unset (byte-identical)
+    rel_raw_mode = os.environ.get("E8X_REL_RAW", "0") == "1"  # C1 side-test (default OFF): raw cosine vs percentile
     ranked = {}                         # vertical -> [(blend, pid, components)]
     for v, cands in pool.items():
         rel_pct = _rank_percentile([c["rel_raw"] for c in cands])
         scored = []
         for c, rp in zip(cands, rel_pct):
-            blend = (W_POP * c["pop"] + W_CENT * c["cen"] + W_REL * rp + W_MOMENT * c["rich"]
-                     + W_TREND * c["trd"] + W_REC * c["rec"])
+            rel_term = c["rel_raw"] if rel_raw_mode else rp   # OFF -> percentile (byte-identical)
+            blend = (w_pop * c["pop"] + w_cent * c["cen"] + w_rel * rel_term + w_mom * c["rich"]
+                     + w_trd * c["trd"] + w_rec * c["rec"])
             scored.append((blend, c["pid"], {"popularity": c["pop"], "centrality": c["cen"],
                            "relevance": rp, "relevance_cosine": round(c["rel_raw"], 4),
-                           "richness": c["rich"], "trending": c["trd"], "recency": c["rec"]}))
+                           "richness": c["rich"], "trending": c["trd"], "recency": c["rec"],
+                           "nseed": c["nseed"]}))
         scored.sort(key=lambda t: t[0], reverse=True)
         ranked[v] = scored
 
@@ -259,6 +330,11 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
                 progressed = True
 
     # ── assemble payload grouped by vertical ────────────────────────────────────
+    # why_string — DEFAULT (no env) = the truthful seed-referencing builder (emitted when a nearest seed is
+    # available, i.e. max_any_seed retrieval, the default). E8_LEGACY_BASELINE=1 restores the original
+    # "Popular with fans of…" string; E8X_WHY_TRUTHFUL=0 disables it for A/B. Centroid picks (no nearest
+    # seed) always use the original string. This changes only the why_string TEXT — never ranking.
+    truthful_why = (not _legacy()) and (os.environ.get("E8X_WHY_TRUTHFUL", "1") != "0")
     groups = []
     gap_detected = []
     deepen_detected = []
@@ -283,7 +359,8 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
                 "moment_richness_score": round(comp["richness"], 4),
                 "popularity_score": round(comp["popularity"], 4),   # honest social-proof signal we DO have
                 "follower_count": None,                 # resolved client-side from UMI store (spec open Q)
-                "why_string": _why(data, seeds),
+                "why_string": (_why_truthful(data, pid, comp.get("nseed"))
+                               if (truthful_why and comp.get("nseed") is not None) else _why(data, seeds)),
                 "badge": ("trending" if comp["trending"] >= 0.85 else None),
                 "moment_count": int(data.moment_count[row]),
             })
@@ -297,8 +374,11 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
     if debug:
         dbg = {"seed_vertical_counts": dict(seed_vert), "gap_kinds": kinds, "desired_per_vertical": desired,
                "candidate_pool_sizes": {v: len(ranked[v]) for v in ranked},
-               "richness_floor": floor, "weights": {"popularity": W_POP, "centrality": W_CENT,
-               "relevance": W_REL, "moment_richness": W_MOMENT, "trending": W_TREND, "recency": W_REC}}
+               "retrieval_mode": (os.environ.get("E8X_RETRIEVAL_MODE").lower() if os.environ.get("E8X_RETRIEVAL_MODE")
+                                  else ("centroid" if _legacy() else "max_any_seed")),
+               "per_seed_m": int(os.environ.get("E8X_PER_SEED_M", "10")),
+               "richness_floor": floor, "weights": {"popularity": round(w_pop, 4), "centrality": round(w_cent, 4),
+               "relevance": round(w_rel, 4), "moment_richness": round(w_mom, 4), "trending": round(w_trd, 4), "recency": round(w_rec, 4)}}
     return ctx, groups, dbg
 
 

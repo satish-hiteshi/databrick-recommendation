@@ -70,7 +70,7 @@ _defaults = {
     "vs_endpoint":   "feedsai-staging-vs",
     "vs_index":      "stg_feeds_silver.ml.entities_vs",
     "neo4j_uri":     "neo4j+s://17aa0e8d.databases.neo4j.io",
-    "llm_endpoint":  "llama_v3_3_70b_instruct",       # LLM serving-endpoint NAME (URL built from HOST)
+    "llm_endpoint":  "llama-v3-3-70b-instruct",       # LLM serving-endpoint NAME (URL built from HOST)
     "qwen_embed":    "databricks-qwen3-embedding-0-6b",
     "workload_size": "Medium",
     "enable_timing": "1",                             # "1" → TIMING_BREAKDOWN (source for per-stage latency)

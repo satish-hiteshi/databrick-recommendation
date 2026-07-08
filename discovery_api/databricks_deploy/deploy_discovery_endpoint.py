@@ -19,7 +19,13 @@
 # MAGIC %pip install -q python-dotenv neo4j graphdatascience qdrant-client psycopg2-binary httpx pydantic voyageai rank-bm25 tqdm pyarrow opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
 
 # COMMAND ----------
-dbutils.library.restartPython()   # make the fresh installs importable (state is rebuilt by the cells below)
+# GUARDED restart: in notebook JOBS a restart re-executes the whole notebook, so an unconditional
+# restart runs everything twice (observed: two model versions registered per run). Only restart when a
+# dep is actually missing — on the post-restart pass everything imports, so this becomes a no-op.
+import importlib.util
+if any(importlib.util.find_spec(m) is None
+       for m in ("dotenv", "neo4j", "graphdatascience", "qdrant_client", "voyageai", "rank_bm25")):
+    dbutils.library.restartPython()
 
 # COMMAND ----------
 # ===================== 0. AUTO-DERIVE repo location + workspace host (no hardcoding) =====================

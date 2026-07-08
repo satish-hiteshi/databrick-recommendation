@@ -11,6 +11,17 @@
 # MAGIC **Do NOT `%pip install mlflow`** — the runtime's MLflow is integrated; reinstalling it breaks registration.
 
 # COMMAND ----------
+# Cluster deps for REGISTRATION-TIME validation: after logging, MLflow loads the model IN-PROCESS on this
+# job cluster, importing the engine (router config -> dotenv, neo4j, qdrant, voyage, bm25, otel...). The
+# SERVING container installs from requirements.txt — this cell only covers the job cluster (dev clusters
+# are clean; staging happened to have these preinstalled). mlflow deliberately NOT touched (runtime-
+# integrated); torch/sentence-transformers avoided via RERANK=none during registration (see step 2).
+# MAGIC %pip install -q python-dotenv neo4j graphdatascience qdrant-client psycopg2-binary httpx pydantic voyageai rank-bm25 tqdm pyarrow opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+
+# COMMAND ----------
+dbutils.library.restartPython()   # make the fresh installs importable (state is rebuilt by the cells below)
+
+# COMMAND ----------
 # ===================== 0. AUTO-DERIVE repo location + workspace host (no hardcoding) =====================
 import os
 HOST = "https://" + spark.conf.get("spark.databricks.workspaceUrl")
@@ -57,6 +68,7 @@ import mlflow, sys, importlib
 mlflow.set_registry_uri("databricks-uc")             # runtime mlflow; do NOT pip-install it
 os.environ["UC_MODEL_NAME"]          = MODEL_NAME
 os.environ["EMBEDDINGS_PARQUET_SRC"] = C["parquet"]
+os.environ["RERANK"] = "none"    # registration-time: keep the cross-encoder path (torch, 2GB+) out of validation
 sys.modules.pop("register", None)                    # ensure THIS bundle's register is loaded
 sys.path.insert(0, SERVING)
 import register; importlib.reload(register)

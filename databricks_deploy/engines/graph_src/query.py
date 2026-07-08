@@ -74,7 +74,7 @@ def cypher_structured(filters, limit=10):
             " WHERE other <> e AND (other)-[:HAS_CONCEPT]->(:Concept {key:$dam}) "
             " WITH e, dev, collect(DISTINCT other.name)[..2] AS examples "
             " RETURN e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical, "
-            "        round(e.influence,4) AS score, dev.name AS developer, examples "
+            "        round(COALESCE(e.influence, e.pagerank, 0.0),4) AS score, dev.name AS developer, examples "
             " ORDER BY score DESC LIMIT $limit")
         out = []
         with _session() as s:
@@ -88,7 +88,7 @@ def cypher_structured(filters, limit=10):
         "MATCH " + ", ".join(patterns) +
         (" WHERE " + " AND ".join(where) if where else "") +
         " RETURN DISTINCT e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical, "
-        "        round(e.influence,4) AS score "
+        "        round(COALESCE(e.influence, e.pagerank, 0.0),4) AS score "
         " ORDER BY score DESC LIMIT $limit")
     with _session() as s:
         out = _rows(s, cypher, **params)
@@ -161,7 +161,7 @@ def top_by_influence(filters, limit=10):
         "MATCH " + ", ".join(patterns) +
         (" WHERE " + " AND ".join(where) if where else "") +
         " RETURN DISTINCT e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical, "
-        "        round(e.influence,4) AS score "
+        "        round(COALESCE(e.influence, e.pagerank, 0.0),4) AS score "
         " ORDER BY score DESC LIMIT $limit")
     with _session() as s:
         out = _rows(s, cypher, **params)
@@ -188,8 +188,8 @@ def community_browse(entity_id=None, community_id=None, limit=10):
         out = _rows(s,
             "MATCH (e:Entity {community:$c}) "
             "RETURN e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical, "
-            "       round(e.influence,4) AS score "
-            "ORDER BY e.influence DESC LIMIT $limit", c=community_id, limit=limit)
+            "       round(COALESCE(e.influence, e.pagerank, 0.0),4) AS score "
+            "ORDER BY COALESCE(e.influence, e.pagerank, 0.0) DESC LIMIT $limit", c=community_id, limit=limit)
     lbl = "/".join(label) if label else "(no dominant genres)"
     for r in out:
         r["why"] = f"community {community_id} [{lbl}], size {size}"
@@ -255,7 +255,7 @@ def resolve(name, vertical=None):
         rec = s.run(
             "MATCH (e:Entity) WHERE toLower(e.name) = toLower($n) "
             "AND ($v IS NULL OR e.vertical = $v) "
-            "RETURN e.entity_id AS id ORDER BY e.influence DESC LIMIT 1",
+            "RETURN e.entity_id AS id ORDER BY COALESCE(e.influence, e.pagerank, 0.0) DESC LIMIT 1",
             n=name, v=vertical).single()
         return rec["id"] if rec else None
 

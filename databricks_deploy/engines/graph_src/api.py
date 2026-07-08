@@ -183,7 +183,7 @@ def graph_community(req: CommunityRequest):
 _SCORE_WITHIN_CYPHER = """
 MATCH (e:Entity) WHERE e.entity_id IN $ids
 RETURN e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical,
-       e.influence AS influence, e.community AS community,
+       COALESCE(e.influence, e.pagerank, 0.0) AS influence, e.community AS community,
        [(e)-[:HAS_CONCEPT]->(c)  | c.key]          AS concepts,
        [(e)-[:HAS_KEYWORD]->(k)  | toLower(k.name)] AS keywords,
        [(e)-[:HAS_GENRE]->(g)    | toLower(g.name)] AS genres,
@@ -234,9 +234,9 @@ def entity_search(q: str = QueryParam(..., min_length=1),
         "MATCH (e:Entity) WHERE toLower(e.name) CONTAINS toLower($q) "
         "AND ($v IS NULL OR e.vertical = $v) "
         "RETURN e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical, "
-        "round(e.influence,4) AS influence, "
+        "round(COALESCE(e.influence, e.pagerank, 0.0),4) AS influence, "
         "size([(e)-[:HAS_CONCEPT]->()|1]) AS concept_count "
-        "ORDER BY (toLower(e.name) = toLower($q)) DESC, e.influence DESC LIMIT $limit")
+        "ORDER BY (toLower(e.name) = toLower($q)) DESC, COALESCE(e.influence, e.pagerank, 0.0) DESC LIMIT $limit")
     with _driver().session(database=NEO4J_DATABASE) as s:
         rows = [r.data() for r in s.run(cypher, q=q, v=vertical, limit=limit)]
     return {"query": q, "count": len(rows), "entities": rows}

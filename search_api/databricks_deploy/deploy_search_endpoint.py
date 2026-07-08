@@ -15,7 +15,7 @@
 # MAGIC Prereqs: run `precompute_search_tables.py` FIRST (builds `search_property_popularity`); the Qwen parquet
 # MAGIC on a Volume; a SQL warehouse; an **Aura graph with `:Entity {property_id, entity_id}`** (the 44k bridge —
 # MAGIC the E1/E2 graph); a **Qwen embed serving endpoint**; the secret scope holds `databricks_token`,
-# MAGIC `neo4j_password` (+ `grafana_otlp_headers` if OTLP). **Do NOT `%pip install mlflow`** — runtime MLflow is integrated.
+# MAGIC `neo4j_password` (+ `grafana_otlp_token` if OTLP). **Do NOT `%pip install mlflow`** — runtime MLflow is integrated.
 
 # COMMAND ----------
 # ===================== 0. AUTO-DERIVE repo location + workspace host =====================
@@ -34,7 +34,7 @@ _defaults = {
     "catalog":        "stg_feeds_silver",
     "schema":         "ml",
     "endpoint":       "search-staging",               # client copy defaults to search-staging-v2
-    "scope":          "feeds-default-scope",              # secret scope (databricks_token, neo4j_password, grafana_otlp_headers)
+    "scope":          "feeds-default-scope",              # secret scope (databricks_token, neo4j_password, grafana_otlp_token)
     "emb_parquet":    "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet",
     "warehouse_http": "/sql/1.0/warehouses/321252e45d03563e",   # SQL warehouse HTTP path (Silver store + follows)
     "silver_catalog": "stg_feeds_silver",             # SEARCH_SILVER_CATALOG (precompute tables + public_property_followers)
@@ -44,9 +44,9 @@ _defaults = {
     "test_query":     "elden ring",                   # a name-mode smoke query (should hit the name index)
     # ── observability (OTLP → Grafana Cloud) ──
     "otel_service":   "search",
-    "enable_otel":    "1",                            # "1" → push telemetry (needs grafana_otlp_headers secret)
+    "enable_otel":    "1",                            # "1" → push telemetry (needs grafana_otlp_token secret)
     "otel_endpoint":  "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":    "grafana_otlp_headers",         # secret holds ONLY the base64 credential; header built in otel_setup
+    "otel_secret":    "grafana_otlp_token",         # secret holds ONLY the base64 credential; header built in otel_setup
     "otel_sampler":   "0.15",
 }
 for k, v in _defaults.items():

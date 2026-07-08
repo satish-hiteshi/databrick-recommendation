@@ -11,7 +11,7 @@
 # MAGIC   • session    ← in-memory (`ADAPTIVE_PG=0`; the client passes `exclude_ids` to dedup across calls).
 # MAGIC
 # MAGIC Prereqs: run `precompute_adaptive_signals.py` FIRST (builds the 3 Silver signal tables); the Qwen
-# MAGIC parquet on a Volume; a SQL warehouse; the secret scope holds `databricks_token` (+ `grafana_otlp_headers`
+# MAGIC parquet on a Volume; a SQL warehouse; the secret scope holds `databricks_token` (+ `grafana_otlp_token`
 # MAGIC if OTLP). **Do NOT `%pip install mlflow`** — the runtime's MLflow is integrated.
 
 # COMMAND ----------
@@ -31,7 +31,7 @@ _defaults = {
     "catalog":        "stg_feeds_silver",
     "schema":         "ml",
     "endpoint":       "onboarding-adaptive-staging",  # client copy defaults to onboarding-adaptive-staging-v2
-    "scope":          "feeds-default-scope",              # secret scope (databricks_token, grafana_otlp_headers)
+    "scope":          "feeds-default-scope",              # secret scope (databricks_token, grafana_otlp_token)
     "emb_parquet":    "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet",
     "warehouse_http": "/sql/1.0/warehouses/321252e45d03563e",   # SQL warehouse HTTP path (Silver signal reads)
     "silver_catalog": "stg_feeds_silver",             # ADAPTIVE_SILVER_CATALOG (the 3 precompute tables)
@@ -40,9 +40,9 @@ _defaults = {
     "test_threshold": "0.5",
     # ── observability (OTLP → Grafana Cloud) ──
     "otel_service":   "onboarding-adaptive",
-    "enable_otel":    "1",                            # "1" → push telemetry (needs grafana_otlp_headers secret)
+    "enable_otel":    "1",                            # "1" → push telemetry (needs grafana_otlp_token secret)
     "otel_endpoint":  "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":    "grafana_otlp_headers",         # secret holds ONLY the base64 credential; header built in otel_setup
+    "otel_secret":    "grafana_otlp_token",         # secret holds ONLY the base64 credential; header built in otel_setup
     "otel_sampler":   "0.15",
 }
 for k, v in _defaults.items():

@@ -38,9 +38,9 @@ _defaults = {
     "enable_timing": "1",                             # "1" → TIMING_BREAKDOWN (source for per-stage latency)
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
     "otel_service":  "agent-recs",                    # OTEL_SERVICE_NAME (discovery sets discovery-api)
-    "enable_otel":   "1",                             # "1" → push telemetry (needs the grafana_otlp_headers secret)
+    "enable_otel":   "1",                             # "1" → push telemetry (needs the grafana_otlp_token secret)
     "otel_endpoint": "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":   "grafana_otlp_headers",            # secret holds ONLY the base64 credential; otel_setup builds the Authorization: Basic <token> header
+    "otel_secret":   "grafana_otlp_token",            # secret holds ONLY the base64 credential; otel_setup builds the Authorization: Basic <token> header
     "otel_sampler":  "0.15",                          # fraction of requests traced (metrics stay 100%)
 }
 for k, v in _defaults.items():

@@ -83,9 +83,9 @@ _defaults = {
                                                       #   the SAME engine as the local stack; needs no entities_vs index.
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
     "otel_service":  "agent-recs",                    # OTEL_SERVICE_NAME
-    "enable_otel":   "0",                             # "1" → push telemetry (needs the grafana_otlp_headers secret)
+    "enable_otel":   "0",                             # "1" → push telemetry (needs the grafana_otlp_token secret)
     "otel_endpoint": "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":   "grafana_otlp_headers",            # secret key in <scope> holding the base64 OTLP token
+    "otel_secret":   "grafana_otlp_token",            # secret key in <scope> holding the base64 OTLP token
     "otel_sampler":  "0.15",                          # fraction of requests traced (metrics stay 100%)
     # ── data sync (Step 1.5) ──
     "rebuild_index": "0",                             # "1" → rebuild ml.entities + entities_vs from `parquet` (carries release_date_ts)

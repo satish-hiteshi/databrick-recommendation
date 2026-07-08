@@ -42,7 +42,7 @@ _defaults = {
     "otel_service":   "onboarding-boost-v1",
     "enable_otel":    "1",
     "otel_endpoint":  "https://otlp-gateway-prod-us-east-3.grafana.net/otlp",
-    "otel_secret":    "grafana_otlp_headers",
+    "otel_secret":    "grafana_otlp_token",
     "otel_sampler":   "0.15",
 }
 for k, v in _defaults.items():

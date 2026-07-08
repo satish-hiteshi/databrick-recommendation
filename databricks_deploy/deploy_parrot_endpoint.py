@@ -151,5 +151,11 @@ resp = inner.get("response"); resp = resp if isinstance(resp, dict) else json.lo
 rt = resp.get("router", {}) or {}
 print("routed_to :", inner.get("routed_to"), "| count:", resp.get("count"), "| error:", resp.get("error"))
 print("timing_ms :", rt.get("timing_ms"), "| breakdown:", rt.get("timing_breakdown"))
+print("path      :", rt.get("path_taken"), "| establisher:", rt.get("universe_establisher"),
+      "| extraction_ok:", rt.get("extraction_ok"))
+if (resp.get("count") or 0) == 0:                      # 0 results -> dump the full trace for diagnosis
+    print("refinements:", rt.get("refinements_applied"))
+    print("intent     :", json.dumps(rt.get("intent"), default=str)[:800])
+    print("FULL router:", json.dumps(rt, default=str)[:1500])
 assert resp.get("error") is None and (resp.get("count") or 0) > 0, "smoke test failed"
 print("SMOKE OK ✓")

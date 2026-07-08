@@ -321,7 +321,12 @@ class LiveDataSource(DataSource):
             WHERE COALESCE(user_id, get_json_object(_rescued_data, '$.user_id')) IS NOT NULL
               AND moment_id IS NOT NULL
         """
-        for r in self._q(sql):
+        try:
+            rows = self._q(sql)
+        except Exception as ex:                      # reactions are additive — a missing table or a schema
+            print(f"[live_source] reactions skipped ({str(ex)[:120]}) — follows-only taste", flush=True)
+            rows = []                                # without _rescued_data (dev) must NOT block warm-up
+        for r in rows:
             uid, mid = r.get("user_id"), r.get("moment_id")
             if uid is None or mid is None:
                 continue

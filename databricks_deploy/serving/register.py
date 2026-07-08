@@ -104,7 +104,7 @@ def main():
         print(f"Logged + registered new version of {MODEL_NAME}")
         print(f"  model_uri: {info.model_uri}")
         print("Next: Serving → repoint the served entity to this version, then set env vars from")
-        print("../config.example.env (NEO4J_* with password via secret, VS_*, VOYAGE_API_KEY, DATABRICKS_*).")
+        print("../config.example.env (NEO4J_* with password via secret, VS_*, DATABRICKS_*).")
     finally:
         shutil.rmtree(s, ignore_errors=True)
 

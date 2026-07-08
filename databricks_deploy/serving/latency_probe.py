@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 ENDPOINT = "parrot-api-hitashi-dev"
 
-# one representative query per router path — keeps a run fast (each call hits Voyage + the LLM live)
+# one representative query per router path — keeps a run fast (each call hits the Qwen embed + the LLM live)
 DEFAULT_QUERIES = [
     "cozy relaxing games like Stardew Valley",                        # SEED_VECTOR
     "a long narrative-driven single-player RPG with a strong lead",   # VECTOR_CONSTRAIN__GRAPH_RERANK
@@ -115,7 +115,7 @@ def run_by_type(token=None, host=None, url=None, by_type=None, n=1, top_k=10, wa
     """Run a {type: [queries]} bank and report PER-TYPE latency + the AVERAGE per-stage breakdown.
 
     n=1 → each query once (50 queries already give 50 samples per type, enough for p50/p95). Every call
-    hits Voyage + the LLM live, so a full 7×50 pass is ~350 calls (~12 min serial) — start with n=1, and
+    hits the Qwen embed + the LLM live, so a full 7×50 pass is ~350 calls (~12 min serial) — start with n=1, and
     pass a sliced bank (e.g. {k: v[:15] for k, v in QUERIES_BY_TYPE.items()}) for a quick look.
     Reads the per-stage split from response.router.timing_breakdown (needs TIMING_BREAKDOWN=1 deployed).
     """

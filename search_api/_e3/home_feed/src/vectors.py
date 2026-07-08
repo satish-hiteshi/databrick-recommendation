@@ -2,7 +2,7 @@
 
 Step 0 established the vectors are NOT on the graph node and the local setup exposes them via this
 parquet (the same file the deploy/E1 stack uses). E2's HTTP vector substrate (:8000) is the WRONG
-corpus here (Voyage-era / 57k), so E3 reads the parquet directly, read-only. Vectors are stored
+corpus here (legacy 57k), so E3 reads the parquet directly, read-only. Vectors are stored
 L2-normalized so taste cosine is a plain dot product.
 """
 

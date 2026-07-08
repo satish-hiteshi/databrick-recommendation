@@ -3,7 +3,6 @@ httpx
 pydantic
 numpy
 neo4j
-voyageai
 databricks-vectorsearch
 databricks-sql-connector
 qdrant-client

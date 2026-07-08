@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 _ROUTER_DIR = Path(__file__).resolve().parent.parent          # router/
 _PROJECT_DIR = _ROUTER_DIR.parent                             # feedsai-graphdb/
 
-# 1) reuse the shared vector pipeline's .env (LLM/Voyage keys live here); 2) router-local override wins.
+# 1) reuse the shared vector pipeline's .env (LLM keys live here); 2) router-local override wins.
 load_dotenv(_PROJECT_DIR / "vector" / ".env")
 load_dotenv(_ROUTER_DIR / ".env", override=True)
 

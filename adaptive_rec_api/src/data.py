@@ -1,7 +1,7 @@
 """data.py — adaptive-rec (UC6) vector store.
 
 Loads the 44k-qwen property embeddings from the parquet ONCE into memory (L2-normalized numpy matrix)
-for in-app cosine vector search. Separate dataset from discovery (57k/voyage) — does NOT touch it.
+for in-app cosine vector search. Separate dataset from discovery (legacy 57k) — does NOT touch it.
 
 Parquet columns: entity_id ("Vertical:property_id"), name, vertical, bm25_keywords[], embedding[1024], release_date_ts.
 """

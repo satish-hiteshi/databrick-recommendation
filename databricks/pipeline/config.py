@@ -1,7 +1,5 @@
 import os
 
-VOYAGE_API_KEY      = os.getenv("VOYAGE_API_KEY")
-VOYAGE_MODEL        = "voyage-4-large"
 EMBEDDING_DIMENSION = 1024
 
 LLM_ENDPOINT = os.getenv("FEEDSAI_LLM_ENDPOINT", "databricks-meta-llama-3-3-70b-instruct")

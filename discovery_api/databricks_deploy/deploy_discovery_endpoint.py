@@ -12,11 +12,11 @@
 
 # COMMAND ----------
 # Cluster deps for REGISTRATION-TIME validation: after logging, MLflow loads the model IN-PROCESS on this
-# job cluster, importing the engine (router config -> dotenv, neo4j, qdrant, voyage, bm25, otel...). The
+# job cluster, importing the engine (router config -> dotenv, neo4j, qdrant, bm25, otel...). The
 # SERVING container installs from requirements.txt — this cell only covers the job cluster (dev clusters
 # are clean; staging happened to have these preinstalled). mlflow deliberately NOT touched (runtime-
 # integrated); torch/sentence-transformers avoided via RERANK=none during registration (see step 2).
-# MAGIC %pip install -q python-dotenv neo4j graphdatascience qdrant-client psycopg2-binary httpx pydantic voyageai rank-bm25 tqdm pyarrow opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+# MAGIC %pip install -q python-dotenv neo4j graphdatascience qdrant-client psycopg2-binary httpx pydantic rank-bm25 tqdm pyarrow opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
 
 # COMMAND ----------
 # GUARDED restart: in notebook JOBS a restart re-executes the whole notebook, so an unconditional
@@ -24,7 +24,7 @@
 # dep is actually missing — on the post-restart pass everything imports, so this becomes a no-op.
 import importlib.util
 if any(importlib.util.find_spec(m) is None
-       for m in ("dotenv", "neo4j", "graphdatascience", "qdrant_client", "voyageai", "rank_bm25")):
+       for m in ("dotenv", "neo4j", "graphdatascience", "qdrant_client", "rank_bm25")):
     dbutils.library.restartPython()
 
 # COMMAND ----------

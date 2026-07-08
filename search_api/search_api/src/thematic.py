@@ -1,6 +1,6 @@
 """Thematic retrieval — in-memory cosine ANN over the 44k Qwen doc vectors, with PER-VERTICAL quotas.
 
-REUSE NOTE: there is NO Qwen-44k Qdrant collection (the shared Qdrant is Voyage/57k — wrong corpus). The
+REUSE NOTE: there is NO Qwen-44k Qdrant collection (the shared Qdrant is the legacy 57k corpus — wrong corpus). The
 existing in-memory ANN over the Qwen-44k vectors is the brute-force matrix cosine in
 scripts/e1_testset_qwen.py (`sims = MAT @ qn`). We reuse that exactly.
 

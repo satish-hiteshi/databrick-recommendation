@@ -3,14 +3,11 @@ import os
 import time
 
 import numpy as np
-import voyageai
 from tqdm import tqdm
 
 from pipeline.config import (
     DATA_DIR,
     EMBEDDING_DIMENSION,
-    VOYAGE_API_KEY,
-    VOYAGE_MODEL,
     RESULTS_DIR,
 )
 from pipeline.data_loader import get_all_entities, get_entity_by_name
@@ -32,11 +29,11 @@ BATCH_SIZE = 50
 
 
 def generate_embeddings():
-    client = voyageai.Client(api_key=VOYAGE_API_KEY)
+    raise RuntimeError("document-embedding path removed — corpus embeddings are built by foundation 02 (Qwen); queries use embed_query_text via QUERY_EMBED_ENDPOINT")
     entities = get_all_entities()
 
     print(f"Generating embeddings for {len(entities)} entities...")
-    print(f"Model: {VOYAGE_MODEL}, Dimensions: {EMBEDDING_DIMENSION}")
+    print(f"Model: qwen3-embedding-0-6b, Dimensions: {EMBEDDING_DIMENSION}")
     print(f"Batch size: {BATCH_SIZE}, Total batches: {(len(entities) + BATCH_SIZE - 1) // BATCH_SIZE}")
 
     all_embeddings = []
@@ -52,7 +49,7 @@ def generate_embeddings():
         ids = [e["entity_id"] for e in batch]
 
         try:
-            result = client.embed(texts, model=VOYAGE_MODEL, input_type="document")
+            result = None  # unreachable — document-embedding path removed
             all_embeddings.extend(result.embeddings)
             all_ids.extend(ids)
             if result.total_tokens:
@@ -63,7 +60,7 @@ def generate_embeddings():
             print(f"\nError on batch {i // BATCH_SIZE}: {e}. Retrying in 5s...")
             time.sleep(5)
             try:
-                result = client.embed(texts, model=VOYAGE_MODEL, input_type="document")
+                result = None  # unreachable — document-embedding path removed
                 all_embeddings.extend(result.embeddings)
                 all_ids.extend(ids)
                 if result.total_tokens:
@@ -139,7 +136,7 @@ def get_query_embedding(query_text):
         r.raise_for_status()
         return np.array(r.json()["data"][0]["embedding"], dtype=np.float32)
     raise RuntimeError("QUERY_EMBED_ENDPOINT is not set — Qwen query-embedding is required "
-                       "(Voyage fallback removed; all endpoints are Qwen).")
+                       "(legacy embedding fallback removed; all endpoints are Qwen).")
 
 
 # Session-level cache for query embeddings
@@ -231,7 +228,6 @@ def generate_report(stats, sim_results, nan_count, zero_count):
     os.makedirs(RESULTS_DIR, exist_ok=True)
     report_path = os.path.join(RESULTS_DIR, "EMBEDDING_REPORT.md")
 
-    # Voyage AI pricing: voyage-4-large is ~$0.12 per 1M tokens
     cost_estimate = (stats["total_tokens"] / 1_000_000) * 0.12
 
     json_size_mb = os.path.getsize(EMBEDDINGS_CACHE_JSON) / 1e6
@@ -243,7 +239,7 @@ def generate_report(stats, sim_results, nan_count, zero_count):
         "## Summary",
         f"- **Total embeddings generated:** {stats['count']:,}",
         f"- **Embedding dimensions:** {stats['dimensions']}",
-        f"- **Model:** {VOYAGE_MODEL}",
+        f"- **Model:** qwen3-embedding-0-6b",
         f"- **Time taken:** {stats['elapsed_seconds']:.1f} seconds",
         f"- **Total tokens processed:** {stats['total_tokens']:,}",
         f"- **Estimated API cost:** ${cost_estimate:.4f}",

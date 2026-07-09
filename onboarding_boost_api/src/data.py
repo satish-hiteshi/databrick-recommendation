@@ -346,35 +346,40 @@ class Data:
             except (TypeError, ValueError):
                 return None
 
+        def rows(table, cols):
+            """(corpus_row, rec) pairs. entity_id-first join (twin-safe, mirrors the Postgres path's
+            use_eid); falls back to the bare property_id SELECT for legacy tables without the column."""
+            recs = q(f"SELECT entity_id, {cols} FROM {table}")
+            eid = bool(recs)
+            if not recs:
+                recs = q(f"SELECT property_id, {cols} FROM {table}")
+            for rec in recs:
+                r = (self.row_by_eid.get(str(rec.get("entity_id"))) if eid
+                     else _row(rec.get("property_id")))
+                if r is not None:
+                    yield r, rec
+
         # popularity: E8's own boost_property_popularity (precompute_popularity_v2); fall back to UC6's table.
-        pop_rows = q(f"SELECT property_id, popularity FROM {NS}.boost_property_popularity")
+        pop_pairs = list(rows(f"{NS}.boost_property_popularity", "popularity"))
         self._pop_source = f"{NS}.boost_property_popularity"
-        if not pop_rows:
-            pop_rows = q(f"SELECT property_id, popularity FROM {NS}.adaptive_property_popularity")
+        if not pop_pairs:
+            pop_pairs = list(rows(f"{NS}.adaptive_property_popularity", "popularity"))
             self._pop_source = f"{NS}.adaptive_property_popularity"
-        for rec in pop_rows:
-            r = _row(rec.get("property_id"))
-            if r is not None and rec.get("popularity") is not None:
+        for r, rec in pop_pairs:
+            if rec.get("popularity") is not None:
                 self.popularity[r] = float(rec["popularity"])
-        for rec in q(f"SELECT property_id, wdegree FROM {NS}.adaptive_property_centrality"):
-            r = _row(rec.get("property_id"))
-            if r is not None and rec.get("wdegree") is not None:
+        for r, rec in rows(f"{NS}.adaptive_property_centrality", "wdegree"):
+            if rec.get("wdegree") is not None:
                 wdeg[r] = float(rec["wdegree"])
-        for rec in q(f"SELECT property_id, franchises, genres FROM {NS}.adaptive_property_proximity"):
-            r = _row(rec.get("property_id"))
-            if r is None:
-                continue
+        for r, rec in rows(f"{NS}.adaptive_property_proximity", "franchises, genres"):
             fr, ge = rec.get("franchises"), rec.get("genres")
             # fr/ge are arrays (databricks-sql returns ARRAY<STRING> as numpy) — use len(), not truthiness.
             if fr is not None and len(fr) > 0:
                 self.franchises[r] = frozenset(str(x).lower() for x in fr)
             if ge is not None and len(ge) > 0:
                 self.genres_sig[r] = frozenset(str(x).lower() for x in ge)
-        for rec in q(f"SELECT property_id, moment_count, richness, trending, last_event_at "
-                     f"FROM {NS}.boost_property_moments"):
-            r = _row(rec.get("property_id"))
-            if r is None:
-                continue
+        for r, rec in rows(f"{NS}.boost_property_moments",
+                           "moment_count, richness, trending, last_event_at"):
             self.moment_count[r] = int(rec.get("moment_count") or 0)
             self.richness[r] = float(rec.get("richness") or 0.0)
             self.trending[r] = float(rec.get("trending") or 0.0)

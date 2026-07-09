@@ -218,32 +218,39 @@ class Data:
     def _load_signals_live(self, wdeg):
         """Serving: load the 3 precompute signal tables from Silver via the injected query_fn — SAME
         columns the Postgres path reads (wdegree / popularity / franchises+genres). Best-effort per table:
-        a missing or failing read leaves that signal neutral (zeros / empty), exactly like Postgres degrades."""
+        a missing or failing read leaves that signal neutral (zeros / empty), exactly like Postgres degrades.
+        Join key: entity_id FIRST (twin-safe, like the Postgres path use_eid) — falls back to the bare
+        property_id SELECT for legacy tables that predate the entity_id column."""
+        def _iter(table, cols):
+            try:
+                recs, eid = _QUERY_FN(f"SELECT entity_id, {cols} FROM {table}"), True
+            except Exception:
+                recs, eid = _QUERY_FN(f"SELECT property_id, {cols} FROM {table}"), False
+            for r in recs:
+                row = (self.row_by_eid.get(str(r.get("entity_id"))) if eid
+                       else self.row_by_pid.get(r.get("property_id")))
+                if row is not None:
+                    yield row, r
         try:
-            for r in _QUERY_FN(f"SELECT property_id, wdegree FROM {_CENT_TABLE}"):
-                row = self.row_by_pid.get(r.get("property_id"))
+            for row, r in _iter(_CENT_TABLE, "wdegree"):
                 v = r.get("wdegree")
-                if row is not None and v is not None:
+                if v is not None:
                     wdeg[row] = float(v)
         except Exception as e:
             print(f"[adaptive.data] centrality (live) skipped ({str(e)[:80]})", flush=True)
         try:
-            for r in _QUERY_FN(f"SELECT property_id, popularity FROM {_POP_TABLE}"):
-                row = self.row_by_pid.get(r.get("property_id"))
+            for row, r in _iter(_POP_TABLE, "popularity"):
                 v = r.get("popularity")
-                if row is not None and v is not None:
+                if v is not None:
                     self.popularity[row] = float(v)
         except Exception as e:
             print(f"[adaptive.data] popularity (live) skipped ({str(e)[:80]})", flush=True)
         try:
-            for r in _QUERY_FN(f"SELECT property_id, franchises, genres FROM {_PROX_TABLE}"):
-                row = self.row_by_pid.get(r.get("property_id"))
-                if row is None:
-                    continue
+            for row, r in _iter(_PROX_TABLE, "franchises, genres"):
                 fr, ge = r.get("franchises"), r.get("genres")
-                if fr:
+                if fr is not None and len(fr) > 0:
                     self.franchises[row] = frozenset(str(x).lower() for x in fr)
-                if ge:
+                if ge is not None and len(ge) > 0:
                     self.genres_sig[row] = frozenset(str(x).lower() for x in ge)
         except Exception as e:
             print(f"[adaptive.data] proximity (live) skipped ({str(e)[:80]})", flush=True)

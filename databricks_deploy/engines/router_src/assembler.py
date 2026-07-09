@@ -37,6 +37,7 @@ MULTISEED_ONLY}; with refiners -> "TOKEN__VECTOR_RERANK", "TOKEN__GRAPH_RERANK",
 when present (recorded in refinements_applied[], not a path token, so the named-path set stays bounded).
 """
 
+import os
 import re
 import statistics
 from typing import List, Optional

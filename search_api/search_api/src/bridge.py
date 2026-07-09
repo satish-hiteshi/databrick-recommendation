@@ -1,49 +1,87 @@
-"""property_id <-> entity_id bridge — REUSE of endpoint_3 graph_moments.GraphMoments.
+"""entity_id ⇄ composite bridge — over the vendored GraphMomentsBase neo4j lifecycle (see _vendored.py).
 
-The parquet (vectors) is entity_id-keyed; popularity/centrality are property_id-keyed. The verified
-1:1 mapping lives on the :7688 :Entity nodes (BOTH property_id int + entity_id str). We subclass E3's
-GraphMoments (its driver + creds + the exact :Entity pattern) and pull the FULL map once at startup,
-read-only — the same bridge E3 taste.py uses, just materialized for all 44,052 instead of per-request.
-Genres come along cheaply via the same HAS_GENRE edge pattern E3 already uses (best-effort, else []).
+POST composite-key migration: the old PUBLIC `Entity.property_id` is GONE from the graph (this file's
+`int(r["property_id"])` was the HARD startup crash — `int(None)` TypeError). The stable identity is now
+the composite (profile_key + media_source_guid), whose string form is entity_id "Prefix:media_source_guid".
+
+This bridge is now **entity_id-native**: it pulls the whole :Entity map keyed on entity_id, carrying the
+composite (profile_key + media_source_guid) + vertical/name/genres. It also exposes a legacy bare
+media_source_guid (=source_id) ↔ entity_id shim (collision-lossy — ~321 guids collide across verticals)
+so the PUBLIC-keyed PG tables (property_popularity/entity_centrality) can be joined on source_id ONCE THEY
+ARE RE-KEYED (they currently hold the dead PUBLIC id — see store.py / the report).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-from .reuse import GraphMoments
+from ._vendored import GraphMomentsBase
 
 
-class SearchBridge(GraphMoments):
+class SearchBridge(GraphMomentsBase):
     def full_map(self) -> List[dict]:
         q = """
         MATCH (e:Entity)
-        RETURN e.property_id AS property_id, e.entity_id AS entity_id, e.vertical AS vertical,
+        RETURN e.entity_id AS entity_id, e.profile_key AS profile_key,
+               e.media_source_guid AS media_source_guid, e.vertical AS vertical,
                e.name AS name, [(e)-[:HAS_GENRE]->(g) | g.name] AS genres
         """
         with self._driver.session(database=self._database) as s:
             return s.run(q).data()
 
 
+def _guid_to_int(guid) -> Optional[int]:
+    """media_source_guid → int for the legacy source_id shim (None if non-numeric; all property guids are numeric)."""
+    try:
+        return int(str(guid).strip())
+    except (TypeError, ValueError):
+        return None
+
+
 @dataclass(slots=True)
 class Bridge:
-    pid2eid: Dict[int, str] = field(default_factory=dict)
-    eid2pid: Dict[str, int] = field(default_factory=dict)
-    meta: Dict[int, dict] = field(default_factory=dict)   # property_id -> {vertical, name, genres}
+    # PRIMARY: keyed on the stable entity_id.
+    meta: Dict[str, dict] = field(default_factory=dict)   # entity_id -> {profile_key, media_source_guid, vertical, name, genres}
+    # ENGINE-FACING view keyed on the numeric source_id (=media_source_guid) — the engine's integer join key
+    # POST-migration (the dead PUBLIC property_id is replaced by source_id, which the re-keyed PG tables also
+    # carry). Collision-lossy on the ~321 cross-vertical guids (the store's dedup_key disambiguates).
+    meta_by_source_id: Dict[int, dict] = field(default_factory=dict)   # source_id(int) -> {entity_id, profile_key, ...}
+    # LEGACY source_id shim (collision-lossy, last-write-wins): bare media_source_guid(int) ⇄ entity_id.
+    guid2eid: Dict[int, str] = field(default_factory=dict)
+    eid2guid: Dict[str, int] = field(default_factory=dict)
+
+    # ── back-compat aliases (old callers used pid2eid/eid2pid; property_id ≡ the surviving source_id now) ──
+    @property
+    def pid2eid(self) -> Dict[int, str]:
+        return self.guid2eid
+
+    @property
+    def eid2pid(self) -> Dict[str, int]:
+        return self.eid2guid
 
     @property
     def size(self) -> int:
-        return len(self.pid2eid)
+        return len(self.meta)
 
 
 def build_bridge(uri: str, user: str, password: str, database: str) -> Bridge:
-    """Read-only pull of the whole :Entity map. Caller-supplied creds (E4 config), not E3's scrubbed ones."""
+    """Read-only pull of the whole :Entity map, keyed on entity_id + carrying the composite. Caller-supplied
+    creds (E4 config). NO MORE int(None): entity_id is always present; the numeric source_id shim is
+    populated only for numeric guids."""
     b = Bridge()
     with SearchBridge(uri=uri, user=user, password=password, database=database) as gm:
         for r in gm.full_map():
-            pid = int(r["property_id"]); eid = str(r["entity_id"])
-            b.pid2eid[pid] = eid
-            b.eid2pid[eid] = pid
-            b.meta[pid] = {"vertical": r["vertical"], "name": r["name"], "genres": r["genres"] or []}
+            eid = str(r["entity_id"])
+            if not eid:
+                continue
+            guid = r["media_source_guid"]
+            b.meta[eid] = {"profile_key": r["profile_key"],
+                           "media_source_guid": (str(guid) if guid is not None else ""),
+                           "vertical": r["vertical"], "name": r["name"], "genres": r["genres"] or []}
+            gi = _guid_to_int(guid)
+            if gi is not None:
+                b.guid2eid[gi] = eid            # collision-lossy (last-write-wins); display/legacy join only
+                b.eid2guid[eid] = gi
+                b.meta_by_source_id[gi] = {"entity_id": eid, **b.meta[eid]}   # engine's int-keyed view
     return b

@@ -76,9 +76,11 @@ def _finite(x: float, default: float = 0.0) -> float:
 def score_result(r: SearchResult, store, now: datetime) -> SearchResult:
     r.tier = _TIER_MAP.get(r.match_type, 2)          # exact(0) > prefix(1) > fuzzy/thematic(2); UC4 Story 1
     w = config.weights_for(_scoring_mode(r.match_type), r.vertical)
-    r.centrality_pct = _finite(store.centrality_pct(r.property_id))
-    r.popularity_pct = _finite(store.popularity_pct(r.property_id))
-    rec = _finite(recency_score(store.recency_date(r.property_id), now))
+    # UC4 ranking keys the store on entity_id (collision-safe: the ~321 cross-vertical guid twins get
+    # distinct rows). Weights/math unchanged — only the key moved from source_id → entity_id.
+    r.centrality_pct = _finite(store.centrality_pct(r.entity_id))
+    r.popularity_pct = _finite(store.popularity_pct(r.entity_id))
+    rec = _finite(recency_score(store.recency_date(r.entity_id), now))
     r.signals = {
         "relevance": round(_finite(r.relevance), 6),
         "centrality": round(r.centrality_pct, 6),

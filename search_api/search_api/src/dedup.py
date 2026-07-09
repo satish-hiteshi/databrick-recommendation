@@ -17,7 +17,7 @@ def collapse_duplicates(results: List, store) -> Tuple[List, int]:
     passthrough = []         # null-key rows: each its own identity
     collapsed = 0
     for r in results:
-        dk = store.dedup_key(r.property_id)
+        dk = store.dedup_key(r.entity_id)          # entity_id-keyed (collision-safe); source_id tie-break below
         if not dk:
             passthrough.append(r)
             continue

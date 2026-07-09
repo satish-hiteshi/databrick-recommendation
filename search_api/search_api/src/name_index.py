@@ -1,4 +1,8 @@
-"""In-memory name index over the 44k deploy properties — IDENTITY-FIRST, now with PREFIX (search-as-you-type).
+"""In-memory name index over the deploy properties — IDENTITY-FIRST, now with PREFIX (search-as-you-type).
+
+Keyed on **entity_id** (collision-safe: the ~321 cross-vertical guid twins — Game:119163 vs Movie:119163 —
+are DISTINCT names, both findable). Each row also carries the numeric ``property_id`` (=source_id) purely for
+the engine's source_id-space heuristics (exact-tie-break) and the response — it is NOT the dedup key.
 
 TIERS (the engine ranks them in this order): EXACT (0) > PREFIX (1) > FUZZY (2).
   EXACT   — casefold + strip-punctuation string equality OR full token-SET equality → relevance 1.0.
@@ -49,33 +53,39 @@ def _fuzzy_kind(qn: str, nn: str, allow_typo: bool) -> str:
 
 @dataclass(slots=True)
 class NameHit:
-    property_id: int
+    entity_id: str            # PRIMARY identity + the index dedup key (collision-safe)
+    property_id: int          # source_id (=media_source_guid); source_id-space heuristics + response only, NOT the key
     name: str
     vertical: str
     relevance: float          # 0..1 (exact = 1.0; prefix ~0.7..1.0; fuzzy ≥ floor)
     match_type: str           # "exact" | "prefix" | "fuzzy"
 
 
+# a stored row: (entity_id, source_id, name, vertical)
+_Row = Tuple[str, int, str, str]
+
+
 class NameIndex:
-    def __init__(self, entries: List[Tuple[int, str, str]], pop_map: Optional[Dict[int, float]] = None) -> None:
-        """entries: (property_id, name, vertical) for the 44k deploy set.
-        pop_map: optional {property_id: popularity_pct} used ONLY to cap the prefix pool by popularity."""
+    def __init__(self, entries: List[_Row], pop_map: Optional[Dict[str, float]] = None) -> None:
+        """entries: (entity_id, source_id, name, vertical) for the deploy set — keyed on entity_id.
+        pop_map: optional {entity_id: popularity_pct} used ONLY to cap the prefix pool by popularity."""
         self._pop_map = pop_map or {}
-        self.exact_str: Dict[str, List[Tuple[int, str, str]]] = {}            # norm string → rows
-        self.exact_set: Dict[frozenset, List[Tuple[int, str, str]]] = {}      # token-set → rows
+        self.exact_str: Dict[str, List[_Row]] = {}            # norm string → rows
+        self.exact_set: Dict[frozenset, List[_Row]] = {}      # token-set → rows
         self.norm_names: List[str] = []
-        self.meta: List[Tuple[int, str, str]] = []
+        self.meta: List[_Row] = []
         self._token_to_idx: Dict[str, List[int]] = {}                        # name token → meta indices
         self._first_to_idx: Dict[str, List[int]] = {}                        # leading token → meta indices
-        for pid, name, vert in entries:
+        for eid, sid, name, vert in entries:
             n = _norm(name)
             if not n:
                 continue
             idx = len(self.meta)
-            self.exact_str.setdefault(n, []).append((pid, name, vert))
-            self.exact_set.setdefault(frozenset(n.split()), []).append((pid, name, vert))
+            row: _Row = (eid, sid, name, vert)
+            self.exact_str.setdefault(n, []).append(row)
+            self.exact_set.setdefault(frozenset(n.split()), []).append(row)
             self.norm_names.append(n)
-            self.meta.append((pid, name, vert))
+            self.meta.append(row)
             toks = n.split()
             for t in set(toks):
                 self._token_to_idx.setdefault(t, []).append(idx)
@@ -161,12 +171,12 @@ class NameIndex:
         qn = _norm(query)
         if len(qn) < config.NAME_MIN_QUERY_LEN:              # too short (guards "a"); also the prefix floor
             return []
-        best: Dict[int, NameHit] = {}
+        best: Dict[str, NameHit] = {}                        # entity_id → hit (collision-safe dedup)
         # ── EXACT (tier 0) ──
-        for pid, name, vert in self.exact_str.get(qn, []):
-            best[pid] = NameHit(pid, name, vert, 1.0, "exact")
-        for pid, name, vert in self.exact_set.get(frozenset(qn.split()), []):
-            best.setdefault(pid, NameHit(pid, name, vert, 1.0, "exact"))
+        for eid, sid, name, vert in self.exact_str.get(qn, []):
+            best[eid] = NameHit(eid, sid, name, vert, 1.0, "exact")
+        for eid, sid, name, vert in self.exact_set.get(frozenset(qn.split()), []):
+            best.setdefault(eid, NameHit(eid, sid, name, vert, 1.0, "exact"))
         # ── PREFIX (tier 1) — completeness-ranked, popularity-capped ──
         prefix_rows = []
         has_leading_name = False                              # does the query genuinely prefix ANY real name? (Fix 2 typo-gate)
@@ -175,42 +185,42 @@ class NameIndex:
             if not nn.startswith(qn):                          # TRUE leading prefix only (search-as-you-type): the name must
                 continue                                       # START WITH the query. Kills "the godfather"→"the black godfather"
             has_leading_name = True                            # (a token-subset the match-boolean-prefix logic would otherwise admit).
-            pid, name, vert = self.meta[idx]
-            if pid in best:                                   # already exact → exact wins
+            eid, sid, name, vert = self.meta[idx]
+            if eid in best:                                   # already exact → exact wins
                 continue
             completeness = min(1.0, len(qn) / max(1, len(nn)))
             if completeness < config.PREFIX_MIN_COMPLETENESS:  # concept-word coincidentally a name-prefix → keep OUT of the prefix tier
                 continue                                       # (may still surface via fuzzy/thematic, just not boosted above genre)
             rel = round(config.PREFIX_BASE_RELEVANCE + config.PREFIX_COMPLETENESS_WEIGHT * completeness, 4)
-            prefix_rows.append((self._pop_map.get(pid, 0.0), rel, pid, name, vert))
-        prefix_rows.sort(key=lambda r: (-r[0], -r[1], r[2]))  # keep the most POPULAR (then most complete)
-        for _pop, rel, pid, name, vert in prefix_rows[: config.PREFIX_POOL]:
-            best.setdefault(pid, NameHit(pid, name, vert, rel, "prefix"))
+            prefix_rows.append((self._pop_map.get(eid, 0.0), rel, eid, sid, name, vert))
+        prefix_rows.sort(key=lambda r: (-r[0], -r[1], r[2]))  # keep the most POPULAR (then most complete), tie → entity_id
+        for _pop, rel, eid, sid, name, vert in prefix_rows[: config.PREFIX_POOL]:
+            best.setdefault(eid, NameHit(eid, sid, name, vert, rel, "prefix"))
         # ── FUZZY (tier 2) — never overrides an exact/prefix hit ──
         allow_typo = not has_leading_name                    # a query that prefixes a real name is a partial/concept, not a typo
         if self._process:
             for _n, _s, idx in self._process.extract(qn, self.norm_names,
                                                      scorer=self._fuzz.token_set_ratio, limit=pool):
-                pid, name, vert = self.meta[idx]
-                if pid in best and best[pid].match_type in ("exact", "prefix"):
+                eid, sid, name, vert = self.meta[idx]
+                if eid in best and best[eid].match_type in ("exact", "prefix"):
                     continue
                 nn = self.norm_names[idx]
                 rel = self._fuzzy_score(qn, nn)
                 if rel < config.NAME_FUZZY_MIN:
                     continue
                 mt = _fuzzy_kind(qn, nn, allow_typo)            # "fuzzy_typo" (whole-name typo) vs "fuzzy" (Fix 2)
-                if pid not in best or best[pid].relevance < rel:
-                    best[pid] = NameHit(pid, name, vert, round(rel, 4), mt)
+                if eid not in best or best[eid].relevance < rel:
+                    best[eid] = NameHit(eid, sid, name, vert, round(rel, 4), mt)
         else:
             import difflib
             for n in difflib.get_close_matches(qn, self.norm_names, n=pool, cutoff=config.NAME_FUZZY_MIN):
                 idx = self.norm_names.index(n)
-                pid, name, vert = self.meta[idx]
-                if pid in best:
+                eid, sid, name, vert = self.meta[idx]
+                if eid in best:
                     continue
                 rel = self._fuzzy_score(qn, n)
                 if rel >= config.NAME_FUZZY_MIN:
-                    best[pid] = NameHit(pid, name, vert, round(rel, 4), _fuzzy_kind(qn, n, allow_typo))
+                    best[eid] = NameHit(eid, sid, name, vert, round(rel, 4), _fuzzy_kind(qn, n, allow_typo))
         # BREAK-3 FIX (dominance): a genuine whole-name TYPO resolves to ONE title; a coincidental token-overlap
         # ("the last of us"→{The Story of Us, The Rest of Us}, "the bear movie"→{X/ABBA/Bluey: The Movie}) marks
         # SEVERAL distinct names as fuzzy_typo. If more than the allowed number of DISTINCT names carry the mark,
@@ -220,6 +230,7 @@ class NameIndex:
             for h in best.values():
                 if h.match_type == "fuzzy_typo":
                     h.match_type = "fuzzy"
-        # tier order (exact > prefix > fuzzy), then relevance, then property_id
+        # tier order (exact > prefix > fuzzy), then relevance, then a DETERMINISTIC entity_id tie-break
+        # (was source_id; entity_id also distinguishes the collision twins that share a source_id).
         return sorted(best.values(),
-                      key=lambda h: (_TIER.get(h.match_type, 2), -h.relevance, h.property_id))
+                      key=lambda h: (_TIER.get(h.match_type, 2), -h.relevance, h.entity_id))

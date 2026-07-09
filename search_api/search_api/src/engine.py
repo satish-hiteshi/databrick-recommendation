@@ -8,8 +8,21 @@ followed -> dedup (composite) -> sort -> cross-vertical fairness -> serialize. P
 
 from __future__ import annotations
 
+import logging
+import sys
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from pathlib import Path
+from typing import List, Optional, Set, Tuple
+
+try:
+    from shared import identity as _ident                # repo-root layout (local dev tree)
+except ImportError:
+    try:
+        from . import _identity as _ident                # vendored copy (serving bundle)
+    except ImportError:
+        import _identity as _ident
+
+_log = logging.getLogger("search_api.engine")
 
 from . import config
 from .bridge import build_bridge
@@ -33,24 +46,27 @@ class SearchEngine:
         self.thematic = ThematicIndex().load()
         self.embedder = QwenQueryEmbedder()
         self.follow_gate = FollowGate()
-        # NAME index over the 44k bridge properties; names from property_popularity, fallback graph name.
-        entries: List[Tuple[int, str, str]] = []
+        # NAME index over the bridge properties, keyed on ENTITY_ID (collision-safe: every entity in the
+        # bridge is searchable — the ~321 cross-vertical guid twins are distinct names, both findable; the old
+        # source_id key silently dropped one of each pair). source_id is carried per row for the engine's
+        # source_id-space tie-break + the response. Names from property_popularity (entity_id-keyed), fallback graph.
+        entries: List[Tuple[str, int, str, str]] = []
         pop_map: dict = {}
-        for pid, meta in self.bridge.meta.items():
-            pr = self.store.popularity.get(pid)
+        for eid, meta in self.bridge.meta.items():
+            pr = self.store.popularity.get(eid)          # entity_id-keyed store (collision-safe)
             name = (pr.name if pr else None) or meta.get("name")
             vert = (pr.vertical if pr else None) or meta.get("vertical") or "unknown"
             if name:
-                entries.append((pid, name, vert))
-                pop_map[pid] = self.store.popularity_pct(pid)   # caps the prefix pool by popularity
+                entries.append((eid, self.bridge.eid2guid.get(eid, 0), name, vert))
+                pop_map[eid] = self.store.popularity_pct(eid)   # caps the prefix pool by popularity
         self.name_index = NameIndex(entries, pop_map=pop_map)
         # CATALOG CROSS-CHECK signal (Fix 1c): norm_name → max popularity_pct among UNBRIDGED catalog entities
         # (the 9,562 in property_popularity but not bridged). Used ONLY to suppress a coincidental confident
         # PREFIX pin when the user clearly typed a famous title we can't serve. These entities NEVER enter results.
-        bridged_pids = set(self.bridge.meta.keys())
+        bridged_eids = set(self.bridge.meta.keys())
         self.catalog_unbridged_pop: dict = {}
-        for pid, row in self.store.popularity.items():
-            if pid in bridged_pids or not row.name:
+        for eid, row in self.store.popularity.items():   # entity_id-keyed store (unbridged catalog cross-check)
+            if eid in bridged_eids or not row.name:
                 continue
             nm = _norm(row.name)
             if nm and row.popularity_pct > self.catalog_unbridged_pop.get(nm, -1.0):
@@ -61,8 +77,39 @@ class SearchEngine:
         return {"status": "ok", "endpoint": config.ENDPOINT_LABEL, "engine": config.ENGINE_LABEL,
                 "bridge_properties": self.bridge.size, "name_index_size": self.name_index.size,
                 "name_backend": self.name_index.backend, "thematic_vectors": self.thematic.size,
-                "popularity_rows": len(self.store.popularity), "centrality_rows": len(self.store.centrality),
+                "popularity_rows": len(self.store.popularity_by_sid), "centrality_rows": len(self.store.centrality_by_sid),
                 "qwen_embed_available": self.embedder.available, **config.summary()}
+
+    # ── follow-set resolution (raw follow keys → served entity_ids, collision-safe) ──────────────
+    def _resolve_followed_entity_ids(self, raw_keys) -> Set[str]:
+        """Normalise raw follow keys → SERVED entity_ids. entity_id/composite is coerced (no I/O) and kept
+        iff bridged; a bare source_id is resolved via the bridge's source_id→entity_id map (collision-lossy
+        — the shim keeps the last vertical). Legacy PUBLIC ids simply won't resolve (dropped)."""
+        out: Set[str] = set()
+        for k in (raw_keys or []):
+            eid = _ident.coerce_to_entity_id(k)
+            if eid is not None:
+                if eid in self.bridge.meta:
+                    out.add(eid)
+                continue
+            try:
+                gi = int(str(k).strip())
+            except (TypeError, ValueError):
+                continue
+            # bare source_id: resolve against the SERVED candidate entity_ids. A bare guid that maps to >1
+            # served vertical (the ~321 cross-vertical collisions) is AMBIGUOUS → warn + drop so the caller
+            # re-supplies the entity_id/composite (matches E3/E6/E8). Exactly one served vertical → resolve it.
+            served = [c for c in _ident.candidate_entity_ids(gi) if c in self.bridge.meta]
+            if len(served) == 1:
+                out.add(served[0])
+            elif len(served) > 1:
+                _log.warning("ambiguous bare follow id %r resolves to %s across verticals; send the "
+                             "entity_id/composite form to disambiguate — dropped", gi, served)
+            else:
+                hit = self.bridge.guid2eid.get(gi)   # legacy last-write-wins shim (no served candidate found)
+                if hit:
+                    out.add(hit)
+        return out
 
     # ── candidate builders ─────────────────────────────────────────────────────
     def _name_to_results(self, hits, req) -> List[SearchResult]:
@@ -71,15 +118,15 @@ class SearchEngine:
         for h in hits:
             if vset and h.vertical.lower() not in vset:
                 continue
-            meta = self.bridge.meta.get(h.property_id, {})
-            r = SearchResult(property_id=h.property_id, entity_id=self.bridge.pid2eid.get(h.property_id),
+            meta = self.bridge.meta.get(h.entity_id, {})   # entity_id-keyed (collision-safe; both twins resolve)
+            r = SearchResult(property_id=h.property_id, entity_id=h.entity_id,
                              name=h.name, vertical=h.vertical, match_type=h.match_type,
                              relevance=h.relevance, genres=meta.get("genres", []))
             r.disambiguation_confidence = round(h.relevance, 4)
             # DEMOTE framing: a name match whose title has a much-more-popular UNBRIDGED twin (gap≥0.6) is a
             # coincidental namesake ("Loki" game for a Marvel-show search) — keep it, but flag it so it is framed
             # "Named '{q}'", never "Best match", and (routing) never MLT-amplified. Signal only; no unbridged entity.
-            r.twin_demoted = self._twin_gap_exceeds(h.name, self.store.popularity_pct(h.property_id))
+            r.twin_demoted = self._twin_gap_exceeds(h.name, self.store.popularity_pct(h.entity_id))
             out.append(r)
         return out
 
@@ -107,7 +154,7 @@ class SearchEngine:
         rels = minmax_relevance(cosines)
         out: List[SearchResult] = []
         for (pid, h), rel in zip(rows, rels):
-            meta = self.bridge.meta.get(pid, {})
+            meta = self.bridge.meta.get(h.entity_id, {})   # entity_id-keyed (collision-safe; thematic path untestable)
             out.append(SearchResult(property_id=pid, entity_id=h.entity_id,
                                     name=meta.get("name") or h.name,
                                     vertical=meta.get("vertical") or h.vertical,
@@ -117,17 +164,17 @@ class SearchEngine:
 
     def _merge_both(self, req, name_hits, route: dict, embed_text: Optional[str] = None,
                     source_vector=None) -> List[SearchResult]:
-        by_pid = {}
+        by_eid = {}
         for r in self._name_to_results(name_hits, req):   # name first → preferred (the exact-tier instance wins on dedup)
-            by_pid[r.property_id] = r
+            by_eid[r.entity_id] = r
         for r in self._thematic_results(req, route, embed_text, source_vector):
-            by_pid.setdefault(r.property_id, r)           # neighbour backfill; dedup vs the pinned entity + each other
-        return list(by_pid.values())
+            by_eid.setdefault(r.entity_id, r)             # neighbour backfill; dedup vs the pinned entity + each other (entity_id = collision-safe)
+        return list(by_eid.values())
 
     def _mlt_route(self, req, matched, name_hits, route: dict, embed_text):
         """Pin `matched` #1 + backfill from ITS stored vector (no live embed). Edge: no parquet row →
         live-embed fallback, still pinned. Used by the exact/highest-pop path AND the unique-prefix path."""
-        eid = self.bridge.pid2eid.get(matched.property_id)
+        eid = matched.entity_id                           # NameHit carries entity_id (collision-safe)
         vec = self.thematic.vector_for(eid) if eid else None
         route["mlt"] = {"matched_pid": matched.property_id, "matched_vertical": matched.vertical,
                         "matched_name": matched.name, "matched_match_type": matched.match_type,
@@ -136,8 +183,8 @@ class SearchEngine:
 
     def _prefix_blend(self, h) -> float:
         """Lightweight dominance score for prefix resolution: completeness-relevance + popularity + centrality."""
-        return (0.5 * h.relevance + 0.35 * self.store.popularity_pct(h.property_id)
-                + 0.15 * self.store.centrality_pct(h.property_id))
+        return (0.5 * h.relevance + 0.35 * self.store.popularity_pct(h.entity_id)
+                + 0.15 * self.store.centrality_pct(h.entity_id))
 
     def _twin_gap_exceeds(self, name: str, pin_pop: float) -> bool:
         """Structural suppression SIGNAL keyed on the MATCHED ENTITY name (not the raw query), so a PARTIAL that
@@ -177,7 +224,9 @@ class SearchEngine:
         # (max(popularity_pct) is seed-safe: a pop-0/null_source seed can never outrank a real pop>0 entity).
         # Ultra-short exacts skip MLT but the exact still leads via the exact tier.
         if exacts and gate and can_mlt:
-            matched = max(exacts, key=lambda h: (self.store.popularity_pct(h.property_id), -h.property_id))
+            # popularity keyed on entity_id (collision-safe); -property_id kept as the deterministic source_id
+            # tie-break among equally-popular exacts (genuine source_id-space ordering, not an entity lookup).
+            matched = max(exacts, key=lambda h: (self.store.popularity_pct(h.entity_id), -h.property_id))
             # BREAK-1 FIX: the exact branch is NO LONGER blanket-spared. When a same-name UNBRIDGED twin is MUCH more
             # popular (RELATIVE gap ≥ margin), the query names a famous title we can't serve, so the obscure bridged
             # namesake ("Game of Thrones"→pop-0 game) must NOT get the confident pin. The GAP spares the genuine
@@ -185,11 +234,11 @@ class SearchEngine:
             # real name match, flagged twin_demoted → framed "Named …") but route auto_both so NO MLT fires; it leads
             # #1 by tier with thematic below, honoring UC4 "never leave a name query with nothing relevant".
             twin_pop = self.catalog_unbridged_pop.get(qn)
-            if twin_pop is not None and (twin_pop - self.store.popularity_pct(matched.property_id)) >= config.EXACT_TWIN_GAP_MARGIN:
+            if twin_pop is not None and (twin_pop - self.store.popularity_pct(matched.entity_id)) >= config.EXACT_TWIN_GAP_MARGIN:
                 route["mlt_suppressed"] = "exact_famous_unbridged_twin"
-                route["exact_twin"] = {"pin_pop": round(self.store.popularity_pct(matched.property_id), 3),
+                route["exact_twin"] = {"pin_pop": round(self.store.popularity_pct(matched.entity_id), 3),
                                        "twin_pop": round(twin_pop, 3),
-                                       "gap": round(twin_pop - self.store.popularity_pct(matched.property_id), 3)}
+                                       "gap": round(twin_pop - self.store.popularity_pct(matched.entity_id), 3)}
                 return "auto_both", self._merge_both(req, name_hits, route, embed_text), route
             return self._mlt_route(req, matched, name_hits, route, embed_text)
         if exacts:                                            # disambiguation / onboarding / too-short → breadth, no MLT
@@ -202,7 +251,7 @@ class SearchEngine:
             top = ranked_p[0]
             runner = self._prefix_blend(ranked_p[1]) if len(ranked_p) > 1 else 0.0
             margin = round(self._prefix_blend(top) - runner, 4)
-            twin = self._twin_gap_exceeds(top.name, self.store.popularity_pct(top.property_id))  # keyed on ENTITY name + 0.6 gap
+            twin = self._twin_gap_exceeds(top.name, self.store.popularity_pct(top.entity_id))  # keyed on ENTITY name + 0.6 gap
             route["prefix_resolve"] = {"top": top.name, "margin": margin, "threshold": config.PREFIX_MLT_MARGIN,
                                        "runner_up": ranked_p[1].name if len(ranked_p) > 1 else None,
                                        "n_prefix": len(prefixes), "unbridged_twin": twin, "can_mlt": can_mlt}
@@ -223,7 +272,10 @@ class SearchEngine:
         now = datetime.now(timezone.utc)
         if not (req.query or "").strip():
             return build_envelope(req, [], "empty", now, set(), 0, {"reason": "empty_query"})
-        followed, follow_info = self.follow_gate.followed(req.user_id, req.exclude_followed)
+        raw_followed, follow_info = self.follow_gate.followed(req.user_id, req.exclude_followed)
+        followed = self._resolve_followed_entity_ids(raw_followed)   # entity_ids (collision-safe exclusion)
+        if raw_followed:
+            follow_info["resolved_entity_ids"] = len(followed)
         # Vertical-word stripping happens in _route (embed text). The BOOST source is decided here AFTER
         # routing, so "more like this" can boost the MATCHED entity's own vertical. Explicit `verticals`
         # filter wins (no soft boost).
@@ -247,7 +299,7 @@ class SearchEngine:
                 r.final_score = round(r.final_score + boost_value, 6)
                 r.signals["vertical_boost"] = boost_value
         if followed:
-            candidates = [r for r in candidates if r.property_id not in followed]
+            candidates = [r for r in candidates if r.entity_id not in followed]   # exclude on entity_id
 
         n_collapsed = 0
         if config.DEDUP_ENABLED:

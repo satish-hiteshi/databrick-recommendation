@@ -28,10 +28,12 @@ PG_DB = os.getenv("SEARCH_PG_DB", "endpoint_4_search")    # NOT feedsai_poc
 PG_USER = os.getenv("POSTGRES_USER", "postgres")
 PG_PASSWORD = os.getenv("POSTGRES_PASSWORD", "feedsai123")
 
-# ── Neo4j 44k deploy graph (:7688) — the property_id<->entity_id bridge (E3 pattern). READ-ONLY. ──
-NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7688")
+# ── Neo4j re-keyed graph — the entity_id ⇄ composite bridge (E3 pattern). READ-ONLY. ──
+# POST composite-key migration the bridge keys on entity_id (the PUBLIC property_id is gone); default points
+# at the re-keyed local graph. Creds via env.
+NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7690")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "feedsai44kGraph2026")   # E1 no_signal default; E3 cfg scrubbed to ""
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "feedsaiRekeyGraph2026")   # via env for the re-keyed graph
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
 # ── Qwen vectors + query-embed (the existing deploy embedder; creds from shared/vector/.env) ──
@@ -196,10 +198,12 @@ DEDUP_ENABLED = os.getenv("SEARCH_DEDUP_ENABLED", "true").lower() in ("1", "true
 # ── source_context that forces onboarding semantics ──────────────────────────
 ONBOARDING_SOURCE_CONTEXT = os.getenv("SEARCH_ONBOARDING_CONTEXT", "onboarding_search")
 
-# ── Follows (exclude_followed) — reuse E3's CsvFollowSource over the dev export ──
+# ── Follows (exclude_followed) — the vendored CsvFollowSource over E4's own dev export ──
+# Standalone: default points at E4's OWN copy of the dev followers CSV (code+fixture vendored, no shared
+# path). Deploy overrides SEARCH_FOLLOWERS_CSV / backs it with the live source.
 FOLLOWERS_CSV = os.getenv(
     "SEARCH_FOLLOWERS_CSV",
-    str(_REPO_ROOT / "endpoint_3_home_feed" / "local_code" / "home_feed" / "data" / "dev" / "followers_dev.csv"))
+    str(Path(__file__).resolve().parent.parent / "data" / "dev" / "followers_dev.csv"))
 
 
 def summary() -> dict:

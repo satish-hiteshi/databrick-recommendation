@@ -39,7 +39,7 @@ _BUNDLE = os.path.dirname(os.path.dirname(_HERE))             # onboarding_boost
 _SRC = os.path.join(_BUNDLE, "src")                           # engine
 _REPO = os.path.dirname(_BUNDLE)                              # notebooks root (shared otel_setup fallback)
 
-_ENGINE_MODULES = ("data.py", "gaps.py", "vector_store.py")   # serving path (no FastAPI/store — stateless, memory backend)
+_ENGINE_MODULES = ("data.py", "gaps.py", "vector_store.py", "substrate_guard.py")   # serving path (no FastAPI/store — stateless, memory backend)
 
 
 def _optional_col(dtype, name):

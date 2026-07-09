@@ -74,8 +74,11 @@ class Data:
         self.emb = None
         self.emb_dim = 0
         self.pids = []
-        self.row_by_pid = {}
-        self.meta = {}                # pid -> {property_id, entity_id, name, vertical, genres, release_ts}
+        self.row_by_pid = {}          # bare property_id -> row (VERTICAL-AMBIGUOUS: ~321 guids collide -> FIRST row)
+        self.row_by_eid = {}          # entity_id "Vertical:guid" -> row (UNAMBIGUOUS composite key)
+        self.meta = {}                # pid -> {property_id, entity_id, name, vertical, genres, release_ts} (first twin)
+        self.meta_row = []            # row-aligned meta (UNAMBIGUOUS: each colliding twin keeps its own row)
+        self.entity_id_keyed = False  # True once row_by_eid is populated (entity_id-keyed source detected)
         self.popularity = None        # S5
         self.centrality = None        # S4
         self.recency = None           # S2
@@ -101,7 +104,14 @@ class Data:
             return cls._instance
 
     def _load(self):
-        # embeddings only need to be in RAM for the `memory` backend; for `qdrant` they live in Qdrant.
+        # SUBSTRATE GUARD (fail-loud): assert the corpus we are about to load == SUBSTRATE_EXPECT_ENTITIES
+        # (52,510) BEFORE loading, so a stale 44k parquet/PG/Qdrant trips a clear error instead of silently
+        # serving wrong data. Env-guarded (SUBSTRATE_CHECK=0 bypasses). Import is local so the module stays
+        # importable in bare unit tests that never call _load.
+        import substrate_guard
+        substrate_guard.assert_substrate()
+        # embeddings only need to be in RAM for the `memory` backend; for `qdrant` they live in Qdrant,
+        # so we skip the (slow, ~180MB/44k) embedding load entirely -> fast startup + low RAM.
         self.backend = os.environ.get("BOOST_VECTOR_BACKEND", "qdrant").lower()
         load_emb = self.backend == "memory"
         # live (serving): embeddings come from the staged parquet — no local Postgres.
@@ -113,6 +123,13 @@ class Data:
         self._load_signals()
         self._load_id_bridge()
         self.verticals = sorted({m.get("vertical") for m in self.meta.values() if m.get("vertical")})
+        # KEYING-MODE DETECTION (ported from E6) — entity_id-keyed (row_by_eid populated -> both ~321 twins
+        # survive as distinct rows, twin-safe) vs legacy pid-keyed (bare-guid dedup, collisions collapse ==
+        # pre-migration). Says which it detected so the runtime shape is observable in logs.
+        self.entity_id_keyed = len(self.row_by_eid) > 0
+        print(f"[boost.data] loaded {len(self.pids)} rows from {self._source}; "
+              f"keying={'entity_id (twin-safe)' if self.entity_id_keyed else 'legacy pid (collision-collapse)'}"
+              f" (row_by_eid={len(self.row_by_eid)}, row_by_pid={len(self.row_by_pid)})", flush=True)
 
     # ── embeddings + meta ──────────────────────────────────────────────────────
     def _load_pg(self, load_emb=True):
@@ -135,16 +152,28 @@ class Data:
                     pid, ent, name, vert, rts, kws, emb = r
                 else:
                     pid, ent, name, vert, rts, kws = r
-                if pid in self.row_by_pid:
+                eid = str(ent) if ent else None
+                # DEDUP ON entity_id (collision-safe): the ~321 cross-vertical guid twins (Game:119163 /
+                # Movie:119163) have DISTINCT entity_ids -> BOTH kept as distinct rows. Fall back to the
+                # legacy bare-pid dedup ONLY when a row has no entity_id (pre-migration parquet).
+                if eid is not None and eid in self.row_by_eid:
                     continue
-                self.row_by_pid[pid] = len(self.pids)
+                if eid is None and pid in self.row_by_pid:
+                    continue
+                row = len(self.pids)
                 self.pids.append(pid)
+                if pid not in self.row_by_pid:
+                    self.row_by_pid[pid] = row            # FIRST row for this guid (back-compat; twins share pid)
+                if eid is not None:
+                    self.row_by_eid[eid] = row
                 if load_emb:
                     mat.append(emb)
-                self.meta[pid] = {"property_id": pid, "entity_id": ent, "name": name or f"Property {pid}",
-                                  "vertical": (str(vert).lower() if vert else None),
-                                  "genres": list(kws) if kws else [],
-                                  "release_ts": int(rts) if rts is not None else None}
+                md = {"property_id": pid, "entity_id": ent, "name": name or f"Property {pid}",
+                      "vertical": (str(vert).lower() if vert else None),
+                      "genres": list(kws) if kws else [],
+                      "release_ts": int(rts) if rts is not None else None}
+                self.meta.setdefault(pid, md)             # pid-keyed meta = FIRST twin (back-compat)
+                self.meta_row.append(md)                  # row-aligned meta = EXACT twin (unambiguous)
             if load_emb:
                 m = np.asarray(mat, dtype=np.float32)
                 self.emb = m / np.clip(np.linalg.norm(m, axis=1, keepdims=True), 1e-9, None)
@@ -173,15 +202,26 @@ class Data:
         keep = []
         for i in range(n):
             pid = _pid(ents[i])
-            if pid is None or pid in self.row_by_pid:
+            if pid is None:
                 continue
-            self.row_by_pid[pid] = len(self.pids)
+            eid = str(ents[i]) if ents[i] else None
+            if eid is not None and eid in self.row_by_eid:      # dedup on entity_id (both twins survive)
+                continue
+            if eid is None and pid in self.row_by_pid:          # legacy bare-pid dedup (no entity_id)
+                continue
+            row = len(self.pids)
             self.pids.append(pid)
             keep.append(i)
-            self.meta[pid] = {"property_id": pid, "entity_id": ents[i], "name": names[i] or f"Property {pid}",
-                              "vertical": (str(verts[i]).lower() if verts[i] else None),
-                              "genres": list(kws[i]) if kws[i] is not None else [],
-                              "release_ts": int(rdts[i]) if rdts[i] not in (None, "") else None}
+            if pid not in self.row_by_pid:
+                self.row_by_pid[pid] = row
+            if eid is not None:
+                self.row_by_eid[eid] = row
+            md = {"property_id": pid, "entity_id": ents[i], "name": names[i] or f"Property {pid}",
+                  "vertical": (str(verts[i]).lower() if verts[i] else None),
+                  "genres": list(kws[i]) if kws[i] is not None else [],
+                  "release_ts": int(rdts[i]) if rdts[i] not in (None, "") else None}
+            self.meta.setdefault(pid, md)
+            self.meta_row.append(md)
         mat = np.asarray([embs[i] for i in keep], dtype=np.float32)
         self.emb = mat / np.clip(np.linalg.norm(mat, axis=1, keepdims=True), 1e-9, None)
         self.emb_dim = self.emb.shape[1]
@@ -238,38 +278,45 @@ class Data:
                 cur.execute("SELECT to_regclass(%s)", (f"public.{t}",))
                 return cur.fetchone()[0] is not None
 
+            def _has_col(t, col):
+                cur.execute("SELECT 1 FROM information_schema.columns WHERE table_name=%s AND column_name=%s "
+                            "LIMIT 1", (t, col))
+                return cur.fetchone() is not None
+
+            def _rows(t, value_cols):
+                # Join on entity_id (COLLISION-SAFE: each of the ~321 twins gets its OWN signal, via row_by_eid)
+                # when the table carries an entity_id column; else fall back to the bare property_id -> row_by_pid
+                # (pre-migration behaviour — byte-identical on today's pid-keyed tables).
+                use_eid = _has_col(t, "entity_id")
+                sel = ("entity_id, " if use_eid else "property_id, ") + ", ".join(value_cols)
+                cur.execute(f"SELECT {sel} FROM {t}")
+                for rec in cur.fetchall():
+                    r = self.row_by_eid.get(str(rec[0])) if use_eid else self.row_by_pid.get(rec[0])
+                    if r is not None:
+                        yield (r,) + tuple(rec[1:])
+
+            # S5 popularity: prefer the client-export-derived v2 table (per-vertical percentile of raw
+            # whole numbers; far better coverage — podcast/movie/tv ~99%), fall back to the graph table.
             pop_table = ("property_popularity_v2" if _exists("property_popularity_v2")
                          else ("property_popularity" if _exists("property_popularity") else None))
             self._pop_source = pop_table
             if pop_table:
-                cur.execute(f"SELECT property_id, popularity FROM {pop_table}")
-                for pid, v in cur.fetchall():
-                    r = self.row_by_pid.get(pid)
-                    if r is not None and v is not None:
+                for r, v in _rows(pop_table, ["popularity"]):
+                    if v is not None:
                         self.popularity[r] = v
             if _exists("property_centrality"):
-                cur.execute("SELECT property_id, wdegree FROM property_centrality")
-                for pid, v in cur.fetchall():
-                    r = self.row_by_pid.get(pid)
-                    if r is not None and v is not None:
+                for r, v in _rows("property_centrality", ["wdegree"]):
+                    if v is not None:
                         wdeg[r] = v
             if _exists("property_proximity"):
-                cur.execute("SELECT property_id, franchises, genres FROM property_proximity")
-                for pid, fr, ge in cur.fetchall():
-                    r = self.row_by_pid.get(pid)
-                    if r is None:
-                        continue
+                for r, fr, ge in _rows("property_proximity", ["franchises", "genres"]):
                     if fr:
                         self.franchises[r] = frozenset(str(x).lower() for x in fr)
                     if ge:
                         self.genres_sig[r] = frozenset(str(x).lower() for x in ge)
             if _exists("property_moments"):
-                cur.execute("SELECT property_id, moment_count, richness, trending, last_event_at "
-                            "FROM property_moments")
-                for pid, mc, rich, trend, le in cur.fetchall():
-                    r = self.row_by_pid.get(pid)
-                    if r is None:
-                        continue
+                for r, mc, rich, trend, le in _rows("property_moments",
+                                                    ["moment_count", "richness", "trending", "last_event_at"]):
                     self.moment_count[r] = int(mc or 0)
                     self.richness[r] = float(rich or 0.0)
                     self.trending[r] = float(trend or 0.0)
@@ -401,6 +448,21 @@ class Data:
     def vec(self, pid):
         r = self.row_by_pid.get(pid)
         return None if r is None else self.emb[r]
+
+    def vec_row(self, row):
+        """Embedding for a specific ROW (UNAMBIGUOUS, entity_id space). Prefer over vec(pid) when a resolved
+        row is known: vec(pid) keys on row_by_pid (vertical-AMBIGUOUS), so for the ~321 collisions it returns
+        ONE twin's row; vec_row reads the exact resolved entity."""
+        if self.emb is None or row is None or row < 0 or row >= self.emb.shape[0]:
+            return None
+        return self.emb[row]
+
+    def row_meta(self, row):
+        """Row-aligned metadata (UNAMBIGUOUS) — meta[pid] collapses the ~321 colliding guids to one vertical,
+        row_meta keeps each twin's own entity_id/name/vertical."""
+        if row is None or row < 0 or row >= len(self.meta_row):
+            return {}
+        return self.meta_row[row]
 
     def stats(self):
         n = len(self.pids)

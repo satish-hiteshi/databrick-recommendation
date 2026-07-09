@@ -73,7 +73,7 @@ def _stage():
             break
 
     # FLAT engine modules (api imports `from data import ...` / `from store import ...`) — stage as files
-    for mod in ("api.py", "data.py", "store.py"):
+    for mod in ("api.py", "data.py", "store.py", "substrate_guard.py", "_identity.py"):
         shutil.copy(os.path.join(_SRC, mod), os.path.join(s, mod))
 
     # Qwen parquet staged from a Volume -> vector/data_v2 (model._bootstrap sets ADAPTIVE_PARQUET to it)
@@ -91,6 +91,7 @@ def main():
     s = _stage()
     try:
         code_paths = [os.path.join(s, "api.py"), os.path.join(s, "data.py"), os.path.join(s, "store.py"),
+                      os.path.join(s, "substrate_guard.py"), os.path.join(s, "_identity.py"),
                       os.path.join(s, "vector")]
         if os.path.isfile(os.path.join(s, "otel_setup.py")):
             code_paths.append(os.path.join(s, "otel_setup.py"))

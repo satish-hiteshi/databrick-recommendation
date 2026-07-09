@@ -24,7 +24,17 @@ Pure, stateless given a loaded Data snapshot + a request. Two phases:
 """
 import os
 import re
+import sys
 from collections import Counter, defaultdict
+
+# shared/identity.py is FROZEN — import, never edit. It is the ONE place the platform derives the
+# composite (profile_key + media_source_guid) from an entity_id, so the boost response can emit the
+# stable post-migration key. Pure functions, no I/O. (Repo root on sys.path -> `shared.identity`.)
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+from shared.identity import (composite_of, composite_fields, make_entity_id,  # noqa: E402
+                             profile_key_for)
 
 # ── UC8 blend weights (spec §2 — MUST sum to 1.0) ───────────────────────────────
 W_POP = 0.35    # S5 popularity  (DOMINANT — safe cross-vertical pick for a new user)
@@ -47,6 +57,39 @@ ENH_W_POP, ENH_W_CENT, ENH_W_REL = 0.18, 0.20, 0.35   # enhanced default (taste-
 
 def _legacy():
     return os.environ.get("E8_LEGACY_BASELINE", "0") == "1"
+
+
+# ── Per-vertical richness floor (env-gated, reversible) ─────────────────────────────────────────
+# The richness gate (richness >= floor, default 0.5) is applied PER VERTICAL, so a vertical whose
+# richness is near-constant can be given its own floor WITHOUT touching the others. This is a GATE change
+# only (which candidates are eligible) — it changes NO weight and NO scoring math. Default OFF: with no
+# env set, every vertical uses the request-level `richness_floor` exactly as before (byte-identical).
+#   E8_PODCAST_RICHNESS_FLOOR   podcast-only floor override (e.g. 0.0). Motivated by the current substrate:
+#     7,169/8,170 podcasts sit at richness≈0.497 (re-keyed podcast moments lost the availability stream ->
+#     near-constant velocity -> tie-collapsed percentile), so the 0.5 floor passes only 6.5% of podcasts.
+#   E8_VERTICAL_RICHNESS_FLOOR  general form "vert=floor,vert=floor" (e.g. "podcast=0.0,tv=0.4"); takes
+#     precedence over the podcast-specific var for any vertical it names.
+def _vertical_floor(vertical, base_floor):
+    """Resolve the effective richness floor for `vertical`. Returns `base_floor` unless an env override
+    names this vertical (then that override wins). moment_count>0 stays a HARD gate regardless."""
+    spec = os.environ.get("E8_VERTICAL_RICHNESS_FLOOR")
+    if spec:
+        for part in spec.split(","):
+            if "=" in part:
+                v, _, f = part.partition("=")
+                if v.strip().lower() == vertical:
+                    try:
+                        return float(f)
+                    except ValueError:
+                        pass
+    if vertical == "podcast":
+        pf = os.environ.get("E8_PODCAST_RICHNESS_FLOOR")
+        if pf is not None:
+            try:
+                return float(pf)
+            except ValueError:
+                pass
+    return base_floor
 
 
 def _weights():
@@ -103,8 +146,15 @@ _NAME_CACHE = {}
 def _name_arrays(data):
     c = _NAME_CACHE.get(id(data))
     if c is None:
-        norm = [_norm_name(data.meta[p].get("name")) for p in data.pids]
-        fran = [_franchise(data.meta[p].get("name")) for p in data.pids]
+        # ROW-aligned (via row_meta): meta[pid] collapses the ~321 colliding guids to one vertical, so the
+        # second twin's row would otherwise inherit the first twin's name and be dropped by the name-dedup.
+        rm = getattr(data, "meta_row", None)
+        if rm:
+            norm = [_norm_name(rm[r].get("name")) for r in range(len(data.pids))]
+            fran = [_franchise(rm[r].get("name")) for r in range(len(data.pids))]
+        else:
+            norm = [_norm_name(data.meta[p].get("name")) for p in data.pids]
+            fran = [_franchise(data.meta[p].get("name")) for p in data.pids]
         c = {"norm": norm, "fran": fran}
         _NAME_CACHE[id(data)] = c
     return c["norm"], c["fran"]
@@ -152,12 +202,12 @@ def detect_gaps(data, seed_vert_counts, gap_threshold, exclude_verticals):
 
 def _why(data, seeds):
     """'Popular with fans of [A] and [B]' — names up to 2 of the user's follows (highest-popularity ones).
-    Backend-agnostic: uses only the RAM signal arrays, not candidate embeddings (which live in Qdrant)."""
+    `seeds` are ROW indices (twin-correct); read popularity/name by row. Backend-agnostic (RAM arrays only)."""
     if not seeds:
         return "A popular pick to round out your feed"
-    ranked = sorted(seeds, key=lambda p: float(data.popularity[data.row_by_pid[p]])
-                    if p in data.row_by_pid else 0.0, reverse=True)
-    names = [data.meta.get(p, {}).get("name", f"Property {p}") for p in ranked[:2]]
+    ranked = sorted(seeds, key=lambda r: float(data.popularity[r]) if 0 <= r < len(data.popularity) else 0.0,
+                    reverse=True)
+    names = [data.row_meta(r).get("name") or f"Property {r}" for r in ranked[:2]]
     return f"Popular with fans of {' and '.join(names)}"
 
 
@@ -175,17 +225,18 @@ def _fmt_tag(t):
     return t.lower() if (t[:1].isupper() and t[1:].islower()) else t
 
 
-def _why_truthful(data, cand_pid, nseed_pid):
+def _why_truthful(data, cand_row, nseed_row):
     """Truthful, seed-referencing why_string for the ENHANCED (max_any_seed) config. The nearest seed is the
     one that GAVE the winning max-to-any cosine in retrieval (passed in — NOT recomputed as a centroid).
     Rule: shared = candidate genres present ALSO on that seed, in candidate order (bm25_keywords are genre-
     salience-ordered) with pure-numeric tags (years) dropped; the most-specific shared tag = first NON-broad,
-    else the earliest shared. Never asserts popularity or a trait not on both; no overlap -> bare seed ref."""
-    sname = data.meta.get(nseed_pid, {}).get("name")
+    else the earliest shared. Never asserts popularity or a trait not on both; no overlap -> bare seed ref.
+    BOTH candidate and seed genres read by ROW (row_meta) so a collided twin cites its OWN genres/name."""
+    sname = data.row_meta(nseed_row).get("name")
     if not sname:
         return "A pick to round out your feed"
-    cand_g = data.meta.get(cand_pid, {}).get("genres") or []
-    seed_g = {str(g).lower() for g in (data.meta.get(nseed_pid, {}).get("genres") or [])}
+    cand_g = data.row_meta(cand_row).get("genres") or []
+    seed_g = {str(g).lower() for g in (data.row_meta(nseed_row).get("genres") or [])}
     shared = [g for g in cand_g if str(g).lower() in seed_g and not str(g).strip().isdigit()]
     if shared:
         non_broad = [g for g in shared if str(g).lower() not in _BROAD_GENRES]
@@ -206,12 +257,14 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
     both property_id (external) and public_property_id so the client can use whichever it needs."""
     norm_names, franchises = _name_arrays(data)
 
-    # resolve every seed to a served EXTERNAL id (accepts public ids too)
-    all_followed = {r for r in (data.resolve(p, id_space) for p in (followed or [])) if r is not None}
+    # `followed`/`exclude_ids` are already-resolved ROW INDICES (api._resolve_inbound_ids did the twin-correct
+    # entity_id/composite/bare-guid resolution). We do NOT re-resolve: data.resolve int-casts its input, which
+    # would mis-read a row index as a guid. Seeds are ROWS end-to-end -> twin-correct taste/exclude/candidates.
+    all_followed = {r for r in (followed or []) if r is not None and 0 <= r < len(data.pids)}
     seeds = list(dict.fromkeys(all_followed))
     seed_vert = Counter()
-    for p in all_followed:
-        v = data.meta.get(p, {}).get("vertical")
+    for r in all_followed:
+        v = data.row_meta(r).get("vertical")
         if v:
             seed_vert[v] += 1
 
@@ -238,8 +291,8 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
                "total_suggested": 0, "reason": "no gaps and deepen disabled"}
         return ctx, [], ({"seed_vertical_counts": dict(seed_vert)} if debug else None)
 
-    exclude = set(all_followed) | {r for r in (data.resolve(x, id_space) for x in (exclude_ids or [])) if r is not None}
-    exclude_norm = {norm_names[data.row_by_pid[p]] for p in exclude if p in data.row_by_pid}
+    exclude = set(all_followed) | {r for r in (exclude_ids or []) if r is not None and 0 <= r < len(data.pids)}
+    exclude_norm = {norm_names[r] for r in exclude if 0 <= r < len(norm_names)}     # exclude = ROWS (row-aligned)
     exclude_norm.discard("")
 
     # ── collect gated candidates per gap vertical via the vector store (pass 1) ──
@@ -247,10 +300,12 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
     # id-exclusion; here we only add the name-dedup guard and read the SCORING signals from RAM arrays.
     vert_set = {v for v, _, _ in gaps}
     pool = {v: [] for v in vert_set}    # vertical -> [{pid,row,pop,cen,rel_raw,rich,trd,rec}]
+    floors_used = {}                    # vertical -> effective floor (for debug/observability)
     for v in vert_set:
-        for pid, cosine, nseed in store.candidates(taste, v, floor, exclude, seed_pids=seeds):
-            row = data.row_by_pid.get(pid)
-            if row is None or norm_names[row] in exclude_norm:
+        floor_v = _vertical_floor(v, floor)    # per-vertical gate (env-gated; == floor unless overridden)
+        floors_used[v] = floor_v
+        for pid, row, cosine, nseed in store.candidates(taste, v, floor_v, exclude, seed_rows=seeds):
+            if row is None or norm_names[row] in exclude_norm:   # row = the UNAMBIGUOUS served row from the store
                 continue
             pool[v].append({"pid": pid, "row": row, "pop": float(data.popularity[row]),
                             "cen": float(data.centrality[row]), "rel_raw": max(0.0, float(cosine)),
@@ -263,7 +318,7 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
     # percentile-normalized) dominate. Popularity stays RAW — it is genuine absolute social proof.
     w_pop, w_cent, w_rel, w_mom, w_trd, w_rec = _weights()   # team weights when E8X_W_* unset (byte-identical)
     rel_raw_mode = os.environ.get("E8X_REL_RAW", "0") == "1"  # C1 side-test (default OFF): raw cosine vs percentile
-    ranked = {}                         # vertical -> [(blend, pid, components)]
+    ranked = {}                         # vertical -> [(blend, pid, row, components)]
     for v, cands in pool.items():
         rel_pct = _rank_percentile([c["rel_raw"] for c in cands])
         scored = []
@@ -271,7 +326,7 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
             rel_term = c["rel_raw"] if rel_raw_mode else rp   # OFF -> percentile (byte-identical)
             blend = (w_pop * c["pop"] + w_cent * c["cen"] + w_rel * rel_term + w_mom * c["rich"]
                      + w_trd * c["trd"] + w_rec * c["rec"])
-            scored.append((blend, c["pid"], {"popularity": c["pop"], "centrality": c["cen"],
+            scored.append((blend, c["pid"], c["row"], {"popularity": c["pop"], "centrality": c["cen"],
                            "relevance": rp, "relevance_cosine": round(c["rel_raw"], 4),
                            "richness": c["rich"], "trending": c["trd"], "recency": c["rec"],
                            "nseed": c["nseed"]}))
@@ -286,17 +341,16 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
         desired[v] = tgt if kind == "absent" else int(need)
 
     # ── select with franchise-cap + name-dedup, then fair round-robin under total_cap ──
-    picked = defaultdict(list)          # vertical -> [(blend, pid, components)]
+    picked = defaultdict(list)          # vertical -> [(blend, pid, row, components)]
     used_norm = set(exclude_norm)
     fr_count = defaultdict(Counter)     # vertical -> franchise -> n
 
     def _take_one(v):
         """Pull the next eligible candidate for vertical v into picked[v]; True if one was taken."""
         for cand in ranked[v]:
-            blend, pid, comp = cand
-            if any(pid == c[1] for c in picked[v]):
+            blend, pid, row, comp = cand
+            if any(row == c[2] for c in picked[v]):          # dedup on ROW -> the ~321 twins are independently pickable
                 continue
-            row = data.row_by_pid[pid]
             nn = norm_names[row]
             if nn and nn in used_norm:
                 continue
@@ -342,24 +396,52 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
     for v, kind, _ in gaps:
         (deepen_detected if kind == "deepen" else gap_detected).append(v)
         props = []
-        for blend, pid, comp in picked[v]:
-            m = data.meta[pid]
-            row = data.row_by_pid[pid]
+        for blend, pid, row, comp in picked[v]:
+            m = data.row_meta(row)                       # UNAMBIGUOUS row meta (twin-correct entity_id/name/vertical)
+            # ── COMPOSITE KEY (post-migration stable identity) ──────────────────────────
+            # entity_id is the universal survivor ("Movie:119163"); derive the composite from it via the
+            # FROZEN shared.identity. media_source_guid == source_id == the bare `property_id` below, but as
+            # a STRING and — crucially — paired with profile_key it is UNAMBIGUOUS across the ~321 guids that
+            # collide across verticals (Game:119163 vs Movie:119163). Fall back to (vertical, guid) if the
+            # entity_id is absent/unrecognised so a served row always carries a profile_key.
+            _raw_eid = m.get("entity_id")
+            if _raw_eid:
+                entity_id = str(_raw_eid)
+                try:
+                    _comp = composite_of(entity_id)
+                except ValueError:
+                    _comp = composite_fields(v, pid)   # unrecognised prefix -> derive from vertical + guid
+            else:
+                # no entity_id on the row -> build it from (vertical, guid); pid IS the source_id/guid
+                entity_id = make_entity_id(v, pid)
+                _comp = composite_fields(v, pid)
             props.append({
                 "type": "property",
+                # NOTE (client-contract): `property_id` here is the bare source_id / media_source_guid — it is
+                # VERTICAL-AMBIGUOUS post-migration (collides across verticals). Kept for backward-compat; the
+                # unambiguous key is (profile_key, media_source_guid) / entity_id. Prefer those.
                 "property_id": pid,
+                # DEPRECATED — the OLD public property_id (public_properties.id) is GONE from the new graph and
+                # is NOT reconstructable; data.public_id() returns None under the default id_space. Retained as
+                # an explicit null so existing clients don't KeyError; remove once no client reads it.
                 "public_property_id": data.public_id(pid),
-                "entity_id": str(m.get("entity_id") or pid),
+                "entity_id": entity_id,
+                "profile_key": _comp["profile_key"],           # NEW — composite half 1 (per-vertical constant)
+                "media_source_guid": _comp["media_source_guid"],  # NEW — composite half 2 (STRING; == source_id)
                 "name": m.get("name"),
                 "vertical": v,
                 "genres": m.get("genres", [])[:6],
                 "thumbnail_url": None,                  # not in the 44k-qwen set (UMI store resolves client-side)
+                # TODO(client-contract, sign-off): the bare-guid deep_link is vertical-AMBIGUOUS (a shared guid
+                # could resolve to the game or the movie). Proposed composite form: f"feeds://property/{entity_id}"
+                # or f"feeds://{_comp['profile_key']}/{_comp['media_source_guid']}". Kept as-is until Michelle/
+                # Viaduct sign off so the current client keeps working.
                 "deep_link": f"feeds://property/{pid}",
                 "score": round(float(blend), 4),
                 "moment_richness_score": round(comp["richness"], 4),
                 "popularity_score": round(comp["popularity"], 4),   # honest social-proof signal we DO have
                 "follower_count": None,                 # resolved client-side from UMI store (spec open Q)
-                "why_string": (_why_truthful(data, pid, comp.get("nseed"))
+                "why_string": (_why_truthful(data, row, comp.get("nseed"))
                                if (truthful_why and comp.get("nseed") is not None) else _why(data, seeds)),
                 "badge": ("trending" if comp["trending"] >= 0.85 else None),
                 "moment_count": int(data.moment_count[row]),
@@ -377,7 +459,8 @@ def build_boost(data, store, *, followed, target_per_vertical, total_cap, gap_th
                "retrieval_mode": (os.environ.get("E8X_RETRIEVAL_MODE").lower() if os.environ.get("E8X_RETRIEVAL_MODE")
                                   else ("centroid" if _legacy() else "max_any_seed")),
                "per_seed_m": int(os.environ.get("E8X_PER_SEED_M", "10")),
-               "richness_floor": floor, "weights": {"popularity": round(w_pop, 4), "centrality": round(w_cent, 4),
+               "richness_floor": floor, "richness_floor_per_vertical": floors_used,
+               "weights": {"popularity": round(w_pop, 4), "centrality": round(w_cent, 4),
                "relevance": round(w_rel, 4), "moment_richness": round(w_mom, 4), "trending": round(w_trd, 4), "recency": round(w_rec, 4)}}
     return ctx, groups, dbg
 

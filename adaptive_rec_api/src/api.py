@@ -21,9 +21,11 @@ via gate-exhaustion. Session memory (server-side, Postgres) persists `suggested`
 """
 import os
 import re
+import sys
 import time
 from collections import Counter
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List
 
 import numpy as np
@@ -33,6 +35,17 @@ from pydantic import BaseModel
 
 from data import Data
 from store import SessionStore
+
+# ── shared identity helper (FROZEN, repo root: shared/identity.py) ──────────────────
+# The composite-key migration makes the bare source_id vertical-ambiguous (~321 guids
+# collide across verticals — e.g. Game:119163 vs Movie:119163). identity.py is the ONE
+# place that builds/parses the composite (profile_key + media_source_guid) and entity_id.
+# api.py lives at endpoint_6_adaptive_recs/adaptive_rec/src/ -> repo root is parents[3];
+# shared/ has no __init__, so put shared/ on sys.path and import the module directly.
+_SHARED_DIR = str(Path(__file__).resolve().parents[3] / "shared")
+if _SHARED_DIR not in sys.path:
+    sys.path.insert(0, _SHARED_DIR)
+import identity  # noqa: E402  (make_entity_id, parse_entity_id, composite_of, candidate_entity_ids, ...)
 
 app = FastAPI(title="Feeds.ai Onboarding Adaptive-Rec", version="1.0")
 STORE = SessionStore()
@@ -59,10 +72,15 @@ W_CENT = 0.16   # S4 centrality (graph PageRank)
 W_POP = 0.48    # S5 popularity (graph user_rating) — DOMINANT
 W_PROX = 0.04   # S6 proximity  (franchise/genre overlap with the user's follows)
 
-# ── EXPERIMENTAL FLAGS (E6-COREXP-1) — env-driven; ALL DEFAULT = current behaviour (byte-identical) ──
+# ── EXPERIMENTAL FLAGS (E6-COREXP-1) — env-driven ──
 RELEVANCE_MODE = os.getenv("E6X_RELEVANCE_MODE", "max")        # max | coherence | clustered
 ESTABLISH_MODE = os.getenv("E6X_ESTABLISH_MODE", "threshold")  # threshold | topn
-RANK_MODE      = os.getenv("E6X_RANK_MODE", "pop_dominant")    # pop_dominant | taste_led
+# COMMITTED DEFAULT = R2 (taste_led + the tuned ramp 0.25/0.03/0.10 below) — the VALIDATED regime
+# (E6_R2_FULL_BATTERY.md: acceptable+ 79%→87%, STRONG 20%→43%, popularity-hijacks 83→19). Changed from
+# "pop_dominant" on 2026-07-09. E6X_LEGACY_POP_DOMINANT=1 restores the original popularity-dominant baseline
+# IN FULL; E6X_RANK_MODE stays a granular A/B override. Precedence: E6X_RANK_MODE > E6X_LEGACY_POP_DOMINANT > R2.
+_LEGACY_POP_DOMINANT = os.getenv("E6X_LEGACY_POP_DOMINANT", "").strip().lower() in ("1", "true", "yes", "on")
+RANK_MODE      = os.getenv("E6X_RANK_MODE", "pop_dominant" if _LEGACY_POP_DOMINANT else "taste_led")  # pop_dominant | taste_led
 TOPN           = int(os.getenv("E6X_TOPN", "200"))            # topn pool size
 NULL_FLOOR     = float(os.getenv("E6X_NULL_FLOOR", "0.45"))   # topn: null if best ranking-relevance < this
 COH_MAX_W      = float(os.getenv("E6X_COH_MAX_W", "0.6"))     # coherence: COH_MAX_W*max + COH_MEAN_W*mean_topk
@@ -70,9 +88,9 @@ COH_MEAN_W     = float(os.getenv("E6X_COH_MEAN_W", "0.4"))
 CLU_THRESH     = float(os.getenv("E6X_CLU_THRESH", "0.75"))   # clustered: start new cluster if cos-to-mean < this
 CLU_MAX        = int(os.getenv("E6X_CLU_MAX", "4"))
 TL_CENT, TL_PROX, TL_REC = 0.06, 0.03, 0.03                   # taste_led: small non-relevance priors (rel = residual)
-TL_POP_START = float(os.getenv("E6X_TL_POP_START", "0.35"))   # taste_led popularity ramp: weight at 2 follows
+TL_POP_START = float(os.getenv("E6X_TL_POP_START", "0.25"))   # R2 tuned ramp: weight at 2 follows (was V1 0.35)
 TL_POP_SLOPE = float(os.getenv("E6X_TL_POP_SLOPE", "0.03"))   #   decrease per extra follow
-TL_POP_FLOOR = float(os.getenv("E6X_TL_POP_FLOOR", "0.15"))   #   never below this (residual safety net)
+TL_POP_FLOOR = float(os.getenv("E6X_TL_POP_FLOOR", "0.10"))   #   never below this (residual safety net; was V1 0.15)
 
 
 def _taste_pop_weight(nf):
@@ -112,15 +130,17 @@ def _companion_feed(cand_norm, parents):
     return False
 
 
-def _relevance(C, followed, data):
+def _relevance(C, followed_rows, data):
     """Ranking relevance per RELEVANCE_MODE. Returns (rel_vec (N,), clusters_info|None).
-    'max' returns exactly C.max(axis=1) so the default path is byte-identical to baseline."""
+    'max' returns exactly C.max(axis=1) so the default path is byte-identical to baseline.
+    `followed_rows` are UNAMBIGUOUS row indices (entity_id space) — clustered mode reads their
+    vectors by row so a collision twin cannot seed the wrong interest cluster."""
     if RELEVANCE_MODE == "coherence" and C.shape[1] > 1:
         k = min(3, C.shape[1])
         mean_topk = np.sort(C, axis=1)[:, -k:].mean(axis=1)          # mean of each candidate's top-k follow cosines
         return (COH_MAX_W * C.max(axis=1) + COH_MEAN_W * mean_topk), None
     if RELEVANCE_MODE == "clustered" and C.shape[1] > 1:
-        fr = [data.emb[data.row_by_pid[p]] for p in followed if p in data.row_by_pid]
+        fr = [data.emb[r] for r in followed_rows]
         clusters = []  # each: [sum_vec, count]
         for v in fr:
             placed = False
@@ -259,19 +279,53 @@ def _ints(xs):
     return out
 
 
-def _why(data, pid, followed):
-    """Name the 1-2 followed properties the candidate is most similar to; cross-vertical -> 'fans of' framing."""
-    cv = data.vec(pid)
+def _resolve_ids(data, xs):
+    """Resolve an inbound id list to served pids — COMPOSITE-AWARE, backward-compatible.
+
+    Each element may be (post-migration primary) an ``entity_id`` string ("Movie:119163") or a
+    composite dict ``{profile_key|vertical, media_source_guid}``, OR (backward-compat) a bare int
+    source_id. Resolution is delegated to ``data.resolve`` (no graph I/O). A bare int that maps to
+    MORE THAN ONE served vertical is AMBIGUOUS (the ~321 cross-vertical guid collisions) — such an
+    id is dropped and a warning is recorded so the client learns to send the composite/entity_id.
+
+    Returns ``(rows, pids, warnings)``. `rows` are the UNAMBIGUOUS served row indices (entity_id
+    space) — the caller uses them for the vector + franchise/genre reads so a followed twin can
+    NEVER fetch the OTHER twin's embedding (data.resolve already disambiguates via row_by_eid).
+    `pids` (bare source_ids) are kept parallel for the pid-keyed exclude set + backward-compat.
+    De-dup is on ROW, so two cross-vertical twins (same pid, DISTINCT rows) are BOTH kept."""
+    rows, pids, seen, warnings = [], [], set(), []
+    for x in (xs or []):
+        row, pid, reason = data.resolve(x)
+        if row is None:
+            if reason and reason.startswith("ambiguous:"):
+                warnings.append({"input": x, "reason": "ambiguous_bare_id",
+                                 "candidates": reason.split(":", 1)[1].split(",")})
+            elif reason == "not_served":
+                warnings.append({"input": x, "reason": "not_served"})
+            elif reason == "unresolvable":
+                warnings.append({"input": x, "reason": "unresolvable"})
+            continue
+        if row not in seen:
+            seen.add(row)
+            rows.append(row)
+            pids.append(pid)
+    return rows, pids, warnings
+
+
+def _why(data, win_row, followed_rows):
+    """Name the 1-2 followed properties the candidate is most similar to; cross-vertical -> 'fans of' framing.
+    Row-keyed (entity_id space): similarity + names read the EXACT twins, never a collided pid."""
+    cv = data.vec_row(win_row)
     sims = []
-    for p in followed:
-        v = data.vec(p)
+    for r in followed_rows:
+        v = data.vec_row(r)
         if v is not None and cv is not None:
-            sims.append((float(cv @ v), p))
+            sims.append((float(cv @ v), r))
     sims.sort(reverse=True)
-    names = [data.meta.get(p, {}).get("name", f"Property {p}") for _, p in sims[:2]] or ["properties you follow"]
+    names = [data.row_meta(r).get("name") or "a property you follow" for _, r in sims[:2]] or ["properties you follow"]
     who = " and ".join(names)
-    cand_vert = data.meta.get(pid, {}).get("vertical")
-    top_follow_vert = data.meta.get(sims[0][1], {}).get("vertical") if sims else None
+    cand_vert = data.row_meta(win_row).get("vertical")
+    top_follow_vert = data.row_meta(sims[0][1]).get("vertical") if sims else None
     cross = top_follow_vert is not None and cand_vert != top_follow_vert
     if cross:
         return f"Fans of {who} also listen to this" if cand_vert == "podcast" else f"Fans of {who} also follow this"
@@ -287,16 +341,56 @@ def _top_genres(raw, k=2):
     return (clean or seq)[:k]
 
 
-def _suggestion(data, pid, rel, why):
-    m = data.meta.get(pid, {})
+def _composite(m, pid):
+    """Derive the migration composite (profile_key + media_source_guid) for a served row.
+
+    entity_id is the universal survivor (unchanged by the migration and globally unique),
+    so we prefer it: composite_of("Movie:119163") -> {profile_key, media_source_guid}. If a
+    row somehow lacks a well-formed entity_id we fall back to (vertical, source_id) which
+    E6 rows always have (source_id == media_source_guid == the join key). Never raises —
+    a truly unresolvable row degrades to (None, str(pid)) rather than 500-ing the endpoint."""
+    eid = m.get("entity_id")
+    if eid:
+        try:
+            c = identity.composite_of(str(eid))
+            return c["profile_key"], c["media_source_guid"]
+        except ValueError:
+            pass
+    vert = m.get("vertical")
+    guid = str(m.get("property_id", pid))          # E6 pid == source_id == media_source_guid
+    if vert:
+        try:
+            return identity.profile_key_for(vert), guid
+        except ValueError:
+            pass
+    return None, guid
+
+
+def _suggestion(data, pid, rel, why, row=None):
+    # Prefer the exact served ROW's metadata (unambiguous) over meta[pid] — for the ~321 guids
+    # that collide across verticals, meta[pid] collapses to a single vertical, but the picked row
+    # is exact, so the emitted entity_id/composite match the entity actually surfaced.
+    m = data.row_meta(row) if row is not None else data.meta.get(pid, {})
+    if not m:
+        m = data.meta.get(pid, {})
+    profile_key, media_source_guid = _composite(m, pid)
+    eid = str(m.get("entity_id") or pid)
     return {
         "type": "property",
-        "entity_id": str(m.get("entity_id") or pid),
-        "property_id": pid,
+        "entity_id": eid,                  # universal, unambiguous key (unchanged by the migration)
+        # composite key (migration): profile_key encodes the vertical, so this pair is unambiguous
+        # even for the ~321 guids that collide across verticals. Clients should key on these.
+        "profile_key": profile_key,
+        "media_source_guid": media_source_guid,
+        "property_id": pid,                # DEPRECATED: bare source_id — vertical-AMBIGUOUS on ~321 guids.
+                                           # Kept for backward-compat; use entity_id / composite instead.
         "name": m.get("name"),
         "vertical": m.get("vertical"),
         "genres": _top_genres(m.get("genres")),
         "thumbnail_url": None,             # not in 44k parquet (comes from moments data — not in scope)
+        # deep_link on the bare pid is vertical-ambiguous (feeds://property/119163 could be the game OR
+        # the movie). Kept working for now; TODO(client sign-off): move to an unambiguous form, e.g.
+        # feeds://property/{entity_id} or feeds://property/{profile_key}/{media_source_guid}.
         "deep_link": f"feeds://property/{pid}",
         "score": round(float(rel), 4),
         "why_string": why,
@@ -326,9 +420,15 @@ def adaptive_rec(body: DataframeBody):
     norm_names, franchises = _ensure_name_arrays(data)   # row-aligned, precomputed once (W3/W6 — no regex/req)
     rec = (body.dataframe_records or [{}])[0]
     session_id = rec.get("session_id")
-    followed = list(dict.fromkeys(_ints(rec.get("followed_property_ids"))))   # dedup, preserve order
-    skipped = _ints(rec.get("skipped_property_ids"))
-    exclude_ids = _ints(rec.get("exclude_ids"))
+    # COMPOSITE-AWARE inbound ids: followed/skipped/exclude accept entity_id ("Movie:119163"),
+    # composite dicts ({profile_key|vertical, media_source_guid}), or backward-compat bare source_id
+    # ints. A bare int that resolves to >1 vertical (the ~321 collisions) is dropped with a warning.
+    # rows = UNAMBIGUOUS entity_id-space indices (used for vector/attribute reads — twin-correct);
+    # pids = bare source_ids (used for the pid-keyed exclude set + backward-compat). Both de-duped.
+    followed_rows, followed, w_foll = _resolve_ids(data, rec.get("followed_property_ids"))
+    skipped_rows, skipped, w_skip = _resolve_ids(data, rec.get("skipped_property_ids"))
+    exclude_rows, exclude_ids, w_excl = _resolve_ids(data, rec.get("exclude_ids"))
+    id_warnings = w_foll + w_skip + w_excl
     threshold = min(1.0, max(0.0, float(rec.get("confidence_threshold")
                                         if rec.get("confidence_threshold") is not None else DEFAULT_THRESHOLD)))
     vfilter = {str(v).lower() for v in (rec.get("verticals") or [])} or None
@@ -336,36 +436,45 @@ def adaptive_rec(body: DataframeBody):
     debug = bool(rec.get("debug"))
 
     sess = STORE.get(session_id)
-    signal_count = len(set(followed))
+    signal_count = len(followed_rows)          # distinct ENTITIES (rows), not guids — twin-safe
+
+    def _envelope(preds):
+        out = {"predictions": preds}
+        if id_warnings:                    # carry inbound-id warnings on every exit path
+            out["warnings"] = id_warnings
+        return out
 
     # ACCEPTANCE: >= 2 followed before any suggestion
     if signal_count < MIN_FOLLOWS:
-        return {"predictions": [_prediction(session_id, 0.0, False, signal_count, None,
-                                            debug={"reason": "fewer than 2 followed"} if debug else None)]}
+        return _envelope([_prediction(session_id, 0.0, False, signal_count, None,
+                                      debug={"reason": "fewer than 2 followed"} if debug else None)])
 
-    # follow embedding matrix -> relevance = max cosine to ANY follow
-    F = [data.vec(p) for p in followed]
+    # follow embedding matrix -> relevance = max cosine to ANY follow.
+    # Read vectors by ROW (entity_id space): vec(pid) is collision-lossy, so a followed twin
+    # (e.g. Game:119163) would otherwise fetch the OTHER twin's (Movie:119163) embedding and
+    # corrupt the taste profile at source. vec_row(row) reads the exact resolved entity.
+    F = [data.vec_row(r) for r in followed_rows]
     F = [v for v in F if v is not None]
     if not F:
-        return {"predictions": [_prediction(session_id, 0.0, False, signal_count, None,
-                                            debug={"reason": "no embeddings for followed set"} if debug else None)]}
+        return _envelope([_prediction(session_id, 0.0, False, signal_count, None,
+                                      debug={"reason": "no embeddings for followed set"} if debug else None)])
     C = data.emb @ np.vstack(F).T                               # (N, k) cosine to each followed property
     max_cos = C.max(axis=1)                                     # (N,) plain max-to-any: surfaced score + gate + clone cutoffs
-    rel_vec, clusters_info = _relevance(C, followed, data)      # (N,) ranking relevance (== max_cos in default 'max' mode)
+    rel_vec, clusters_info = _relevance(C, followed_rows, data)  # (N,) ranking relevance (== max_cos in default 'max' mode)
 
     # SKIP = proportional, LOCAL negative applied to the blended score below (Story 2: a local disinterest
     # signal, not a category ban). Near-identical clones of a skip are excluded outright further down.
-    Sv = [data.vec(p) for p in skipped]
+    Sv = [data.vec_row(r) for r in skipped_rows]   # row-keyed (twin-correct), same reason as F
     Sv = [v for v in Sv if v is not None]
     skip_sim = (data.emb @ np.vstack(Sv).T).max(axis=1) if Sv else None
 
-    # follows' franchise/genre union -> S6 proximity overlap for candidates
+    # follows' franchise/genre union -> S6 proximity overlap for candidates.
+    # Iterate the resolved ROWS directly (entity_id space) so a collided twin contributes its
+    # own franchise/genre, not the other vertical's.
     foll_fr, foll_ge = set(), set()
-    for p in followed:
-        r = data.row_by_pid.get(p)
-        if r is not None:
-            foll_fr |= data.franchises[r]
-            foll_ge |= data.genres_sig[r]
+    for r in followed_rows:
+        foll_fr |= data.franchises[r]
+        foll_ge |= data.genres_sig[r]
 
     exclude = set(followed) | set(skipped) | set(exclude_ids) | sess["suggested"]
     # W3: exclude by NORMALIZED name — catches duplicate titles (two "Shaman King") AND edition-variants
@@ -378,16 +487,18 @@ def adaptive_rec(body: DataframeBody):
     # names with >=2 tokens (short names skipped to avoid over-matching).
     feed_parents = []
     if FEED_DEDUP:
-        for p in set(followed) | set(skipped):
-            pn = _norm_name(data.meta.get(p, {}).get("name"))
+        for r in set(followed_rows) | set(skipped_rows):        # row-keyed: exact twin's name
+            pn = _norm_name(data.row_meta(r).get("name"))
             tk = pn.split()
             if len(tk) >= 2:
                 feed_parents.append((pn, tuple(tk)))
 
-    # user's vertical interest (target) + already-served (from session) — proportional diversity guard
+    # user's vertical interest (target) + already-served (from session) — proportional diversity guard.
+    # Row-keyed: a collided twin (Game:119163 vs Movie:119163) must count toward its OWN vertical,
+    # else the diversity guard targets the wrong vertical.
     fvert = {}
-    for p in followed:
-        v = data.meta.get(p, {}).get("vertical")
+    for r in followed_rows:
+        v = data.row_meta(r).get("vertical")
         if v:
             fvert[v] = fvert.get(v, 0) + 1
     # Story 3: user concentrated in one vertical -> open cross-vertical exploration (centrality-gated, below)
@@ -401,9 +512,11 @@ def adaptive_rec(body: DataframeBody):
             served[v] = served.get(v, 0) + 1
     served_total = sum(served.values())
 
-    # best candidate per vertical: tuple = (rank, confidence, pid, is_cross)
+    # best candidate per vertical: tuple = (rank, confidence, pid, is_cross, row)
+    # `row` is the UNAMBIGUOUS served row index — carried so the response emits the exact row's
+    # entity_id/composite even for the ~321 guids where meta[pid] would collapse to one vertical.
     best_per_vert = {}
-    global_top = []   # all established genuine candidates (blend, cosine, pid) — for top-N fill when limit>1
+    global_top = []   # established genuine candidates (blend, cosine, pid, row) — for top-N fill when limit>1
     near_conf = 0.0
     # ── candidate pass (O(44k)): collect exclusion-survivors (ALL safety filters UNCHANGED) ──
     survivors = []    # (row, pid, vertical, mc, rel)
@@ -441,10 +554,10 @@ def adaptive_rec(body: DataframeBody):
     for row, pid, v, mc, rel in established:
         skp = SKIP_PENALTY * max(float(skip_sim[row]) - SIM_FLOOR, 0.0) if skip_sim is not None else 0.0
         blended = _blend(data, row, v, mc, rel, signal_count, foll_fr, foll_ge, skp)
-        global_top.append((blended, mc, pid))
+        global_top.append((blended, mc, pid, row))
         cur = best_per_vert.get(v)
         if cur is None or cur[3] or blended > cur[0]:            # a genuine taste pick always beats a cross pick
-            best_per_vert[v] = (blended, mc, pid, False)
+            best_per_vert[v] = (blended, mc, pid, False, row)
 
     # ── CROSS-VERTICAL EXPLORE (Story 3): podcast survivors NOT established, centrality-gated (trigger UNCHANGED).
     # PODCAST ONLY, topical + graph HUB. taste_led ONLY: surface the pick's real max-to-any cosine (not centrality).
@@ -456,11 +569,11 @@ def adaptive_rec(body: DataframeBody):
                 if cen >= threshold:
                     cur = best_per_vert.get(v)
                     if cur is None or (cur[3] and cen > cur[0]):     # competes only with other cross picks
-                        best_per_vert[v] = (cen, (mc if RANK_MODE == "taste_led" else cen), pid, True)
+                        best_per_vert[v] = (cen, (mc if RANK_MODE == "taste_led" else cen), pid, True, row)
 
     if not best_per_vert:
-        return {"predictions": [_prediction(session_id, near_conf, False, signal_count, None,
-                                            debug={"reason": "no candidate >= threshold", "threshold": threshold} if debug else None)]}
+        return _envelope([_prediction(session_id, near_conf, False, signal_count, None,
+                                      debug={"reason": "no candidate >= threshold", "threshold": threshold} if debug else None)])
 
     # choose vertical(s) by largest-remainder over interest weights (diversity guard so minor interests are
     # represented over the sequence); within each vertical the weighted-blend winner is taken. Vertical is
@@ -484,21 +597,20 @@ def adaptive_rec(body: DataframeBody):
         order = sorted(genuine, key=priority, reverse=True) or sorted(cross, key=lambda v: cross[v][0], reverse=True)
 
     # PRIMARY pick = winner of the chosen vertical order (proportional / cross-vertical inject)
-    primary = best_per_vert[order[0]]                           # (rank, confidence, pid, is_cross)
+    primary = best_per_vert[order[0]]                           # (rank, confidence, pid, is_cross, row)
     picks = [primary]
     chosen = {primary[2]}
     # client wants the TOP-N relevant (limit up to 2): fill remaining slots with the next most-relevant
     # DISTINCT candidates by weighted blend (may be same vertical — "top 2 relevant").
     if limit > 1:
-        for b, mc, pid in sorted(global_top, key=lambda x: -x[0]):
+        for b, mc, pid, row in sorted(global_top, key=lambda x: -x[0]):
             if len(picks) >= limit:
                 break
             if pid not in chosen:
-                picks.append((b, mc, pid, False))
+                picks.append((b, mc, pid, False, row))
                 chosen.add(pid)
 
-    def _wsig(pid):
-        wr = data.row_by_pid.get(pid)
+    def _wsig(wr):                              # wr = the pick's exact served ROW (unambiguous)
         if wr is None:
             return {}
         return {"relevance": round(float(max_cos[wr]), 3), "popularity": round(float(data.popularity[wr]), 3),
@@ -507,8 +619,8 @@ def adaptive_rec(body: DataframeBody):
                 "recency": round(float(data.recency[wr]), 3)}
 
     preds = []
-    for rank, conf, pid, is_cross in picks:                     # one prediction per surfaced suggestion
-        sug = _suggestion(data, pid, conf, _why(data, pid, followed))   # score = confidence (cosine; centrality for cross)
+    for rank, conf, pid, is_cross, row in picks:                # one prediction per surfaced suggestion
+        sug = _suggestion(data, pid, conf, _why(data, row, followed_rows), row=row)   # row-keyed why + composite
         if is_cross:
             sug["badge"] = "cross-vertical"
         dbg = None
@@ -518,7 +630,7 @@ def adaptive_rec(body: DataframeBody):
                    "cross_vertical": is_cross,
                    "weights": {"popularity": W_POP, "relevance": W_REL, "centrality": W_CENT,
                                "proximity": W_PROX, "recency": W_REC, "trending": W_TREND},
-                   "winner_signals": _wsig(pid), "top_blend": round(rank, 4)}
+                   "winner_signals": _wsig(row), "top_blend": round(rank, 4)}
             _exp = {}
             if RELEVANCE_MODE != "max":
                 _exp["relevance_mode"] = RELEVANCE_MODE
@@ -529,7 +641,7 @@ def adaptive_rec(body: DataframeBody):
             if RANK_MODE != "pop_dominant":
                 _exp["rank_mode"] = RANK_MODE
                 _pw = _taste_pop_weight(signal_count)
-                _pod = (data.meta.get(pid, {}).get("vertical") == "podcast")
+                _pod = (data.row_meta(row).get("vertical") == "podcast")
                 _cw = 0.0 if _pod else TL_CENT
                 _pw2 = _pw + (TL_CENT if _pod else 0.0)
                 _exp["taste_weights"] = {"relevance": round(1.0 - (_pw2 + _cw + TL_PROX + TL_REC), 3),
@@ -539,7 +651,7 @@ def adaptive_rec(body: DataframeBody):
                 dbg["experimental"] = _exp
         preds.append(_prediction(session_id, conf, True, signal_count, sug, debug=dbg))
     STORE.record(session_id, suggested_ids=[p[2] for p in picks])   # persist ALL surfaced suggestions
-    return {"predictions": preds}
+    return _envelope(preds)                # _envelope also surfaces dropped/ambiguous inbound-id warnings
 
 
 @app.get("/onboarding/health")

@@ -36,7 +36,6 @@ from datetime import date
 from pathlib import Path
 from typing import Dict, Optional, Union
 
-import psycopg2
 
 from . import config
 
@@ -207,6 +206,7 @@ def _load_store_live() -> Store:
 def load_store() -> Store:
     if _LIVE and _QUERY_FN is not None:
         return _load_store_live()
+    import psycopg2                      # lazy: local Postgres path only — never imported in serving
     con = psycopg2.connect(dbname=config.PG_DB, host=config.PG_HOST, port=config.PG_PORT,
                            user=config.PG_USER, password=config.PG_PASSWORD)
     st = Store()

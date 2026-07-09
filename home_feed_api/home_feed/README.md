@@ -44,8 +44,10 @@ endpoint_3_home_feed/
 the E3 knobs in `config.py`.
 
 ## Status
-**SCAFFOLD ONLY (PROMPT 1).** All `src/*` bodies raise `NotImplementedError("PROMPT 2+: …")`. The
-smoke test verifies the skeleton imports and the E2 reuse seam resolves. Real logic lands PROMPT 2+.
+**FULLY BUILT.** The complete E3 pipeline is implemented and deployed: follow-gate → graph moment
+traversal (Aura `HAS_MOMENT`) → suppression → ranking (taste + recency + proximity) → the UC3 v1.0
+envelope, with moment items carrying the moment's own composite (`moment_profile_key` +
+`moment_media_source_guid`) beside the parent property identity. The old scaffold banner was stale.
 
 ## Run the smoke test
 ```bash

@@ -115,10 +115,11 @@ SELECT b.entity_id, b.profile_key, b.property_id, b.name, b.vertical, b.media_so
        b.raw_popularity, b.pop_source, b.recency_date, b.game_rating_count,
        ROUND(COALESCE(nn.pct, 0.0), 6) AS popularity_pct,   -- the value ranking uses (0..1)
        -- dedup_key: composite identity  guid : media_source_id(or NA) : media_type_id(or NA) ; NULL when guid is NULL
+       -- format "guid:msid|mtid" (parity-verified vs the reference, e.g. "1:1|1")
        CASE WHEN b.media_source_guid IS NULL THEN NULL
-            ELSE concat_ws(':', b.media_source_guid,
-                           coalesce(cast(b.media_source_id AS string), 'NA'),
-                           coalesce(cast(b.media_type_id AS string), 'NA')) END AS dedup_key
+            ELSE concat(b.media_source_guid, ':',
+                        coalesce(cast(b.media_source_id AS string), 'NA'), '|',
+                        coalesce(cast(b.media_type_id AS string), 'NA')) END AS dedup_key
 FROM base b
 LEFT JOIN nn ON b.entity_id = nn.entity_id
 """)

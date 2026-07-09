@@ -66,7 +66,9 @@ moments = (spark.table(f"{S}.{C['moments_table']}")
                    F.to_timestamp("event_starts_at").alias("event_ts"))
            .join(bridge, "public_id", "inner"))
 
-_cutoff = F.date_sub(F.current_timestamp(), RECENT_DAYS)
+# exact timestamp minus 90d (parity-verified vs the reference: date_sub truncates to midnight and
+# mis-buckets same-day moments — 55/52,117 rows differed under the midnight cutoff)
+_cutoff = F.expr(f"current_timestamp() - INTERVAL {RECENT_DAYS} DAYS")
 agg = (moments.groupBy("entity_id", "profile_key", "media_source_guid", "property_id", "vertical")
        .agg(F.count(F.lit(1)).alias("moment_count"),
             F.sum(F.when(F.col("event_ts") >= _cutoff, 1).otherwise(0)).alias("recent_count"),
@@ -88,7 +90,11 @@ def _tie_avg_pct(value_col, out_col, df):
               .drop("_rn", "_avg_rn", "_n"))
 
 out = _tie_avg_pct("velocity", "richness", agg)
-out = _tie_avg_pct("recent_count", "trending", out)
+# trending: percentile AMONG rc>0 rows only; rc=0 -> 0.0 (parity-verified: pooling rc=0 rows into the
+# percentile is wrong — the reference assigns 0.0 to every zero-recent row, max diff 0.91 otherwise)
+_trend = (_tie_avg_pct("recent_count", "trending", agg.where(F.col("recent_count") > 0))
+          .select("entity_id", "trending"))
+out = out.join(_trend, "entity_id", "left").fillna({"trending": 0.0})
 out = out.select("entity_id", "property_id", "profile_key", "media_source_guid", "vertical",
                  "moment_count", "recent_count", "last_event_at",
                  F.round("velocity", 6).alias("velocity"), "richness", "trending")

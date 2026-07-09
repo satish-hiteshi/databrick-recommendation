@@ -39,20 +39,31 @@ print("HOST    :", HOST)
 print("SERVING :", SERVING)
 
 # COMMAND ----------
-# ===================== 1. CONFIG (widgets — a Job can override via base_parameters) =====================
+# MAGIC %run ../../graph/utils/workspace_catalog
+
+# COMMAND ----------
+# MAGIC %run ../../foundation/_endpoint_env
+
+# COMMAND ----------
+# ===================== 1. CONFIG (env auto-resolved from the workspace; a Job can still override) =====================
+# Defaults come from _endpoint_env (via workspace_catalog): catalog/scope/vs/endpoint/neo4j adapt to dev|stg|prod.
 _defaults = {
-    "catalog":        "stg_feeds_silver",
-    "schema":         "ml",
-    "endpoint":       "discovery-api-staging",        # client copy defaults to discovery-api-staging-v2
-    "scope":          "feeds-default-scope",              # secret scope (neo4j_password, databricks_token)
-    "parquet":        "/Volumes/stg_feeds_silver/ml/feedsai_src/embeddings.parquet",
-    "vs_endpoint":    "feedsai-staging-vs",
-    "vs_index":       "stg_feeds_silver.ml.entities_vs",
-    "vector_backend": "qdrant",   # "qdrant" (in-memory from parquet) | "databricks" (Vector Search)
-    "neo4j_uri":      "neo4j+s://17aa0e8d.databases.neo4j.io",
+    "catalog":        CATALOG,
+    "schema":         SCHEMA,
+    "endpoint":       endpoint_name("discovery-api"),
+    "scope":          "feeds-default-scope",                          # secret scope (neo4j_password, databricks_token)
+    "parquet":        f"{VOLUME_DIR}/embeddings.parquet",
+    "vs_endpoint":    VS_ENDPOINT,
+    "vs_index":       VS_INDEX,
+    "vector_backend": VECTOR_BACKEND,   # qdrant (default; in-memory from parquet) | databricks (Vector Search)
+    "neo4j_uri":      NEO4J_URI,
     "enable_graph": "1",         # "1" = graph refine via Aura | "0" = vector-only
-    "qwen_embed":     "databricks-qwen3-embedding-0-6b",
-    "warehouse_http": "/sql/1.0/warehouses/321252e45d03563e",   # SQL warehouse HTTP path (LiveDataSource reads)
+    # Option A cutover (Greg: both feeds read the graph). "postgres" = Silver public_moments (content +
+    # availability, today's behavior). Flip to "graph" ONLY once graph_generation carries moment
+    # content (title/description/url) + availability kinds — until then the graph has no titles.
+    "moments_source": "postgres",   # postgres | graph
+    "qwen_embed":     QWEN_EMBED_ENDPOINT,
+    "warehouse_http": WAREHOUSE_HTTP,               # per-env SQL warehouse (resolved by _endpoint_env, like catalog/schema)
     "workload_size":  "Medium",
     "enable_timing":  "1",                            # "1" → TIMING_BREAKDOWN (source for per-stage latency)
     # ── observability (OTLP → Grafana Cloud, H1.6) ──
@@ -113,6 +124,7 @@ if C["enable_graph"] == "1":
     ENV["NEO4J_USER"]     = "neo4j"
     ENV["NEO4J_PASSWORD"] = sec("neo4j_password")
     ENV["NEO4J_DATABASE"] = "neo4j"
+ENV["DISCOVERY_MOMENTS_SOURCE"] = C["moments_source"]   # graph mode falls back to postgres on failure
 if C["enable_timing"] == "1":
     ENV["TIMING_BREAKDOWN"] = "1"
 
@@ -141,18 +153,19 @@ print("endpoint state:", wc.serving_endpoints.get(C["endpoint"]).state)
 
 # COMMAND ----------
 # ===================== 4. SMOKE TEST — user 13 (a real game-follower) =====================
-import requests, json
-TOKEN = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
-URL = f"{HOST}/serving-endpoints/{C['endpoint']}/invocations"
-body = {"dataframe_records": [{"user_id": 13, "limit": 8, "debug": True}]}
-r = requests.post(URL, headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"},
-                  json=body, timeout=300)
-r.raise_for_status()
-feed = r.json()["predictions"][0]
-ctx = feed.get("context", {}) or {}
-print("mode:", ctx.get("mode"), "| signal:", ctx.get("signal_strength"), "| error:", feed.get("error"))
-print("main_feed count:", feed["main_feed"]["count"], "| carousels:", len(feed.get("carousels", [])))
-for it in feed["main_feed"]["items"][:6]:
-    print(f"  - {str(it.get('vertical')):7} {it.get('property_name')}: {str(it.get('title'))[:46]}")
-assert feed.get("error") is None and feed["main_feed"]["count"] > 0, "smoke test failed"
-print("SMOKE OK ✓")
+# SMOKE TEST DISABLED — commented out 2026-07-09 (deploy ends after endpoint is READY). Uncomment below to re-enable.
+# import requests, json
+# TOKEN = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
+# URL = f"{HOST}/serving-endpoints/{C['endpoint']}/invocations"
+# body = {"dataframe_records": [{"user_id": 13, "limit": 8, "debug": True}]}
+# r = requests.post(URL, headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"},
+#                   json=body, timeout=300)
+# r.raise_for_status()
+# feed = r.json()["predictions"][0]
+# ctx = feed.get("context", {}) or {}
+# print("mode:", ctx.get("mode"), "| signal:", ctx.get("signal_strength"), "| error:", feed.get("error"))
+# print("main_feed count:", feed["main_feed"]["count"], "| carousels:", len(feed.get("carousels", [])))
+# for it in feed["main_feed"]["items"][:6]:
+#     print(f"  - {str(it.get('vertical')):7} {it.get('property_name')}: {str(it.get('title'))[:46]}")
+# assert feed.get("error") is None and feed["main_feed"]["count"] > 0, "smoke test failed"
+# print("SMOKE OK ✓")

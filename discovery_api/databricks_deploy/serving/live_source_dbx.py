@@ -202,12 +202,31 @@ class LiveDataSource(DataSource):
     def all_entity_ids(self):
         self._ensure(); return list(self._entities.keys())
 
-    # ── moments (public_moments, Published=3, newest-first by event_starts_at) ──
+    # ── moments — source-switchable (Option A cutover, Greg: both feeds read the graph) ──────────
+    # DISCOVERY_MOMENTS_SOURCE = "postgres" (default; Silver public_moments — complete content +
+    # availability/live events, ~247k published) | "graph" (Aura :Moment via HAS_MOMENT — the source E3
+    # already serves from). Flip to "graph" ONLY once graph_generation carries moment content
+    # (title/description/url) + the availability kinds; until then the graph would serve empty titles.
+    # Graph mode falls back to Postgres on any failure (never an empty feed from a connect error).
     def _load_moments(self):
-        # profile_key + media_source_guid = the MOMENT's OWN composite (client unique index on
-        # moments(media_source_guid, profile_key) — resolves 1:1). guid is a STRING, never cast.
-        # Fall back to the legacy select if the mirror predates those columns (fields stay empty →
-        # the serializer emits null; a key is never fabricated).
+        if os.getenv("DISCOVERY_MOMENTS_SOURCE", "postgres").strip().lower() == "graph":
+            try:
+                self._load_moments_graph()
+            except Exception as ex:
+                print(f"[live_source] graph moments failed ({type(ex).__name__}: {str(ex)[:120]}) — "
+                      "falling back to public_moments", flush=True)
+                self._load_moments_pg()
+        else:
+            self._load_moments_pg()
+        _floor = datetime.min.replace(tzinfo=timezone.utc)
+        for ms in self._moments_by_entity.values():  # newest-first; callers take [0] as latest
+            ms.sort(key=lambda m: m.event_starts_at or _floor, reverse=True)
+
+    def _load_moments_pg(self):
+        """Silver public_moments (Published=3). profile_key + media_source_guid = the MOMENT's OWN
+        composite (client unique index on moments(media_source_guid, profile_key) — resolves 1:1).
+        guid is a STRING, never cast. Falls back to the legacy select if the mirror predates those
+        columns (fields stay empty → the serializer emits null; a key is never fabricated)."""
         cols = ("id AS moment_id, property_id, media_type_id, moment_type_id, title, description, "
                 "event_starts_at, event_ends_at, media_platform_id, created_at")
         where = "WHERE moment_status_id = 3 AND deleted_at IS NULL AND property_id IS NOT NULL"
@@ -218,6 +237,7 @@ class LiveDataSource(DataSource):
             print(f"[live_source] public_moments composite columns unavailable ({str(ex)[:120]}) — "
                   "moment items will emit null moment_profile_key/moment_media_source_guid", flush=True)
             rows = self._q(f"SELECT {cols} FROM {self.pg}.public_moments {where}")
+        n = 0
         for r in rows:
             mid = r.get("moment_id"); pid = r.get("property_id")
             if mid is None or pid is None:
@@ -225,20 +245,65 @@ class LiveDataSource(DataSource):
             eid = self._prop_to_eid.get(int(pid))
             if eid is None:                          # moment on an unbridged/non-served property
                 continue
-            m = Moment(
+            self._index_moment(Moment(
                 moment_id=int(mid), entity_id=eid, property_id=int(pid),
                 media_type_id=r.get("media_type_id"), moment_type_id=r.get("moment_type_id"),
                 title=r.get("title") or "", description=r.get("description") or "",
                 event_starts_at=_utc(r.get("event_starts_at")), event_ends_at=_utc(r.get("event_ends_at")),
                 media_platform_id=r.get("media_platform_id"), created_at=_utc(r.get("created_at")),
                 profile_key=(str(r["profile_key"]) if r.get("profile_key") is not None else ""),
-                media_source_guid=(str(r["media_source_guid"]) if r.get("media_source_guid") is not None else ""))
-            self._moment_by_id[int(mid)] = m
-            self._moments_by_entity[eid].append(m)
-            self._all_moments.append(m)
-        _floor = datetime.min.replace(tzinfo=timezone.utc)
-        for ms in self._moments_by_entity.values():  # newest-first; callers take [0] as latest
-            ms.sort(key=lambda m: m.event_starts_at or _floor, reverse=True)
+                media_source_guid=(str(r["media_source_guid"]) if r.get("media_source_guid") is not None else "")))
+            n += 1
+        print(f"[live_source] moments loaded: {n} (source=postgres public_moments)", flush=True)
+
+    def _load_moments_graph(self):
+        """Aura :Moment via (e:Entity)-[:HAS_MOMENT]->(m) — the SAME source/universe E3 serves from.
+        Rows land in this source's bare-guid entity space via the PARENT's media_source_guid (works
+        regardless of the graph's entity_id format). Content fields default to "" until the graph
+        carries them (post graph_generation enrichment). NEO4J_* env comes from the deploy notebook."""
+        from neo4j import GraphDatabase                   # lazy: only on the graph path
+        uri = os.environ["NEO4J_URI"]                     # KeyError → caught by caller → pg fallback
+        auth = (os.getenv("NEO4J_USER", "neo4j"), os.environ["NEO4J_PASSWORD"])
+        q = """MATCH (e:Entity)-[:HAS_MOMENT]->(m:Moment)
+               RETURN toString(e.media_source_guid) AS parent_guid,
+                      m.moment_id AS moment_id, m.profile_key AS mpk,
+                      toString(m.media_source_guid) AS mguid,
+                      m.title AS title, m.description AS description,
+                      m.event_starts_at AS starts, m.event_ends_at AS ends,
+                      m.media_type_id AS media_type_id, m.moment_type_id AS moment_type_id,
+                      m.media_platform_id AS media_platform_id, m.created_at AS created_at"""
+        def _dt(v):                                       # neo4j DateTime -> aware python datetime
+            return _utc(v.to_native() if hasattr(v, "to_native") else v)
+        n = 0
+        drv = GraphDatabase.driver(uri, auth=auth, max_connection_lifetime=300)
+        try:
+            with drv.session(database=os.getenv("NEO4J_DATABASE", "neo4j")) as s:
+                for r in s.run(q):
+                    eid = self._entity_id_of(r.get("parent_guid"))
+                    mid = r.get("moment_id")
+                    if eid is None or eid not in self._entities or mid is None:
+                        continue
+                    pid = self._eid_to_prop.get(eid)
+                    self._index_moment(Moment(
+                        moment_id=int(mid), entity_id=eid,
+                        property_id=(int(pid) if pid is not None else 0),
+                        media_type_id=r.get("media_type_id"), moment_type_id=r.get("moment_type_id"),
+                        title=r.get("title") or "", description=r.get("description") or "",
+                        event_starts_at=_dt(r.get("starts")), event_ends_at=_dt(r.get("ends")),
+                        media_platform_id=r.get("media_platform_id"), created_at=_dt(r.get("created_at")),
+                        profile_key=(str(r["mpk"]) if r.get("mpk") is not None else ""),
+                        media_source_guid=(str(r["mguid"]) if r.get("mguid") is not None else "")))
+                    n += 1
+        finally:
+            drv.close()
+        if n == 0:                                        # empty graph read = misconfig, not "no moments"
+            raise RuntimeError("graph returned 0 served moments")
+        print(f"[live_source] moments loaded: {n} (source=graph HAS_MOMENT — E3-consistent)", flush=True)
+
+    def _index_moment(self, m: "Moment"):
+        self._moment_by_id[int(m.moment_id)] = m
+        self._moments_by_entity[m.entity_id].append(m)
+        self._all_moments.append(m)
 
     def get_moments_for_property(self, entity_id):
         self._ensure(); return list(self._moments_by_entity.get(entity_id, []))

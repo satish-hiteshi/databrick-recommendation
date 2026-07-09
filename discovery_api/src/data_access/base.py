@@ -8,17 +8,28 @@ The substrate (vector :8000 / graph :8010) is NOT part of this interface — it 
 `substrate_client.SubstrateClient`. This interface is the BEHAVIOURAL/relational data only (entities,
 moments, follows, reactions, gds signals, lookups).
 
-Identity/bridge: integer(entity_id) == property_id (verified 100% on dev). The CSV reader resolves it
-from property_bridge_dev.csv; the live reader will resolve it from public_properties.id.
+Identity (POST composite-key migration): the stable identity is the composite (profile_key +
+media_source_guid), whose string form is entity_id "Prefix:media_source_guid". The old PUBLIC property_id
+is GONE. `property_id_to_entity_id`/`entity_id_to_property_id` remain as a collision-lossy bare-source_id
+shim for legacy/display-only paths; `resolve_inbound_id` is the correct way to normalise an inbound
+property reference (entity_id | composite | bare source_id) to a served entity_id.
 """
 
 from __future__ import annotations
 
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional, Union
 
 from .records import Cta, Entity, FollowEvent, GdsSignal, Lookups, Moment, ReactionEvent, User
+
+# central identity (namespace import from repo root; no I/O).  base → data_access → src → discovery_api → local_code → E2 → ROOT
+_REPO_ROOT = Path(__file__).resolve().parents[5]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+from shared import identity as _ident   # noqa: E402
 
 
 class DataSource(ABC):
@@ -32,12 +43,24 @@ class DataSource(ABC):
     @abstractmethod
     def all_entity_ids(self) -> List[str]: ...
 
-    # ── identity / bridge (integer(entity_id) == property_id) ───────────
+    # ── identity / bridge (legacy bare-source_id shim; collision-lossy) ──
     @abstractmethod
     def property_id_to_entity_id(self, property_id: int) -> Optional[str]: ...
 
     @abstractmethod
     def entity_id_to_property_id(self, entity_id: str) -> Optional[int]: ...
+
+    def resolve_inbound_id(self, value: Union[int, str, dict]) -> Optional[str]:
+        """Normalise an inbound property reference to a SERVED entity_id (or None). Accepts an entity_id
+        string, a composite {profile_key|vertical, media_source_guid}, or a bare source_id (int/str).
+        A bare source_id is resolved against the served universe via candidate_entity_ids; if it matches
+        MORE THAN ONE vertical it is AMBIGUOUS → None (the caller should send the composite/entity_id).
+        Concrete sources MAY override for speed; this default uses get_entity()."""
+        eid = _ident.coerce_to_entity_id(value)
+        if eid is not None:
+            return eid if self.get_entity(eid) is not None else None
+        cands = [c for c in _ident.candidate_entity_ids(value) if self.get_entity(c) is not None]
+        return cands[0] if len(cands) == 1 else None
 
     # ── moments (recency keys on event_starts_at ONLY) ──────────────────
     @abstractmethod

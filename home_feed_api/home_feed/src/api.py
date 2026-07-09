@@ -7,7 +7,7 @@ import stays cheap and the process starts even if :7688 is briefly down.
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -39,8 +39,9 @@ class HomeFeedRequestBody(BaseModel):
     offset: int = config.HOME_DEFAULT_OFFSET
     seen_ids: List[int] = []
     done_ids: List[int] = []
-    dismissed_property_ids: List[int] = []
-    blocked_property_ids: List[int] = []
+    # entity_id | composite {profile_key|vertical, media_source_guid} | (backward-compat) bare source_id int
+    dismissed_property_ids: List[Union[int, str, dict]] = []
+    blocked_property_ids: List[Union[int, str, dict]] = []
     reacted_moment_ids: List[int] = []
     debug: bool = False
 

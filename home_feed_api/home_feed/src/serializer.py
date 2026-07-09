@@ -8,8 +8,10 @@ feed_models envelope/pagination shape, built to UC3's exact field set.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import asdict
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
 from . import config
@@ -18,6 +20,20 @@ from .ranker import ScoredCandidate
 from .request import HomeFeedRequest
 from .scorer import HomeWeights
 from .why import badge, dominant_signal, why_string
+
+# central identity (namespace import from repo root). src → home_feed → local_code → endpoint_3_home_feed → ROOT
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+from shared import identity as _ident   # noqa: E402
+
+
+def _composite(entity_id: str) -> dict:
+    """entity_id → {profile_key, media_source_guid} for the response; {} if not derivable."""
+    try:
+        return _ident.composite_of(entity_id)
+    except (ValueError, AttributeError):
+        return {}
 
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
@@ -38,7 +54,13 @@ def serialize_item(sc: ScoredCandidate, now: datetime, weights: HomeWeights, deb
         "type": "moment",
         "moment_id": c.moment_id,
         "entity_id": c.entity_id,
-        "property_id": c.property_id,
+        # composite key (the stable identity post-migration) — derive from entity_id, fall back to the
+        # fields the graph traversal set.
+        **({**_composite(c.entity_id)} or
+           {"profile_key": c.profile_key, "media_source_guid": c.media_source_guid}),
+        # DEPRECATED: the old PUBLIC property_id is GONE. This now carries the surviving source_id
+        # (== media_source_guid) for backward-compat; clients should key on entity_id / the composite.
+        "property_id": (c.media_source_guid or (str(c.property_id) if c.property_id else None)),
         "property_name": c.property_name,
         "property_handle": None,            # NO SOURCE — we have no @handle
         "property_thumbnail_url": None,     # NO SOURCE — no property icon in our data

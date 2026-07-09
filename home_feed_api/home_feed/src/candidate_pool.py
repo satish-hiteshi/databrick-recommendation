@@ -49,10 +49,13 @@ def build_candidate_pool(user_id: int,
     horizon = config.HOME_FUTURE_HORIZON_DAYS
     max_age = config.HOME_MAX_MOMENT_AGE_DAYS if max_moment_age_days is None else max_moment_age_days
 
-    # 1. follow-gate — the hard boundary
-    followed = resolve_followed_property_ids(user_id, follow_source)
+    # 1. follow-gate — the hard boundary. Raw follow keys (entity_id | legacy source_id) are resolved to
+    # SERVED entity_ids against the graph (the old PUBLIC property_id is gone → legacy ids are dropped w/ warning).
+    raw_keys = resolve_followed_property_ids(user_id, follow_source)
+    followed = graph.resolve_follow_keys(raw_keys)          # set[entity_id]
     followed_sorted = sorted(followed)
-    trace: dict = {"followed_property_ids": len(followed), "now": now.isoformat(),
+    trace: dict = {"followed_property_ids": len(followed), "followed_keys_in": len(raw_keys),
+                   "now": now.isoformat(),
                    "today_window_hours": today_window, "future_horizon_days": horizon,
                    "max_moment_age_days": max_age}
     if not followed:

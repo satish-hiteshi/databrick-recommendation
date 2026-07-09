@@ -66,11 +66,12 @@ def _empty_allocation() -> AllocationPlan:
 
 
 def build_exclusions(profile, data_source: DataSource,
-                     excluded_property_ids: Iterable[int] = ()) -> Set[str]:
-    """The hard never-return set: engaged (followed ∪ reacted) entities + the request's excluded properties."""
+                     excluded_property_ids: Iterable = ()) -> Set[str]:
+    """The hard never-return set: engaged (followed ∪ reacted) entities + the request's excluded properties.
+    Each excluded ref is an entity_id | composite | bare source_id, normalised via resolve_inbound_id."""
     excl: Set[str] = {e.target_entity_id for e in profile.engagements}
-    for pid in (excluded_property_ids or []):
-        eid = data_source.property_id_to_entity_id(pid)
+    for ref in (excluded_property_ids or []):
+        eid = data_source.resolve_inbound_id(ref)
         if eid:
             excl.add(eid)
     return excl

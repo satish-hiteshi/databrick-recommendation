@@ -21,15 +21,15 @@ FRESHNESS_TIERED = "freshness_tiered"
 
 
 def _grouped_in_score_order(scored: List) -> dict:
-    """{property_id: [items in score-desc order]} — input is already globally score-sorted."""
+    """{entity_id: [items in score-desc order]} — input is already globally score-sorted (collision-safe)."""
     groups: dict = {}
     for sc in scored:
-        groups.setdefault(sc.candidate.property_id, []).append(sc)
+        groups.setdefault(sc.candidate.entity_id, []).append(sc)
     return groups
 
 
-def _cycle_order(groups: dict) -> List[int]:
-    """Property cycle order = by each property's BEST moment's blended score (desc), tie property_id."""
+def _cycle_order(groups: dict) -> List[str]:
+    """Property cycle order = by each property's BEST moment's blended score (desc), tie entity_id."""
     return sorted(groups, key=lambda pid: (-groups[pid][0].breakdown.blended, pid))
 
 
@@ -120,7 +120,7 @@ def _apply_quota_deferral(ordered: List, quota: int, window: int) -> List:
         carry: deque = deque()
         while pending and placed < window:
             sc = pending.popleft()
-            pid = sc.candidate.property_id
+            pid = sc.candidate.entity_id                 # per-property quota keyed on entity_id (collision-safe)
             if qcount.get(pid, 0) < quota:
                 out.append(sc); qcount[pid] = qcount.get(pid, 0) + 1; placed += 1
             else:

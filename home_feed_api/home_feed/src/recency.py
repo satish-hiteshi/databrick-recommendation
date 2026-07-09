@@ -34,6 +34,35 @@ def recency_score(event_starts_at: Optional[datetime], now: datetime,
     return float(timeutil.recency_score(event_starts_at, now, hl))     # exp decay; ancient → ~0, never <0
 
 
+def is_anchor_moment(vertical: Optional[str], moment_kind: Optional[str]) -> bool:
+    """Is this moment a RELEASE ANCHOR (release/trailer/reveal) rather than a genuine EVENT (episode drop,
+    video publish)? Anchors get symmetric proximity + no age gate; events keep decay + the gate.
+    Gated by HOME_VERTICAL_AWARE_RECENCY — OFF ⇒ always False ⇒ current behaviour (byte-identical).
+    Classify by the moment KIND (Moment.profile_key): a kind containing an event marker ('episode'/'video')
+    is an EVENT; else an ANCHOR. If the kind is missing, fall back to vertical (podcast ⇒ event, else anchor)."""
+    if not config.HOME_VERTICAL_AWARE_RECENCY:
+        return False
+    kind = (moment_kind or "").lower()
+    if kind:
+        return not any(mk in kind for mk in config.HOME_EVENT_MOMENT_MARKERS)
+    return (vertical or "").lower() != "podcast"
+
+
+def anchor_proximity_score(event_starts_at: Optional[datetime], now: datetime) -> float:
+    """Symmetric proximity to a release ANCHOR, in [floor, 1]. Peaks (→1) at the anchor date and decays
+    BOTH ways with HOME_ANCHOR_HALFLIFE_DAYS — a recently-released OR soon-upcoming title scores high; a
+    distant-past catalog title (e.g. a 1946 movie) decays to HOME_ANCHOR_FLOOR (non-zero → ranked DOWN, never
+    deleted). Replaces decay-since-release for anchor moments so their temporal signal isn't a flat ~0."""
+    if event_starts_at is None:
+        return config.HOME_ANCHOR_NULL
+    hl = config.HOME_ANCHOR_HALFLIFE_DAYS
+    if hl <= 0:
+        return 1.0
+    delta_days = abs((event_starts_at - now).total_seconds()) / 86400.0
+    floor = config.HOME_ANCHOR_FLOOR
+    return floor + (1.0 - floor) * (0.5 ** (delta_days / hl))
+
+
 def proximity_score(event_starts_at: Optional[datetime], now: datetime) -> float:
     """Near-future bump in [0,1]: ramp 0→1 over [0,LO], plateau over [LO,HI], taper 1→0 over [HI,HORIZON].
     Past/null/junk-future → 0."""

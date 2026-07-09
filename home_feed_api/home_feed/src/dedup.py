@@ -32,13 +32,13 @@ def is_near_duplicate(title_a: str, title_b: str, threshold: float) -> bool:
 
 
 def collapse_near_duplicates(scored: List, threshold: float) -> List:
-    """Remove near-identical moments WITHIN the same property (duck-typed on .candidate.property_id/.title).
+    """Remove near-identical moments WITHIN the same property (duck-typed on .candidate.entity_id/.title).
     Input is the score-sorted list; the first member of each near-dup cluster (the best) is kept, the rest
     dropped. Across properties nothing is compared, so every property keeps ≥1 moment (presence preserved)."""
-    kept_by_prop: dict = {}                     # property_id → list of token-sets of kept titles
+    kept_by_prop: dict = {}                     # entity_id → list of token-sets of kept titles (collision-safe)
     out: List = []
     for sc in scored:
-        pid = sc.candidate.property_id
+        pid = sc.candidate.entity_id
         toks = tokens(sc.candidate.title)
         prior = kept_by_prop.setdefault(pid, [])
         if toks and any(jaccard(toks, t) >= threshold for t in prior):

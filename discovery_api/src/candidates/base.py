@@ -12,7 +12,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from .. import config
 from .. import timeutil
@@ -41,7 +41,9 @@ class RequestContext:
     now: Optional[datetime] = None
     seen_entity_ids: Set[str] = field(default_factory=set)
     seen_moment_ids: Set[int] = field(default_factory=set)
-    excluded_property_ids: Set[int] = field(default_factory=set)   # the request's property_ids EXCLUSION list
+    # the request's property_ids EXCLUSION list — inbound refs (entity_id | composite | bare source_id).
+    # Held as an opaque collection (dicts aren't hashable → not a Set); each is resolved via resolve_inbound_id.
+    excluded_property_ids: Iterable = field(default_factory=list)
     vertical: Optional[str] = None                                 # optional single-vertical request
     limit: int = config.CANDIDATE_POOL_SIZE                         # main-feed page size (P4 pagination)
     offset: int = 0                                                 # main-feed page offset (P4 pagination)
@@ -61,8 +63,8 @@ def excluded_entity_ids(profile: UserProfile, context: RequestContext, ds: DataS
     excl |= set(profile.done_entity_ids)               # dormant
     excl |= set(profile.not_interested_entity_ids)     # dormant
     excl |= set(context.seen_entity_ids)
-    for pid in context.excluded_property_ids:
-        eid = ds.property_id_to_entity_id(pid)
+    for ref in context.excluded_property_ids:
+        eid = ds.resolve_inbound_id(ref)          # entity_id | composite | bare source_id → served entity_id
         if eid:
             excl.add(eid)
     return excl

@@ -14,11 +14,13 @@ from __future__ import annotations
 from typing import Set
 
 from . import identity
-from .follow_source import FollowSource
+from .follow_source import FollowKey, FollowSource
 
 
-def resolve_followed_property_ids(user_id: int, follow_source: FollowSource) -> Set[int]:
-    """Active followed property_ids for the user (deleted_at IS NULL). The main-stream whitelist.
+def resolve_followed_property_ids(user_id: int, follow_source: FollowSource) -> Set[FollowKey]:
+    """Active RAW follow keys for the user (deleted_at IS NULL) — entity_id strings (preferred) or legacy
+    bare source_id ints. The caller (build_candidate_pool) resolves them to SERVED entity_ids via the
+    graph. The main-stream whitelist.
 
     Goes through identity.resolve_user so the follower↔reaction mapping has exactly one insertion point.
     """
@@ -26,6 +28,7 @@ def resolve_followed_property_ids(user_id: int, follow_source: FollowSource) -> 
     return follow_source.active_followed_property_ids(resolved.follow_user_id)
 
 
-def is_followed(property_id: int, followed: Set[int]) -> bool:
-    """Main-stream include-gate: True iff this property is followed (its moments may enter the stream)."""
-    return int(property_id) in followed
+def is_followed(entity_id: str, followed: Set[str]) -> bool:
+    """Main-stream include-gate: True iff this property (entity_id) is followed (its moments may enter the
+    stream). POST composite-key migration the whitelist is keyed on entity_id, not the gone property_id."""
+    return entity_id in followed

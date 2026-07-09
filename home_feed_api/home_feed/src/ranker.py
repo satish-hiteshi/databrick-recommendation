@@ -46,7 +46,7 @@ def cap_per_property_by_score(scored: List[ScoredCandidate], cap: int) -> List[S
     seen: dict = {}
     out: List[ScoredCandidate] = []
     for sc in scored:                                   # scored is already globally sorted best-first
-        pid = sc.candidate.property_id
+        pid = sc.candidate.entity_id                    # group per property by entity_id (collision-safe)
         if seen.get(pid, 0) >= cap:
             continue
         seen[pid] = seen.get(pid, 0) + 1
@@ -81,7 +81,7 @@ def rank_pool(pool: CandidatePool, *, graph: GraphMoments, vectors: VectorStore,
         scored = collapse_near_duplicates(scored, config.HOME_DEDUP_SIMILARITY)
     # E4 fairness quota: SMOOTHLY scaled by active-property count (no cliff); thin → loose (Story 4).
     quota = compute_fairness_quota(
-        active_properties=len({sc.candidate.property_id for sc in scored}),
+        active_properties=len({sc.candidate.entity_id for sc in scored}),
         window=config.HOME_FAIRNESS_WINDOW, factor=config.HOME_FAIRNESS_QUOTA_FACTOR,
         min_quota=config.HOME_FAIRNESS_MIN_QUOTA, free_below_active=config.HOME_FAIRNESS_FREE_BELOW_ACTIVE)
     scored = interleave(scored, imode, margin, now=now, bands=config.HOME_FRESHNESS_BANDS_DAYS,

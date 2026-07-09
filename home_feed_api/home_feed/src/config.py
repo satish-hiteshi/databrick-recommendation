@@ -1,31 +1,36 @@
 """Endpoint 3 (Home Feed) configuration.
 
 House style mirrors E1/E2 config: every value reads from the environment with a local-dev default,
-no magic numbers elsewhere. E3 INHERITS E2's knobs by importing E2 config through the reuse seam
-(substrate URLs, recency half-life, taste weights, the three-signal blend weights) and adds only the
-genuinely-new HOME-FEED knobs below. Nothing here re-declares an E2 value; we import it.
-
-SCAFFOLD: the E3-specific knobs below are PLACEHOLDERS so the seam exists — the assembler/scorer that
-read them are built in PROMPT 2+.
+no magic numbers elsewhere. E3 is now FULLY DECOUPLED from Endpoint 2 — it imports NOTHING from
+discovery_api. The handful of E2 knobs E3 actually read (the substrate/data-seam URLs + dev dir + the
+vertical tuple, and the two recency constants the vendored timeutil needs) are DEFINED DIRECTLY below,
+env-driven with the SAME defaults E2 used, so behaviour is unchanged.
 """
 
 import os
 from pathlib import Path
 
-from .reuse import e2_config  # E2's full config object (reuse its defaults verbatim)
-
 _PKG_DIR = Path(__file__).resolve().parents[1]   # .../home_feed/  (src/ → home_feed/)
 _ENDPOINT_DIR = Path(__file__).resolve().parents[3]  # .../endpoint_3_home_feed/ (holds data/)
 
-# ── Inherit E2 defaults (re-export the ones E3 reads, so call sites import from one place) ──
-VECTOR_API_URL = e2_config.VECTOR_API_URL          # shared/vector :8000
-GRAPH_API_URL = e2_config.GRAPH_API_URL            # shared/graph  :8010
-DATA_SOURCE_MODE = e2_config.DATA_SOURCE_MODE      # csv (dev) | live (deploy)
-VERTICALS = e2_config.VERTICALS
+# ── Substrate + data-seam knobs (formerly inherited from e2_config; now E3-local, same env + defaults) ──
+# These mirror discovery_api.src.config VERBATIM (name, env var, default) so no behaviour changed when
+# the E2 import was dropped. They are read by the (dormant) substrate/data seam; the live E3 path uses the
+# direct neo4j driver + parquet below, not these HTTP URLs.
+VECTOR_API_URL = os.getenv("VECTOR_API_URL", "http://localhost:8000")   # shared/vector :8000
+GRAPH_API_URL = os.getenv("GRAPH_API_URL", "http://localhost:8010")     # shared/graph  :8010
+DATA_SOURCE_MODE = os.getenv("DISCOVERY_DATA_SOURCE", "csv").lower()    # csv (dev) | live (deploy)
+VERTICALS = ("game", "movie", "tv", "podcast")
 
-# Dev data: REUSE E2's dev CSVs by default (one source of truth — do not duplicate the 11 CSVs).
-# Override DISCOVERY_DEV_DATA_DIR to point elsewhere; E3 reads the same follows/reactions/moments.
-DEV_DATA_DIR = e2_config.DEV_DATA_DIR
+# Dev data dir. Formerly reused E2's dev CSVs; now defaults to E3's OWN dev dir (E3 no longer depends on
+# the E2 package tree). Override with DISCOVERY_DEV_DATA_DIR (same env name E2 used) to point elsewhere.
+DEV_DATA_DIR = Path(os.getenv("DISCOVERY_DEV_DATA_DIR", str(_PKG_DIR / "data" / "dev")))
+
+# Recency constants the VENDORED timeutil (._vendored_timeutil) reads — mirror discovery_api defaults
+# VERBATIM. E3's own path always passes an explicit half-life to recency_score and never calls
+# timeutil.now(), so these are only the vendored fallbacks (kept for a faithful, self-contained copy).
+RECENCY_HALFLIFE_DAYS = float(os.getenv("DISCOVERY_RECENCY_HALFLIFE_DAYS", "21"))   # soft-window half-life
+DEFAULT_NOW_ISO = os.getenv("DISCOVERY_NOW_ISO", "2026-06-18T00:00:00Z")            # reproducible dev 'now'
 
 # ── E3-NEW: the follow-gate + home-feed shaping (PLACEHOLDERS — wired in PROMPT 2+) ──
 # The MAIN moment stream is HARD-GATED to followed properties only. Unfollowed content can appear
@@ -42,19 +47,27 @@ API_PORT = int(os.getenv("HOME_FEED_PORT", "8040"))   # E1=:8020, E2=:8030, E3=:
 # ─────────────────────────────────────────────────────────────────────────────
 # ── E3-P1: candidate-pool front half (follow-gate → traversal → suppression → cap) ──
 # ─────────────────────────────────────────────────────────────────────────────
-# Moments live on the 44k graph (:7688), NOT on E2's substrate (:8010 → 57k, no moments). E3 traverses
-# this graph DIRECTLY (the E1 pattern), since the shared graph service neither points here nor knows
-# :Moment. Read-only. Creds via env (same names E1 uses); local-dev throwaway defaults.
-NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7688")
+# Moments live on the re-keyed graph (HAS_MOMENT edges), NOT on E2's substrate (:8010 → 57k, no moments).
+# E3 traverses this graph DIRECTLY (the E1 pattern), anchored on entity_id (the old PUBLIC property_id is
+# gone). Read-only. Creds via env (same names E1 uses); default points at the re-keyed local graph.
+NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7690")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")   # set via env / a gitignored .env — never commit the real value
+# LOCAL-DEV default matches the re-keyed local graph container (feedsai-neo4j-rekey-graph on :7690).
+# PROD MUST override via env (AuraDS creds) — do not rely on this value off-box.
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "feedsaiRekeyGraph2026")
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
 # Followers source (public_property_followers: user_id INT, property_id INT, deleted_at). Dev reads a
 # CSV via the SAME csv-or-live seam pattern E2 uses (no direct Databricks). Active = deleted_at IS NULL.
 FOLLOWERS_CSV = os.getenv("HOME_FOLLOWERS_CSV", str(_PKG_DIR / "data" / "dev" / "followers_dev.csv"))
-# The moments CSV that was loaded into the graph (consolidated under the endpoint dir).
-MOMENTS_CSV = os.getenv("HOME_MOMENTS_CSV", str(_ENDPOINT_DIR / "data" / "moments_staging_44k.csv"))
+# The re-keyed moments CSV that BUILT the :7690 graph — the composite-keyed graph_downloads export
+# (222,182 rows, carries parent (profile_key, media_source_guid) so moments link to properties). The
+# obsolete moments_staging_44k.csv (fresh-public-property_id keyed, 0% overlap, unlinkable) is retired.
+# NOTE: this is a BUILD-TIME ARTIFACT only — the live E3 path reads moments from the graph via
+# HAS_MOMENT (graph_moments.py), never from this file; :7690 ALREADY carries all 222,151 edges. It is
+# recorded here for provenance/reload, not runtime.
+MOMENTS_CSV = os.getenv("HOME_MOMENTS_CSV",
+                        str(_ENDPOINT_DIR.parent / "endpoint_data_rekey" / "graph_downloads" / "moments_graph.csv"))
 
 # "now" for the future-date suppression. Default = wall clock (real now) so future-dated moments are
 # genuinely future; set HOME_NOW_ISO for reproducible dev runs (e.g. the dry run pins it).
@@ -92,6 +105,28 @@ HOME_FUTURE_HORIZON_DAYS = float(os.getenv("HOME_FUTURE_HORIZON_DAYS", "30"))
 # PROXIMITY — near-future bump: ramp 0→1 over [0,LO], plateau 1 over [LO,HI], taper 1→0 over [HI,HORIZON].
 HOME_PROXIMITY_PEAK_LO_DAYS = float(os.getenv("HOME_PROXIMITY_PEAK_LO_DAYS", "1"))
 HOME_PROXIMITY_PEAK_HI_DAYS = float(os.getenv("HOME_PROXIMITY_PEAK_HI_DAYS", "7"))
+
+# ── VERTICAL-AWARE RECENCY (COMMITTED DEFAULT = ON) ───────────────────────────────────────────────────
+# The graph's moments are RELEASE ANCHORS (*_released / *_trailer / *_reveal), not an activity stream, for
+# movie/game/tv-release. A past release (e.g. a 1946 movie) decays to ~0 recency AND is dropped by the
+# 1095-day age gate → a followed movie/tv would show NOTHING (movie: 0% within 30d, 12% within 3y). So, ON:
+#   • ANCHOR moments (release/trailer/reveal) → temporal signal = SYMMETRIC proximity-to-anchor (recent OR
+#     upcoming high; distant past low but NON-ZERO, so catalog is ranked-down, never deleted) AND are
+#     EXEMPT from the age/horizon hard gate.
+#   • EVENT moments (episode drops, video publishes) → UNCHANGED: decay-on-recency + the age gate applies.
+# The 35/30/15 weights are UNTOUCHED — this changes only WHAT the recency component computes for anchors.
+# LEGACY FALLBACK: HOME_LEGACY_AGE_GATE=1 restores the OLD behaviour in full (age gate + decay for ALL moments,
+# followed movies/tv absent). Granular override: an explicit HOME_VERTICAL_AWARE_RECENCY wins over both.
+# Precedence: explicit HOME_VERTICAL_AWARE_RECENCY  >  HOME_LEGACY_AGE_GATE  >  default (ON).
+_LEGACY_AGE_GATE = os.getenv("HOME_LEGACY_AGE_GATE", "").strip().lower() in ("1", "true", "yes", "on")
+HOME_VERTICAL_AWARE_RECENCY = os.getenv("HOME_VERTICAL_AWARE_RECENCY",
+                                        "0" if _LEGACY_AGE_GATE else "1").strip().lower() in ("1", "true", "yes", "on")
+# a MOMENT is a genuine EVENT (not an anchor) if its kind (Moment.profile_key) contains any of these markers
+HOME_EVENT_MOMENT_MARKERS = tuple(s.strip().lower() for s in
+                                  os.getenv("HOME_EVENT_MOMENT_MARKERS", "episode,video").split(",") if s.strip())
+HOME_ANCHOR_HALFLIFE_DAYS = float(os.getenv("HOME_ANCHOR_HALFLIFE_DAYS", "365"))  # symmetric half-life around the anchor date
+HOME_ANCHOR_FLOOR = float(os.getenv("HOME_ANCHOR_FLOOR", "0.1"))                  # distant anchor never 0 (present, ranked low)
+HOME_ANCHOR_NULL = float(os.getenv("HOME_ANCHOR_NULL", "0.0"))                    # null event date → no anchor signal
 
 # TASTE — property-level follow-set affinity. cosine(property vec, mean-of-followed vec). Secondary
 # attribute-overlap is weighted LOW (a coherent follow set overlaps heavily — gentle ordering, not gating).

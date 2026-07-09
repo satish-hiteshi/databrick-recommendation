@@ -1,10 +1,20 @@
-"""Follow source — active followed property_ids per user, from `public_property_followers`.
+"""Follow source — active followed properties per user, from `public_property_followers`.
 
 Mirrors E2's csv-or-live DATA SEAM pattern (dev reads a CSV; deploy reads Silver), but E3 needs the
 `deleted_at` semantics E2's follows do not carry, so this is genuinely new (active = deleted_at IS NULL).
 We do NOT open a direct Databricks connection — `LiveFollowSource` is the deploy seam, a stub here.
 
-CSV schema (public_property_followers export): user_id(INT), property_id(INT), deleted_at(nullable).
+POST composite-key migration — FOLLOW KEY: a follow is keyed on the stable **entity_id** (or composite),
+NOT the old PUBLIC property_id. This source returns RAW follow keys; `GraphMoments.resolve_follow_keys`
+(called in build_candidate_pool, where the graph is available) normalises them to entity_ids.
+  * If the followers CSV carries an `entity_id` column, it is used directly (preferred).
+  * Otherwise the legacy `property_id` column (bare source_id) is emitted and resolved against the graph
+    with an ambiguity warning — but that value is the old PUBLIC id and DOES NOT resolve on the new graph.
+    ⇒ ACTION: the followers CSV/Silver export MUST be re-supplied carrying entity_id (or profile_key +
+    media_source_guid). See build_candidate_pool for the resolution seam.
+
+CSV schema (legacy export): user_id(INT), property_id(INT), deleted_at(nullable).
+CSV schema (re-supplied):   user_id(INT), entity_id(STR "Prefix:guid"), deleted_at(nullable).
 """
 
 from __future__ import annotations
@@ -12,7 +22,10 @@ from __future__ import annotations
 import csv
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set, Union
+
+# a raw follow key is either an entity_id string ("Movie:119163") or a legacy bare source_id int.
+FollowKey = Union[str, int]
 
 
 def _is_active(deleted_at: Optional[str]) -> bool:
@@ -22,22 +35,24 @@ def _is_active(deleted_at: Optional[str]) -> bool:
 
 class FollowSource(ABC):
     @abstractmethod
-    def active_followed_property_ids(self, follow_user_id: int) -> Set[int]:
-        """Return the set of property_ids the user ACTIVELY follows (deleted_at IS NULL)."""
+    def active_followed_property_ids(self, follow_user_id: int) -> Set[FollowKey]:
+        """Return the RAW follow keys the user ACTIVELY follows (deleted_at IS NULL): entity_id strings
+        (preferred) or legacy bare source_id ints. Resolved to entity_ids downstream (via the graph)."""
         ...
 
 
 class CsvFollowSource(FollowSource):
-    """Dev source: reads the followers CSV once (lazily) and indexes active follows by user_id."""
+    """Dev source: reads the followers CSV once (lazily) and indexes active follows by user_id.
+    Prefers an `entity_id` column; falls back to the legacy bare `property_id` column."""
 
     def __init__(self, csv_path: str):
         self.csv_path = csv_path
-        self._by_user: Optional[Dict[int, Set[int]]] = None
+        self._by_user: Optional[Dict[int, Set[FollowKey]]] = None
 
-    def _load(self) -> Dict[int, Set[int]]:
+    def _load(self) -> Dict[int, Set[FollowKey]]:
         if self._by_user is not None:
             return self._by_user
-        by_user: Dict[int, Set[int]] = {}
+        by_user: Dict[int, Set[FollowKey]] = {}
         p = Path(self.csv_path)
         if p.is_file():
             with p.open(newline="", encoding="utf-8") as fh:
@@ -45,24 +60,34 @@ class CsvFollowSource(FollowSource):
                     if not _is_active(row.get("deleted_at")):
                         continue
                     try:
-                        uid = int(float(row["user_id"])); pid = int(float(row["property_id"]))
+                        uid = int(float(row["user_id"]))
+                    except (KeyError, ValueError, TypeError):
+                        continue
+                    eid = (row.get("entity_id") or "").strip()
+                    if eid:                                   # re-supplied CSV: stable entity_id
+                        by_user.setdefault(uid, set()).add(eid)
+                        continue
+                    try:                                      # legacy CSV: bare source_id (resolved via graph)
+                        pid = int(float(row["property_id"]))
                     except (KeyError, ValueError, TypeError):
                         continue
                     by_user.setdefault(uid, set()).add(pid)
         self._by_user = by_user
         return by_user
 
-    def active_followed_property_ids(self, follow_user_id: int) -> Set[int]:
+    def active_followed_property_ids(self, follow_user_id: int) -> Set[FollowKey]:
         return set(self._load().get(int(follow_user_id), set()))
 
 
 class SeededFollowSource(FollowSource):
-    """In-memory source for tests / dry runs: {user_id: iterable[property_id]} (all treated active)."""
+    """In-memory source for tests / dry runs: {user_id: iterable[follow_key]} (all treated active).
+    Follow keys may be entity_id strings (preferred) or legacy bare source_id ints."""
 
-    def __init__(self, follows: Dict[int, Iterable[int]]):
-        self._f = {int(u): {int(p) for p in pids} for u, pids in follows.items()}
+    def __init__(self, follows: Dict[int, Iterable[FollowKey]]):
+        self._f = {int(u): {(p if isinstance(p, str) else int(p)) for p in keys}
+                   for u, keys in follows.items()}
 
-    def active_followed_property_ids(self, follow_user_id: int) -> Set[int]:
+    def active_followed_property_ids(self, follow_user_id: int) -> Set[FollowKey]:
         return set(self._f.get(int(follow_user_id), set()))
 
 

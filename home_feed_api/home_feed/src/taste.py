@@ -32,21 +32,26 @@ from .vectors import VectorStore
 @dataclass(slots=True)
 class TasteContext:
     taste_vector: Optional[np.ndarray]                 # normalized mean of followed property vectors (or None)
-    prop_meta: Dict[int, dict] = field(default_factory=dict)   # property_id → {entity_id, genres, themes, ...}
+    prop_meta: Dict[str, dict] = field(default_factory=dict)   # entity_id → {entity_id, genres, themes, ...}
     followed_attr_counts: Counter = field(default_factory=Counter)  # genre/theme → #followed props carrying it
     n_followed: int = 0
     n_vectors: int = 0                                 # how many followed props contributed a vector
 
 
 def _attr_set(meta: dict) -> set:
-    return {f"g:{g}" for g in (meta.get("genres") or [])} | {f"t:{t}" for t in (meta.get("themes") or [])}
+    # genres + themes (game/movie/tv) + categories (podcasts, whose only attribute edge is HAS_CATEGORY).
+    # categories is empty for game/movie/tv, so those verticals' attribute set is unchanged.
+    return ({f"g:{g}" for g in (meta.get("genres") or [])}
+            | {f"t:{t}" for t in (meta.get("themes") or [])}
+            | {f"c:{c}" for c in (meta.get("categories") or [])})
 
 
-def build_taste_context(followed_property_ids: Iterable[int], graph: GraphMoments,
+def build_taste_context(followed_entity_ids: Iterable[str], graph: GraphMoments,
                         vectors: VectorStore) -> TasteContext:
-    """Resolve followed properties → their attributes (graph) + vectors (parquet) → the taste centroid."""
-    pids = [int(p) for p in followed_property_ids]
-    meta = graph.property_attributes(pids)
+    """Resolve followed properties (entity_ids) → their attributes (graph) + vectors (parquet) → the taste
+    centroid. Anchored on entity_id post composite-key migration (the old property_id is gone)."""
+    eids = [str(e) for e in followed_entity_ids if e]
+    meta = graph.property_attributes(eids)
     taste_vec = vectors.mean_vector(m["entity_id"] for m in meta.values())
     counts: Counter = Counter()
     n_vec = 0
@@ -55,13 +60,13 @@ def build_taste_context(followed_property_ids: Iterable[int], graph: GraphMoment
         if vectors.vector_for(m["entity_id"]) is not None:
             n_vec += 1
     return TasteContext(taste_vector=taste_vec, prop_meta=meta, followed_attr_counts=counts,
-                        n_followed=len(pids), n_vectors=n_vec)
+                        n_followed=len(eids), n_vectors=n_vec)
 
 
-def attribute_overlap(property_id: int, ctx: TasteContext) -> float:
+def attribute_overlap(entity_id: str, ctx: TasteContext) -> float:
     """Secondary signal in [0,1]: fraction of this property's genre/theme attrs ALSO held by some OTHER
-    followed property (attribute-centrality within the follow set). No attrs → neutral 0.5."""
-    meta = ctx.prop_meta.get(property_id)
+    followed property (attribute-centrality within the follow set). No attrs → neutral 0.5. Keyed on entity_id."""
+    meta = ctx.prop_meta.get(entity_id)
     if not meta:
         return 0.5
     attrs = _attr_set(meta)
@@ -78,6 +83,6 @@ def taste_score(candidate: CandidateMoment, ctx: TasteContext, vectors: VectorSt
         cosine01 = float((np.dot(vec, ctx.taste_vector) + 1.0) / 2.0)   # [-1,1] → [0,1]
     else:
         cosine01 = config.HOME_TASTE_MISSING_VEC                        # property/centroid without a vector → neutral
-    overlap = attribute_overlap(candidate.property_id, ctx)
+    overlap = attribute_overlap(candidate.entity_id, ctx)
     a = config.HOME_TASTE_ATTR_OVERLAP_WEIGHT
     return (1.0 - a) * cosine01 + a * overlap, cosine01, overlap

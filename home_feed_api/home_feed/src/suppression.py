@@ -16,30 +16,57 @@ list from public_user_reactions. The filter itself does not change when that lan
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import List, Set, Tuple
 
 from .candidate import CandidateMoment
+from .recency import is_anchor_moment
+
+# central identity (namespace import from repo root). src → home_feed → local_code → endpoint_3_home_feed → ROOT
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+from shared import identity as _ident   # noqa: E402
 
 _AWARE_MIN = datetime.min.replace(tzinfo=timezone.utc)
 
 
+def property_refs_to_entity_ids(refs) -> Set[str]:
+    """POST composite-key migration: a suppression property ref may be an entity_id string, a composite
+    {profile_key|vertical, media_source_guid}, or (backward-compat) a bare source_id int/str. Normalise
+    to a set of entity_id strings to drop (no graph I/O). A bare source_id maps to ALL its per-vertical
+    candidate entity_ids (conservative — the candidate pool is the user's followed set)."""
+    out: Set[str] = set()
+    for r in (refs or []):
+        eid = _ident.coerce_to_entity_id(r)     # entity_id | composite → entity_id; bare id → None
+        if eid is not None:
+            out.add(eid)
+        elif isinstance(r, dict):
+            continue                             # unresolvable composite (no guid) → skip
+        else:
+            out.update(_ident.candidate_entity_ids(r))   # bare source_id → all verticals (conservative)
+    return out
+
+
 @dataclass(slots=True)
 class SuppressionInputs:
-    """All request-supplied suppression signals (moment ids unless noted)."""
+    """All request-supplied suppression signals. Moment-id sets stay ints; property suppression is keyed
+    on entity_id (the stable identity) post composite-key migration."""
     seen_ids: Set[int] = field(default_factory=set)
     done_ids: Set[int] = field(default_factory=set)
-    dismissed_property_ids: Set[int] = field(default_factory=set)
-    blocked_property_ids: Set[int] = field(default_factory=set)
+    dismissed_property_ids: Set[str] = field(default_factory=set)   # entity_ids (resolved from inbound refs)
+    blocked_property_ids: Set[str] = field(default_factory=set)     # entity_ids (resolved from inbound refs)
     reacted_moment_ids: Set[int] = field(default_factory=set)   # request-supplied until identity lands
 
     @staticmethod
     def from_request(d: dict) -> "SuppressionInputs":
         g = lambda k: {int(x) for x in (d.get(k) or [])}
         return SuppressionInputs(seen_ids=g("seen_ids"), done_ids=g("done_ids"),
-                                 dismissed_property_ids=g("dismissed_property_ids"),
-                                 blocked_property_ids=g("blocked_property_ids"),
+                                 dismissed_property_ids=property_refs_to_entity_ids(d.get("dismissed_property_ids")),
+                                 blocked_property_ids=property_refs_to_entity_ids(d.get("blocked_property_ids")),
                                  reacted_moment_ids=g("reacted_moment_ids"))
 
 
@@ -66,6 +93,11 @@ def drop_calendar_and_junk_future(cands: List[CandidateMoment], now: datetime,
             out.append(c); continue
         if now <= esa <= today_end:        # today / not-yet → calendar surface
             continue
+        # ANCHOR moments (release/trailer/reveal — when HOME_VERTICAL_AWARE_RECENCY is ON) are EXEMPT from
+        # the junk-future + junk-ancient hard gate: their date is a release marker, not staleness, so a 1946
+        # movie or a 2026-12 reveal SURVIVES and is ranked by anchor-proximity instead of being deleted.
+        if is_anchor_moment(c.vertical, c.moment_kind):
+            out.append(c); continue
         if esa > horizon:                  # junk-future → drop
             continue
         if floor is not None and esa < floor:   # junk-ancient (hard age-gate) → drop
@@ -78,8 +110,9 @@ def drop_moment_ids(cands: List[CandidateMoment], ids: Set[int]) -> List[Candida
     return [c for c in cands if c.moment_id not in ids] if ids else cands
 
 
-def drop_by_property(cands: List[CandidateMoment], property_ids: Set[int]) -> List[CandidateMoment]:
-    return [c for c in cands if c.property_id not in property_ids] if property_ids else cands
+def drop_by_property(cands: List[CandidateMoment], entity_ids: Set[str]) -> List[CandidateMoment]:
+    """Drop moments whose property (entity_id) is dismissed/blocked. Keyed on entity_id (collision-safe)."""
+    return [c for c in cands if c.entity_id not in entity_ids] if entity_ids else cands
 
 
 def apply_suppression(cands: List[CandidateMoment], inputs: SuppressionInputs, now: datetime,
@@ -112,7 +145,7 @@ def cap_per_property(cands: List[CandidateMoment], cap: int) -> Tuple[List[Candi
         return list(cands), 0
     by_prop: dict = {}
     for c in cands:
-        by_prop.setdefault(c.property_id, []).append(c)
+        by_prop.setdefault(c.entity_id, []).append(c)   # group by entity_id (collision-safe)
     kept: List[CandidateMoment] = []
     for pid, group in by_prop.items():
         group.sort(key=lambda c: (c.event_starts_at or _AWARE_MIN, c.moment_id), reverse=True)

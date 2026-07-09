@@ -7,10 +7,28 @@ signals + final score) the API surfaces only when debug=true.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import List, Optional
+
+# central identity: derive the composite (profile_key + media_source_guid) from entity_id on every item.
+_REPO_ROOT = Path(__file__).resolve().parents[5]     # feed → src → discovery_api → local_code → E2 → ROOT
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+from shared import identity as _ident   # noqa: E402
+
+
+def _composite(entity_id: Optional[str]) -> dict:
+    """entity_id → {"profile_key", "media_source_guid"} for the response; {} if it can't be derived."""
+    if not entity_id:
+        return {}
+    try:
+        return _ident.composite_of(entity_id)
+    except ValueError:
+        return {}
 
 
 class ReasonType(str, Enum):
@@ -47,6 +65,7 @@ class FeedItem:
 
     def to_dict(self, debug: bool = False) -> dict:
         d = {"type": self.type, "moment_id": self.moment_id, "entity_id": self.entity_id,
+             **_composite(self.entity_id),                # profile_key + media_source_guid (composite key)
              "property_name": self.property_name, "vertical": self.vertical, "title": self.title,
              "description": self.description, "event_starts_at": self.event_starts_at,
              "media_platform_id": self.media_platform_id, "score": round(self.score, 4),
@@ -80,7 +99,8 @@ class CarouselItem:
     type: str = "property"
 
     def to_dict(self, debug: bool = False) -> dict:
-        d = {"type": self.type, "entity_id": self.entity_id, "property_name": self.property_name,
+        d = {"type": self.type, "entity_id": self.entity_id, **_composite(self.entity_id),
+             "property_name": self.property_name,
              "vertical": self.vertical, "score": round(self.score, 4), "why_string": self.why_string,
              "latest_moment": self.latest_moment.to_dict() if self.latest_moment else None}
         if debug:

@@ -21,13 +21,22 @@ from .ranker import rank_pool
 from .request import HomeFeedRequest
 from .scorer import HomeWeights
 from .serializer import build_envelope
-from .suppression import SuppressionInputs
+from .substrate_guard import assert_substrate
+from .suppression import SuppressionInputs, property_refs_to_entity_ids
 from .vectors import VectorStore
+
+# Fire the startup substrate guard exactly ONCE per process (the API builds the engine lazily on first
+# request; multiple engine constructions must not re-run the check). SUBSTRATE_CHECK=0 bypasses it.
+_SUBSTRATE_CHECKED = False
 
 
 class HomeFeedEngine:
     def __init__(self, follow_source: FollowSource, graph: GraphMoments, vectors: VectorStore,
                  weights: Optional[HomeWeights] = None):
+        global _SUBSTRATE_CHECKED
+        if not _SUBSTRATE_CHECKED:
+            assert_substrate()        # FAIL LOUD on wrong graph/parquet (:7687 57k / :7688 44k / obsolete)
+            _SUBSTRATE_CHECKED = True
         self.follow_source = follow_source
         self.graph = graph
         self.vectors = vectors
@@ -39,8 +48,9 @@ class HomeFeedEngine:
         now = resolve_now(now)
         suppression = SuppressionInputs(
             seen_ids=set(req.seen_ids), done_ids=set(req.done_ids),
-            dismissed_property_ids=set(req.dismissed_property_ids),
-            blocked_property_ids=set(req.blocked_property_ids),
+            # inbound property refs (entity_id | composite | bare source_id) → entity_ids (collision-safe)
+            dismissed_property_ids=property_refs_to_entity_ids(req.dismissed_property_ids),
+            blocked_property_ids=property_refs_to_entity_ids(req.blocked_property_ids),
             reacted_moment_ids=set(req.reacted_moment_ids))
 
         pool = build_candidate_pool(req.user_id, suppression, follow_source=self.follow_source,

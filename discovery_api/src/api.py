@@ -13,21 +13,57 @@ run it as a PACKAGE module from the repo root (NOT --app-dir):
 
 from __future__ import annotations
 
+import sys
 import threading
 import time
 from collections import Counter
 from datetime import timedelta
 from enum import Enum
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, Union
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+# central identity — the composite (profile_key + media_source_guid) every response item must emit.
+_REPO_ROOT = Path(__file__).resolve().parents[4]     # src → discovery_api → local_code → E2 → ROOT
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+from shared import identity as _ident   # noqa: E402
+
 from . import config, timeutil
+from .substrate_guard import assert_substrate
+
+
+def _composite(entity_id) -> dict:
+    """entity_id → {"profile_key", "media_source_guid"} for the response; {} if it can't be derived."""
+    if not entity_id:
+        return {}
+    try:
+        return _ident.composite_of(entity_id)
+    except ValueError:
+        return {}
+
+
+def _canon_exclusions(property_ids) -> List[str]:
+    """Canonicalise the inbound exclusion list to hashable/sortable STRING refs (so the bundle cache key
+    and downstream sets stay valid). A composite dict / entity_id collapses to its entity_id string here
+    (no graph I/O); a bare source_id keeps its string form and is resolved against the graph later by
+    resolve_inbound_id. Composite dicts missing a guid are dropped."""
+    out: List[str] = []
+    for v in (property_ids or []):
+        eid = _ident.coerce_to_entity_id(v)         # entity_id | composite → entity_id (no I/O); bare int → None
+        if eid is not None:
+            out.append(eid)
+        elif isinstance(v, dict):
+            continue                                # unresolvable composite (no guid) → drop
+        else:
+            out.append(str(v).strip())              # bare source_id → its string (resolved later vs the graph)
+    return out
 from .candidates import RequestContext
-from .data_access import CsvDataSource, SubstrateClient
+from .data_access import CsvDataSource, SubstrateClient, get_data_source
 from .engine import DiscoveryEngine
 from .feed.blend import V2FeedBuilder
 from .feed.profile import build_profile
@@ -71,7 +107,11 @@ class FeedRequest(BaseModel):
     date_range: Optional[DateRange] = None              # {start, end} ISO — filters main-feed moments
     limit: int = config.MAIN_FEED_PAGE_SIZE
     offset: int = 0
-    property_ids: Optional[List[int]] = None            # EXCLUSION list (opposite of Endpoint 1)
+    # EXCLUSION list (opposite of Endpoint 1). POST composite-key migration this accepts, per element:
+    #   an entity_id string ("Movie:119163"), a composite {profile_key|vertical, media_source_guid},
+    #   or (backward-compat) a bare source_id int — resolved against the graph, dropped-with-warning if it
+    #   collides across verticals (send the composite/entity_id to disambiguate).
+    property_ids: Optional[List[Union[int, str, dict]]] = None
     seen_ids: Optional[List[int]] = None                # moment ids already shown → suppressed
     debug: bool = False
     now: Optional[str] = None                           # ISO; else config.DEFAULT_NOW_ISO / wall-clock
@@ -96,7 +136,7 @@ class _CountingSubstrate:
 
 class _State:
     def __init__(self):
-        self.ds = CsvDataSource().load()
+        self.ds = get_data_source().load()   # CsvDataSource (mode=csv, default) | LiveDataSource (mode=live)
         self.pop = PopularityIndex.from_data_source(self.ds)
         self.raw_substrate = SubstrateClient()
         self.counter = _CountingSubstrate(self.raw_substrate)
@@ -155,7 +195,7 @@ def _item_debug(source_pool, signals):
 
 
 def _moment_item(fi, debug):
-    d = {"type": "moment", "moment_id": fi.moment_id, "entity_id": fi.entity_id,
+    d = {"type": "moment", "moment_id": fi.moment_id, "entity_id": fi.entity_id, **_composite(fi.entity_id),
          "property_name": fi.property_name, "vertical": fi.vertical, "title": fi.title,
          "description": fi.description, "event_starts_at": fi.event_starts_at,
          "media_platform_id": fi.media_platform_id, "score": round(fi.score, 4), "why_string": fi.why_string}
@@ -165,7 +205,8 @@ def _moment_item(fi, debug):
 
 
 def _property_item(ci, ds, debug):
-    d = {"type": "property", "entity_id": ci.entity_id, "name": ci.property_name, "vertical": ci.vertical,
+    d = {"type": "property", "entity_id": ci.entity_id, **_composite(ci.entity_id), "name": ci.property_name,
+         "vertical": ci.vertical,
          "genres": _genres(ds, ci.entity_id), "score": round(ci.score, 4), "why_string": ci.why_string,
          "latest_moment": ci.latest_moment.to_dict() if ci.latest_moment else None}
     if debug:
@@ -196,7 +237,7 @@ def _date_filter(items, lo, hi):
 def _v2_moment_item(fi, debug):
     """Serialize a main-feed moment. Handles BOTH the v2 three-signal debug and the v1-shaped debug a
     cold-start fallback feed carries (so the envelope is valid either way)."""
-    d = {"type": "moment", "moment_id": fi.moment_id, "entity_id": fi.entity_id,
+    d = {"type": "moment", "moment_id": fi.moment_id, "entity_id": fi.entity_id, **_composite(fi.entity_id),
          "property_name": fi.property_name, "vertical": fi.vertical, "title": fi.title,
          "description": fi.description, "event_starts_at": fi.event_starts_at,
          "media_platform_id": fi.media_platform_id, "score": round(fi.score, 4), "why_string": fi.why_string}
@@ -216,7 +257,8 @@ def _v2_moment_item(fi, debug):
 
 
 def _v2_property_item(ci, ds, debug):
-    d = {"type": "property", "entity_id": ci.entity_id, "name": ci.property_name, "vertical": ci.vertical,
+    d = {"type": "property", "entity_id": ci.entity_id, **_composite(ci.entity_id), "name": ci.property_name,
+         "vertical": ci.vertical,
          "genres": _genres(ds, ci.entity_id), "score": round(ci.score, 4), "why_string": ci.why_string,
          "latest_moment": ci.latest_moment.to_dict() if ci.latest_moment else None}
     if debug:
@@ -234,7 +276,7 @@ def _v2_feed(st, req, now, build_uid, dbg, builder=None):
     st.counter.reset()
     t0 = time.time()
     feed, meta = builder.build(build_uid, now=now, limit=_FULL_FEED_LIMIT, offset=0,
-                               seen_ids=req.seen_ids or [], excluded_property_ids=req.property_ids or [])
+                               seen_ids=req.seen_ids or [], excluded_property_ids=_canon_exclusions(req.property_ids))
     timing_ms = round((time.time() - t0) * 1000, 1)
 
     lo, hi = _date_bounds(req, now)                       # SAME date filter + pagination as v1
@@ -278,10 +320,19 @@ app = FastAPI(title="Feeds.ai Discovery API", version="1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
+@app.on_event("startup")
+def _substrate_guard_on_startup():
+    """FAIL LOUD at startup if E2 is pointed at the wrong vector/graph SERVICE (stale-substrate guard).
+    E2 talks to the substrate ONLY over HTTP, so the guard validates the services behind
+    config.VECTOR_API_URL / GRAPH_API_URL. SUBSTRATE_CHECK=0 skips it (handled inside assert_substrate)."""
+    assert_substrate()
+
+
 @app.post("/discovery/feed")
 def discovery_feed(req: FeedRequest, debug: bool = Query(False), engine: Optional[str] = Query(None)):
     """Build a personalised discovery feed (main feed + carousels) for the user. No NL query.
-    engine selector: ?engine= (query) > req.engine (body) > config.V2_DEFAULT_ENGINE; v1 is the default."""
+    engine selector: ?engine= (query) > req.engine (body) > config.V2_DEFAULT_ENGINE; **v2 is the committed
+    default** (config resolves it; DISCOVERY_LEGACY_V1=1 restores v1 in full)."""
     try:
         st = _state()
         dbg = bool(req.debug or debug)
@@ -292,13 +343,14 @@ def discovery_feed(req: FeedRequest, debug: bool = Query(False), engine: Optiona
         if req.session_id:
             return _v2_feed(st, req, now, st.session_store.uid(req.session_id), dbg, builder=st.v2_session)
 
-        # ── ENGINE SELECTOR — v2 takes a separate path; v1 below is byte-identical to before ──
-        if (engine or req.engine or config.V2_DEFAULT_ENGINE or "v1").lower() == "v2":
+        # ── ENGINE SELECTOR — v2 is the committed default (config.V2_DEFAULT_ENGINE); v1 below is
+        #    byte-identical to before and is restored in full by DISCOVERY_LEGACY_V1=1 ──
+        if (engine or req.engine or config.V2_DEFAULT_ENGINE or "v2").lower() == "v2":
             return _v2_feed(st, req, now, build_uid, dbg)
 
         ctx = RequestContext(now=now, limit=_FULL_FEED_LIMIT, offset=0,
                              seen_moment_ids=set(req.seen_ids or []),
-                             excluded_property_ids=set(req.property_ids or []))
+                             excluded_property_ids=_canon_exclusions(req.property_ids))
 
         reachable = st.substrate_up()
         engine = st.engine_full if reachable else st.engine_global
@@ -383,7 +435,9 @@ def _prop_card(ds, entity_id):
     ms = ds.get_moments_for_property(entity_id)
     latest = ms[0] if ms else None
     genres = ds.get_podcast_categories(entity_id) if e.vertical == "podcast" else e.canonical_genres
-    return {"property_id": ds.entity_id_to_property_id(entity_id), "entity_id": entity_id, "name": e.name,
+    return {"entity_id": entity_id, **_composite(entity_id),
+            "property_id": ds.entity_id_to_property_id(entity_id),   # legacy source_id (ambiguous); prefer composite
+            "name": e.name,
             "vertical": e.vertical, "genres": genres[:4],
             "latest_moment": ({"moment_id": latest.moment_id, "title": latest.title,
                                "event_starts_at": latest.event_starts_at.isoformat() if latest.event_starts_at else None}

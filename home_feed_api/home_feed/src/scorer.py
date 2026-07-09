@@ -19,7 +19,7 @@ from typing import Optional
 
 from . import config
 from .candidate import CandidateMoment
-from .recency import proximity_score, recency_score
+from .recency import anchor_proximity_score, is_anchor_moment, proximity_score, recency_score
 from .taste import TasteContext, taste_score
 from .vectors import VectorStore
 
@@ -71,7 +71,13 @@ def richness_stub(candidate: CandidateMoment) -> float:
 def score_candidate(candidate: CandidateMoment, ctx: TasteContext, vectors: VectorStore, now: datetime,
                     weights: HomeWeights, sort_mode: str = "relevance") -> ScoreBreakdown:
     taste, cos, overlap = taste_score(candidate, ctx, vectors)
-    rec = recency_score(candidate.event_starts_at, now)
+    # VERTICAL-AWARE (opt-in, HOME_VERTICAL_AWARE_RECENCY): a RELEASE-ANCHOR moment's temporal signal is
+    # SYMMETRIC proximity-to-anchor (recent/upcoming high, distant low-but-nonzero) instead of decay-since —
+    # so a followed movie/tv anchor isn't a flat ~0. EVENT moments (episode/video) keep decay. OFF ⇒ identical.
+    if is_anchor_moment(candidate.vertical, candidate.moment_kind):
+        rec = anchor_proximity_score(candidate.event_starts_at, now)
+    else:
+        rec = recency_score(candidate.event_starts_at, now)
     prox = proximity_score(candidate.event_starts_at, now)
     trend = trending_stub(candidate)
     rich = richness_stub(candidate)

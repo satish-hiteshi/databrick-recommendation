@@ -253,9 +253,14 @@ V2_THIN_SIGNAL_TREND_BOOST = float(os.getenv("DISCOVERY_V2_THIN_SIGNAL_TREND_BOO
 # ─────────────────────────────────────────────────────────────────────────────
 # ── Discovery v2 (V2-P6): engine selector + bundle (retrieval) cache ──
 # ─────────────────────────────────────────────────────────────────────────────
-# The SAME /discovery/feed endpoint serves v1 (current) or v2 (V2FeedBuilder). v1 stays the default so
-# nothing changes for existing callers; a request `engine` field / ?engine= param / this flag select v2.
-V2_DEFAULT_ENGINE = os.getenv("DISCOVERY_DEFAULT_ENGINE", "v1").lower()     # "v1" | "v2"
+# The SAME /discovery/feed endpoint serves v2 (V2FeedBuilder, the validated taste-clustered engine) or v1.
+# COMMITTED DEFAULT = v2 (changed from "v1" on 2026-07-09 — v2 is what we evaluated/tuned; v1's main feed is
+# largely un-personalized). Single documented fallback flag DISCOVERY_LEGACY_V1=1 restores v1 IN FULL.
+# DISCOVERY_DEFAULT_ENGINE stays a granular A/B override ("v1"|"v2"), IGNORED when the legacy flag is set.
+# Precedence: DISCOVERY_LEGACY_V1  >  DISCOVERY_DEFAULT_ENGINE  >  default "v2".  (Per-request ?engine=/body
+# `engine` still override everything, for explicit A/B — see api.py.)
+_LEGACY_V1 = os.getenv("DISCOVERY_LEGACY_V1", "").strip().lower() in ("1", "true", "yes", "on")
+V2_DEFAULT_ENGINE = ("v1" if _LEGACY_V1 else os.getenv("DISCOVERY_DEFAULT_ENGINE", "v2")).lower()  # "v1" | "v2"
 # BUNDLE CACHE — memoize the V2-P3 CandidateBundle (the ~6 /api/retrieve calls that dominate latency) keyed
 # by (user_id, now, excluded_property_ids, composer). seen_ids are applied POST-cache in assembly (they don't
 # change retrieval), so a repeat load for the same user/now is sub-second.

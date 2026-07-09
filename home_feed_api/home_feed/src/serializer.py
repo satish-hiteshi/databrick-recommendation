@@ -25,7 +25,10 @@ from .why import badge, dominant_signal, why_string
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
-from shared import identity as _ident   # noqa: E402
+try:
+    from shared import identity as _ident                # dev repo layout (repo-root shared/)  # noqa: E402
+except ImportError:
+    from . import _identity as _ident                    # vendored entity-identity at src/_identity.py
 
 
 def _composite(entity_id: str) -> dict:
@@ -54,10 +57,16 @@ def serialize_item(sc: ScoredCandidate, now: datetime, weights: HomeWeights, deb
         "type": "moment",
         "moment_id": c.moment_id,
         "entity_id": c.entity_id,
-        # composite key (the stable identity post-migration) — derive from entity_id, fall back to the
-        # fields the graph traversal set.
-        **({**_composite(c.entity_id)} or
-           {"profile_key": c.profile_key, "media_source_guid": c.media_source_guid}),
+        # MOMENT-SCOPED composite (client resolves moments 1:1 on this pair — unique index on
+        # moments(media_source_guid, profile_key)). The guid is a STRING (89% non-numeric) — never cast.
+        # Null when the Moment node carries no composite (never fabricated).
+        "moment_profile_key": (c.moment_kind or None),
+        "moment_media_source_guid": (c.moment_media_source_guid or None),
+        # PARENT PROPERTY identity — property_-named so it can NEVER be confused with the moment's
+        # composite (the old bare profile_key/media_source_guid on moment items WAS the property's).
+        "property_profile_key": (_composite(c.entity_id).get("profile_key") or c.profile_key or None),
+        "property_media_source_guid": (_composite(c.entity_id).get("media_source_guid")
+                                       or c.media_source_guid or None),
         # DEPRECATED: the old PUBLIC property_id is GONE. This now carries the surviving source_id
         # (== media_source_guid) for backward-compat; clients should key on entity_id / the composite.
         "property_id": (c.media_source_guid or (str(c.property_id) if c.property_id else None)),

@@ -130,8 +130,25 @@ def _genres(ds, entity_id):
     return ds.get_podcast_categories(entity_id) if e.vertical == "podcast" else e.canonical_genres
 
 
+def _property_composite(entity_id):
+    """Parent PROPERTY composite from entity_id, via the vendored identity module (empty on failure)."""
+    try:
+        from discovery_api.src import _identity
+        return _identity.composite_of(entity_id) or {}
+    except Exception:
+        return {}
+
+
 def _moment_item(fi, debug):
+    _pc = _property_composite(fi.entity_id)
     d = {"type": "moment", "moment_id": fi.moment_id, "entity_id": fi.entity_id,
+         # MOMENT-scoped composite — client unique index moments(media_source_guid, profile_key) resolves
+         # this 1:1. guid is a STRING (89% non-numeric), never cast. Null when absent, never fabricated.
+         "moment_profile_key": (getattr(fi, "moment_profile_key", "") or None),
+         "moment_media_source_guid": (getattr(fi, "moment_media_source_guid", "") or None),
+         # parent property identity, property_-named so it cannot be confused with the moment's
+         "property_profile_key": _pc.get("profile_key"),
+         "property_media_source_guid": _pc.get("media_source_guid"),
          "property_name": fi.property_name, "vertical": fi.vertical, "title": fi.title,
          "description": fi.description, "event_starts_at": _iso(fi.event_starts_at),
          "media_platform_id": fi.media_platform_id, "score": round(fi.score, 4), "why_string": fi.why_string}

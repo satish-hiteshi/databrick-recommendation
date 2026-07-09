@@ -29,7 +29,10 @@ from .recency import is_anchor_moment
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
-from shared import identity as _ident   # noqa: E402
+try:
+    from shared import identity as _ident                # dev repo layout (repo-root shared/)  # noqa: E402
+except ImportError:
+    from . import _identity as _ident                    # vendored entity-identity at src/_identity.py
 
 _AWARE_MIN = datetime.min.replace(tzinfo=timezone.utc)
 

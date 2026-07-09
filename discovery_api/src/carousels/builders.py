@@ -35,7 +35,9 @@ def latest_moment_for(ds, entity_id: str, prefer_moment_id: Optional[int] = None
     if m is None:
         ms = ds.get_moments_for_property(entity_id)
         m = ms[0] if ms else None
-    return LatestMoment(m.moment_id, m.title, _iso(m.event_starts_at)) if m else None
+    return LatestMoment(m.moment_id, m.title, _iso(m.event_starts_at),
+                        moment_profile_key=m.profile_key,
+                        moment_media_source_guid=m.media_source_guid) if m else None
 
 
 def representative_followed_name(ds, profile, popularity) -> Optional[str]:

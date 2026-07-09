@@ -37,6 +37,8 @@ def _build_feed_item(ds, cand: Candidate, bd, profile: UserProfile, repr_name, l
         title=(m.title if m else ""), description=(m.description if m else ""),
         event_starts_at=(_iso(m.event_starts_at) if m else None),
         media_platform_id=(m.media_platform_id if m else None),
+            moment_profile_key=(m.profile_key if m else ""),
+            moment_media_source_guid=(m.media_source_guid if m else ""),
         score=bd.final, why_string=why, source_pool=cand.source_pool,
         debug={"signals": bd.to_dict()})
 

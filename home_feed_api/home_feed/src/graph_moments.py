@@ -26,7 +26,10 @@ from .candidate import CandidateMoment
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
-from shared import identity as _ident   # noqa: E402
+try:
+    from shared import identity as _ident                # dev repo layout (repo-root shared/)  # noqa: E402
+except ImportError:
+    from . import _identity as _ident                    # vendored entity-identity at src/_identity.py
 
 # One row per moment of any of the given followed properties, anchored on entity_id. Filter-free on
 # status: the loaded set IS the published set (no status property on the node).
@@ -44,6 +47,7 @@ RETURN e.entity_id        AS entity_id,
        m.url              AS url,
        m.event_starts_at  AS event_starts_at,
        m.profile_key      AS moment_kind,
+       m.media_source_guid AS moment_media_source_guid,
        m.media_type_id    AS media_type_id,
        m.moment_type_id   AS moment_type_id,
        m.media_platform_id AS media_platform_id,
@@ -197,6 +201,8 @@ class GraphMoments:
             vertical=r["vertical"], property_name=r["property_name"], title=r["title"] or "",
             description=r["description"], url=r["url"], event_starts_at=_native(r["event_starts_at"]),
             moment_kind=r.get("moment_kind") or "",
+            moment_media_source_guid=(str(r["moment_media_source_guid"])
+                                      if r.get("moment_media_source_guid") is not None else ""),
             media_type_id=r["media_type_id"], moment_type_id=r["moment_type_id"],
             media_platform_id=r["media_platform_id"], published_at=_native(r["published_at"]),
             created_at=_native(r["created_at"]),

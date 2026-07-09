@@ -204,13 +204,21 @@ class LiveDataSource(DataSource):
 
     # ── moments (public_moments, Published=3, newest-first by event_starts_at) ──
     def _load_moments(self):
-        sql = f"""
-            SELECT id AS moment_id, property_id, media_type_id, moment_type_id, title, description,
-                   event_starts_at, event_ends_at, media_platform_id, created_at
-            FROM {self.pg}.public_moments
-            WHERE moment_status_id = 3 AND deleted_at IS NULL AND property_id IS NOT NULL
-        """
-        for r in self._q(sql):
+        # profile_key + media_source_guid = the MOMENT's OWN composite (client unique index on
+        # moments(media_source_guid, profile_key) — resolves 1:1). guid is a STRING, never cast.
+        # Fall back to the legacy select if the mirror predates those columns (fields stay empty →
+        # the serializer emits null; a key is never fabricated).
+        cols = ("id AS moment_id, property_id, media_type_id, moment_type_id, title, description, "
+                "event_starts_at, event_ends_at, media_platform_id, created_at")
+        where = "WHERE moment_status_id = 3 AND deleted_at IS NULL AND property_id IS NOT NULL"
+        try:
+            rows = self._q(f"SELECT {cols}, profile_key, media_source_guid "
+                           f"FROM {self.pg}.public_moments {where}")
+        except Exception as ex:
+            print(f"[live_source] public_moments composite columns unavailable ({str(ex)[:120]}) — "
+                  "moment items will emit null moment_profile_key/moment_media_source_guid", flush=True)
+            rows = self._q(f"SELECT {cols} FROM {self.pg}.public_moments {where}")
+        for r in rows:
             mid = r.get("moment_id"); pid = r.get("property_id")
             if mid is None or pid is None:
                 continue
@@ -222,7 +230,9 @@ class LiveDataSource(DataSource):
                 media_type_id=r.get("media_type_id"), moment_type_id=r.get("moment_type_id"),
                 title=r.get("title") or "", description=r.get("description") or "",
                 event_starts_at=_utc(r.get("event_starts_at")), event_ends_at=_utc(r.get("event_ends_at")),
-                media_platform_id=r.get("media_platform_id"), created_at=_utc(r.get("created_at")))
+                media_platform_id=r.get("media_platform_id"), created_at=_utc(r.get("created_at")),
+                profile_key=(str(r["profile_key"]) if r.get("profile_key") is not None else ""),
+                media_source_guid=(str(r["media_source_guid"]) if r.get("media_source_guid") is not None else ""))
             self._moment_by_id[int(mid)] = m
             self._moments_by_entity[eid].append(m)
             self._all_moments.append(m)

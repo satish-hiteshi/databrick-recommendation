@@ -63,7 +63,8 @@ class Moment:
     event_starts_at: Optional[datetime] = None   # THE recency key
     event_ends_at: Optional[datetime] = None
     media_platform_id: Optional[int] = None
-    profile_key: str = ""
+    profile_key: str = ""                        # the MOMENT's own profile_key (e.g. igdb_game_released)
+    media_source_guid: str = ""                  # the MOMENT's own guid ("11205-2015-11-02" — STRING, never cast)
     created_at: Optional[datetime] = None
 
 

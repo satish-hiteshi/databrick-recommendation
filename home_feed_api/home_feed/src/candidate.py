@@ -34,6 +34,9 @@ class CandidateMoment:
     event_starts_at: Optional[datetime] = None     # THE recency key
     moment_kind: str = ""              # Moment.profile_key — the moment KIND (…_episode_released vs …_released/
                                        # …_trailer/…_reveal); classifies EVENT (decay) vs ANCHOR (proximity)
+    moment_media_source_guid: str = "" # the MOMENT's OWN composite guid (e.g. "11205-2015-11-02" — sourceid-date;
+                                       # a STRING, 89% non-numeric, NEVER int-cast). With moment_kind (= the
+                                       # moment's profile_key) this forms the moment's unique composite.
     media_type_id: Optional[int] = None
     moment_type_id: Optional[int] = None
     media_platform_id: Optional[int] = None

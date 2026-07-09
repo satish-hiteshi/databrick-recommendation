@@ -31,7 +31,10 @@ from pydantic import BaseModel
 _REPO_ROOT = Path(__file__).resolve().parents[4]     # src → discovery_api → local_code → E2 → ROOT
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
-from shared import identity as _ident   # noqa: E402
+try:
+    from shared import identity as _ident                # dev repo layout (repo-root shared/)  # noqa: E402
+except ImportError:
+    from . import _identity as _ident                     # vendored at src/_identity.py (client/serving layout)
 
 from . import config, timeutil
 from .substrate_guard import assert_substrate
@@ -195,7 +198,15 @@ def _item_debug(source_pool, signals):
 
 
 def _moment_item(fi, debug):
-    d = {"type": "moment", "moment_id": fi.moment_id, "entity_id": fi.entity_id, **_composite(fi.entity_id),
+    _pc = _composite(fi.entity_id)                       # parent PROPERTY composite (from entity_id)
+    d = {"type": "moment", "moment_id": fi.moment_id, "entity_id": fi.entity_id,
+         # MOMENT-scoped composite — client unique index moments(media_source_guid, profile_key) resolves
+         # this 1:1. guid is a STRING (89% non-numeric), never cast. Null when absent, never fabricated.
+         "moment_profile_key": (getattr(fi, "moment_profile_key", "") or None),
+         "moment_media_source_guid": (getattr(fi, "moment_media_source_guid", "") or None),
+         # parent property identity, property_-named so it cannot be confused with the moment's
+         "property_profile_key": _pc.get("profile_key"),
+         "property_media_source_guid": _pc.get("media_source_guid"),
          "property_name": fi.property_name, "vertical": fi.vertical, "title": fi.title,
          "description": fi.description, "event_starts_at": fi.event_starts_at,
          "media_platform_id": fi.media_platform_id, "score": round(fi.score, 4), "why_string": fi.why_string}
@@ -237,7 +248,15 @@ def _date_filter(items, lo, hi):
 def _v2_moment_item(fi, debug):
     """Serialize a main-feed moment. Handles BOTH the v2 three-signal debug and the v1-shaped debug a
     cold-start fallback feed carries (so the envelope is valid either way)."""
-    d = {"type": "moment", "moment_id": fi.moment_id, "entity_id": fi.entity_id, **_composite(fi.entity_id),
+    _pc = _composite(fi.entity_id)                       # parent PROPERTY composite (from entity_id)
+    d = {"type": "moment", "moment_id": fi.moment_id, "entity_id": fi.entity_id,
+         # MOMENT-scoped composite — client unique index moments(media_source_guid, profile_key) resolves
+         # this 1:1. guid is a STRING (89% non-numeric), never cast. Null when absent, never fabricated.
+         "moment_profile_key": (getattr(fi, "moment_profile_key", "") or None),
+         "moment_media_source_guid": (getattr(fi, "moment_media_source_guid", "") or None),
+         # parent property identity, property_-named so it cannot be confused with the moment's
+         "property_profile_key": _pc.get("profile_key"),
+         "property_media_source_guid": _pc.get("media_source_guid"),
          "property_name": fi.property_name, "vertical": fi.vertical, "title": fi.title,
          "description": fi.description, "event_starts_at": fi.event_starts_at,
          "media_platform_id": fi.media_platform_id, "score": round(fi.score, 4), "why_string": fi.why_string}

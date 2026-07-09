@@ -18,7 +18,13 @@ from typing import List, Optional
 _REPO_ROOT = Path(__file__).resolve().parents[5]     # feed → src → discovery_api → local_code → E2 → ROOT
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
-from shared import identity as _ident   # noqa: E402
+try:
+    from shared import identity as _ident                # dev repo layout  # noqa: E402
+except ImportError:
+    try:
+        from .. import _identity as _ident               # vendored at src/ (serving bundle)
+    except Exception:
+        import _identity as _ident
 
 
 def _composite(entity_id: Optional[str]) -> dict:
@@ -61,11 +67,20 @@ class FeedItem:
     why_string: str
     source_pool: str
     debug: dict = field(default_factory=dict)
+    moment_profile_key: str = ""        # the MOMENT's own composite (unique index on
+    moment_media_source_guid: str = ""  # moments(media_source_guid, profile_key)); guid is a STRING — never cast
     type: str = "moment"
 
     def to_dict(self, debug: bool = False) -> dict:
+        _pc = _composite(self.entity_id)                  # PARENT PROPERTY composite (from entity_id)
         d = {"type": self.type, "moment_id": self.moment_id, "entity_id": self.entity_id,
-             **_composite(self.entity_id),                # profile_key + media_source_guid (composite key)
+             # MOMENT-SCOPED composite — resolves 1:1 to a moment on the client. Null when the Moment
+             # node has none (never fabricated).
+             "moment_profile_key": self.moment_profile_key or None,
+             "moment_media_source_guid": self.moment_media_source_guid or None,
+             # parent property's composite, property_-named so it cannot be confused with the moment's
+             "property_profile_key": _pc.get("profile_key"),
+             "property_media_source_guid": _pc.get("media_source_guid"),
              "property_name": self.property_name, "vertical": self.vertical, "title": self.title,
              "description": self.description, "event_starts_at": self.event_starts_at,
              "media_platform_id": self.media_platform_id, "score": round(self.score, 4),
@@ -80,9 +95,13 @@ class LatestMoment:
     moment_id: int
     title: str
     event_starts_at: Optional[str]
+    moment_profile_key: str = ""        # the moment's OWN composite (see FeedItem) — resolvable 1:1
+    moment_media_source_guid: str = ""  # STRING guid, never cast
 
     def to_dict(self) -> dict:
-        return {"moment_id": self.moment_id, "title": self.title, "event_starts_at": self.event_starts_at}
+        return {"moment_id": self.moment_id, "title": self.title, "event_starts_at": self.event_starts_at,
+                "moment_profile_key": self.moment_profile_key or None,
+                "moment_media_source_guid": self.moment_media_source_guid or None}
 
 
 @dataclass

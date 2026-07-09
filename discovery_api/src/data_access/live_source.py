@@ -49,7 +49,10 @@ _REPO_ROOT = Path(__file__).resolve().parents[5]     # …/data_access → src �
 # ── central identity (the ONE place the composite is built/parsed) — import shared/identity.py ──
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
-from shared import identity as _ident   # noqa: E402  (composite_of / parse_entity_id / candidate_entity_ids)
+try:
+    from shared import identity as _ident                # dev repo layout (repo-root shared/)  # noqa: E402
+except ImportError:
+    from .. import _identity as _ident                   # vendored at src/_identity.py (client/serving layout)  (composite_of / parse_entity_id / candidate_entity_ids)
 
 
 def _int(s) -> Optional[int]:
@@ -252,7 +255,8 @@ class LiveDataSource(DataSource):
             "MATCH (e:Entity)-[:HAS_MOMENT]->(m:Moment) "
             "WHERE e.entity_id IN $eids "
             "RETURN e.entity_id AS eid, m.moment_id AS mid, m.media_type_id AS mtype, "
-            "       m.profile_key AS mpk, m.event_starts_at AS starts, m.published_at AS pub")
+            "       m.profile_key AS mpk, m.media_source_guid AS mguid, "
+            "       m.event_starts_at AS starts, m.published_at AS pub")
         served = list(self._entities.keys())
         drv = GraphDatabase.driver(self.neo4j_uri, auth=self.neo4j_auth)
         try:
@@ -276,6 +280,7 @@ class LiveDataSource(DataSource):
                             event_ends_at=None,
                             media_platform_id=None,
                             profile_key=(str(r["mpk"]) if r["mpk"] is not None else ""),
+                            media_source_guid=(str(r["mguid"]) if r["mguid"] is not None else ""),
                             created_at=timeutil.parse_ts(r["pub"]),
                         )
                         self._moment_by_id[mid] = m

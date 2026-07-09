@@ -189,6 +189,8 @@ def assemble_feed_v2(profile, bundle, ds: DataSource, trending: TrendingTable, n
             title=(m.title if m else ""), description=(m.description if m else ""),
             event_starts_at=(_iso(m.event_starts_at) if m else None),
             media_platform_id=(m.media_platform_id if m else None),
+            moment_profile_key=(m.profile_key if m else ""),
+            moment_media_source_guid=(m.media_source_guid if m else ""),
             score=sm.final_score, why_string=why, source_pool=sm.source_pool, debug=sm.signals())
 
     main_items = [build_item(sm) for sm in page]

@@ -16,7 +16,7 @@
 # SERVING container installs from requirements.txt — this cell only covers the job cluster (dev clusters
 # are clean; staging happened to have these preinstalled). mlflow deliberately NOT touched (runtime-
 # integrated); torch/sentence-transformers avoided via RERANK=none during registration (see step 2).
-# MAGIC %pip install -q python-dotenv neo4j graphdatascience qdrant-client psycopg2-binary httpx pydantic rank-bm25 tqdm pyarrow opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+# MAGIC %pip install -q "anyio<4" python-dotenv neo4j graphdatascience qdrant-client psycopg2-binary httpx pydantic rank-bm25 tqdm pyarrow opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
 
 # COMMAND ----------
 # GUARDED restart: in notebook JOBS a restart re-executes the whole notebook, so an unconditional

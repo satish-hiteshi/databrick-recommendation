@@ -18,7 +18,9 @@ def _parquet_path():
     except Exception:
         pass
     here = os.path.dirname(os.path.abspath(__file__))
-    for base in (here, os.path.dirname(here), os.path.dirname(os.path.dirname(here))):
+    # walk up to and including the REPO ROOT (…/feedsai-graphdb), where the deploy parquet lives
+    for base in (here, os.path.dirname(here), os.path.dirname(os.path.dirname(here)),
+                 os.path.dirname(os.path.dirname(os.path.dirname(here)))):
         for root, _dirs, files in os.walk(base):
             if _PARQUET_NAME in files:
                 return os.path.join(root, _PARQUET_NAME)
@@ -70,6 +72,27 @@ def _load():
 
 def embeddings():
     return _load()["emb"]
+
+
+_RELEASE_TS = None
+
+
+def release_ts():
+    """entity_id -> release_date_ts (Unix seconds, UTC), loaded ONCE from the SAME parquet the index uses.
+    Powers the NATIVE release_date_ts range filter (E1 recency) in the in-process retrieve handler — the
+    date lives on the vector record, mirroring the deploy vector store. Returns {} if the parquet carries
+    no release_date_ts column (an older EMBEDDINGS_PARQUET override) so callers apply NO date filter."""
+    global _RELEASE_TS
+    if _RELEASE_TS is None:
+        import pyarrow.parquet as pq
+        try:
+            t = pq.read_table(_parquet_path(), columns=["entity_id", "release_date_ts"])
+            _RELEASE_TS = {e: (int(ts) if ts is not None else None)
+                           for e, ts in zip(t.column("entity_id").to_pylist(),
+                                            t.column("release_date_ts").to_pylist())}
+        except Exception:
+            _RELEASE_TS = {}
+    return _RELEASE_TS
 
 
 def resolve_entity(entity_name):

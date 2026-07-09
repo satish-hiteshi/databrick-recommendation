@@ -158,11 +158,15 @@ def assemble(intent: Intent, top_k: int = 10, backfill_threshold: int = BACKFILL
     #    wrappers so the depth threads through every establisher uniformly. ──
     rk = recall_k if recall_k is not None else (config.RECALL_K or None)
     _gk = rk or 500
-    # RECENCY: convert the (now date-correct, per Prompt 1) temporal window to UTC epoch bounds and pass
-    # them to EVERY vector establish so the vector search range-filters `release_date_ts` natively.
-    # None/None when no temporal → no filter (non-recency queries unchanged).
-    _dfrom, _dto = recency.epoch_window(h.temporal, raw_query=intent.raw_query,
-                                        has_anchor=bool(intent.seed_entity or h.franchise))
+    # RECENCY (ported from local_code): convert the extracted temporal window to UTC epoch bounds so the
+    # vector establish range-filters `release_date_ts` natively (via /api/retrieve → _vec_retrieve). Env-
+    # gated: E1_RECENCY=0 restores the pre-port no-date behaviour. None/None when no temporal → no filter,
+    # so every non-recency query is byte-for-byte unchanged.
+    if os.getenv("E1_RECENCY", "1") != "0":
+        _dfrom, _dto = recency.epoch_window(h.temporal, raw_query=intent.raw_query,
+                                            has_anchor=bool(intent.seed_entity or h.franchise))
+    else:
+        _dfrom, _dto = None, None
     def _gconstrain(hard, vertical=None):
         return B.graph_constrain(hard, vertical=vertical, top_k=_gk)
     def _vconstrain(phrase, vertical=None):

@@ -72,18 +72,48 @@ def _vec_query(body):
                          date_end=_epoch_to_ymd(body.get("date_to_ts")))
 
 
+def _in_window(ts, from_ts, to_ts):
+    """release_date_ts range predicate (mirror recency.in_window): passes iff from_ts<=ts<=to_ts (open
+    where a bound is None). A NULL ts is EXCLUDED when any bound is set (a dated query needs a known date)."""
+    if from_ts is None and to_ts is None:
+        return True
+    if ts is None:
+        return False
+    if from_ts is not None and ts < from_ts:
+        return False
+    if to_ts is not None and ts > to_ts:
+        return False
+    return True
+
+
 def _vec_retrieve(body):
     from pipeline.embedding_generator import embed_query_text
     from pipeline.vector_store import vector_search
+    import inmemory_store
     phrase = body.get("phrase", "")
     vertical = body.get("vertical")
     top_k = body.get("top_k", 50)
+    from_ts, to_ts = body.get("date_from_ts"), body.get("date_to_ts")
+    dated = from_ts is not None or to_ts is not None
     verts = {vertical} if (vertical and vertical != "any") else None
     vec = np.asarray(embed_query_text(phrase), dtype=np.float32)
-    out = [{"entity_id": eid, "name": name, "vertical": vert, "score": round(float(score), 6)}
-           for (eid, name, vert, score) in vector_search(vec, verts, top_k)]
+    # RECENCY: when a date window is set, recall DEEPER (many top-cosine hits fall outside it) then
+    # post-filter on release_date_ts from the in-memory parquet. This is the AUTHORITATIVE dated path and
+    # is backend-agnostic — it works over the in-memory Qdrant AND Databricks VS, neither of which
+    # range-filters release_date_ts on the current index. Non-dated queries are unchanged (no filter).
+    k = max(top_k, 400) if dated else top_k
+    rts = inmemory_store.release_ts() if dated else None
+    out = []
+    for (eid, name, vert, score) in vector_search(vec, verts, k):
+        ts = rts.get(eid) if rts is not None else None
+        if dated and not _in_window(ts, from_ts, to_ts):
+            continue
+        out.append({"entity_id": eid, "name": name, "vertical": vert, "score": round(float(score), 6),
+                    "release_date_ts": ts})
+        if len(out) >= top_k:
+            break
     return {"phrase": phrase, "model": "qwen3-embedding-0-6b", "vertical": vertical,
-            "results": out, "count": len(out)}
+            "results": out, "count": len(out), "date_filtered": dated}
 
 
 def _vec_score_set(body):
@@ -199,18 +229,23 @@ def _graph_similar(body):
             "result_count": len(r), "results": _fmt(r, top_k)}
 
 
-# Cypher copied verbatim from src/api.py::_SCORE_WITHIN_CYPHER (so the result shape is identical).
-_SCORE_WITHIN_CYPHER = """
+# Cypher result shape identical to src/api.py::_SCORE_WITHIN_CYPHER, but schema names are env-driven
+# (influence/maker-rels differ on the re-keyed graph). Built lazily so `connection` env is resolved once.
+def _score_within_cypher():
+    from connection import (GRAPH_INFLUENCE_PROP as _INFL,
+                            GRAPH_DEVELOPER_REL as _DEV, GRAPH_PUBLISHER_REL as _PUB)
+    return f"""
 MATCH (e:Entity) WHERE e.entity_id IN $ids
 RETURN e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical,
-       e.influence AS influence, e.community AS community,
+       e.profile_key AS profile_key, e.media_source_guid AS media_source_guid,
+       e.{_INFL} AS influence, e.community AS community,
        [(e)-[:HAS_CONCEPT]->(c)  | c.key]          AS concepts,
        [(e)-[:HAS_KEYWORD]->(k)  | toLower(k.name)] AS keywords,
        [(e)-[:HAS_GENRE]->(g)    | toLower(g.name)] AS genres,
        [(e)-[:HAS_THEME]->(t)    | toLower(t.name)] AS themes,
        [(e)-[:IN_FRANCHISE]->(f) | f.name][0]      AS franchise,
-       [(e)-[:DEVELOPED_BY]->(d) | d.name][0]      AS developer,
-       [(e)-[:PUBLISHED_BY]->(p) | p.name][0]      AS publisher
+       [(e)-[:{_DEV}]->(d) | d.name][0]      AS developer,
+       [(e)-[:{_PUB}]->(p) | p.name][0]      AS publisher
 """
 
 
@@ -220,7 +255,7 @@ def _graph_score_within(body):
     seed = body.get("seed_entity")
     pref_vals = [str(v).lower() for v in prefs.values()]
     with _driver().session(database=_db()) as s:
-        rows = s.execute_read(lambda tx: tx.run(_SCORE_WITHIN_CYPHER, ids=ids).data())
+        rows = s.execute_read(lambda tx: tx.run(_score_within_cypher(), ids=ids).data())
         seed_concepts = set()
         if seed:
             rec = s.execute_read(lambda tx: tx.run(
@@ -250,6 +285,7 @@ def _graph_score_within(body):
 
 
 def _graph_entity_search(params):
+    from connection import GRAPH_INFLUENCE_PROP as _INFL
     q = params.get("q")
     limit = int(params.get("limit", 10))
     vertical = params.get("vertical")
@@ -257,9 +293,10 @@ def _graph_entity_search(params):
         "MATCH (e:Entity) WHERE toLower(e.name) CONTAINS toLower($q) "
         "AND ($v IS NULL OR e.vertical = $v) "
         "RETURN e.entity_id AS entity_id, e.name AS name, e.vertical AS vertical, "
-        "round(e.influence,4) AS influence, "
+        "e.profile_key AS profile_key, e.media_source_guid AS media_source_guid, "
+        f"round(e.{_INFL},4) AS influence, "
         "size([(e)-[:HAS_CONCEPT]->()|1]) AS concept_count "
-        "ORDER BY (toLower(e.name) = toLower($q)) DESC, e.influence DESC LIMIT $limit")
+        f"ORDER BY (toLower(e.name) = toLower($q)) DESC, e.{_INFL} DESC LIMIT $limit")
     with _driver().session(database=_db()) as s:
         rows = s.execute_read(lambda tx: tx.run(cypher, q=q, v=vertical, limit=limit).data())
     return {"query": q, "count": len(rows), "entities": rows}

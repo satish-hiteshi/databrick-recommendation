@@ -21,6 +21,18 @@ _ENGINE_ENV = {
     "VECTOR_BACKEND": "qdrant",           # DEFAULT: in-memory qdrant from the parquet (set VECTOR_BACKEND=databricks for Vector Search)
     "ENTITY_BACKEND": "memory",           # Postgres-free entity resolution (parquet-backed)
     "DATA_BACKEND": "parquet",            # get_all_entities() ← 57k embeddings parquet (BM25 corpus)
+    # RUNTIME EMBEDDER = QWEN (Greg's decision: Qwen is the deploy model). Setting QUERY_EMBED_ENDPOINT
+    # makes get_query_embedding take the QWEN branch (instruction-prefixed query, Qwen's native convention)
+    # instead of Voyage. Query-model == doc-model: the DOC vectors must also be Qwen (set EMBEDDINGS_PARQUET
+    # to the Qwen deploy parquet; default name is the Qwen file — see inmemory_store._PARQUET_NAME).
+    # The Qwen path also needs DATABRICKS_HOST + DATABRICKS_TOKEN in the deploy env (provided by the wiring).
+    "QUERY_EMBED_ENDPOINT": "databricks-qwen3-embedding-0-6b",   # Qwen serving-endpoint NAME (deploy env overrides)
+    # Graph schema names for the RE-KEYED neo4j 2026.05 graph (the deploy target). The graph_src Cypher is
+    # env-driven (connection.py); these setdefaults point it at the new schema. Override via env for another
+    # graph. On the new graph: PageRank=`pagerank` (not `influence`); maker edges HAS_DEVELOPER/HAS_PUBLISHER.
+    "GRAPH_INFLUENCE_PROP": "pagerank",
+    "GRAPH_DEVELOPER_REL": "HAS_DEVELOPER",
+    "GRAPH_PUBLISHER_REL": "HAS_PUBLISHER",
 }
 
 
@@ -57,6 +69,8 @@ class RouterModel(mlflow.pyfunc.PythonModel):
             os.environ.setdefault(k, v)
         otel_setup.init(_ENDPOINT)                       # one-time OTLP provider setup (no-op if env unset)
         _bootstrap_paths()
+        import substrate_guard                               # noqa: E402  (paths set above)
+        substrate_guard.assert_substrate()                  # FAIL LOUD on a wrong graph/parquet (stale-artifact guard)
         import route                                         # noqa: E402  (paths + env set above)
         self._route = route.route
         # Pre-warm heavy singletons (57k embeddings + BM25) so the first — possibly parallel

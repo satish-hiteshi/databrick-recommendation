@@ -9,10 +9,24 @@ from graphdatascience import GraphDataScience
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+# Committed defaults name the CORRECT re-keyed substrate explicitly (the local re-keyed graph on :7690 =
+# 52,510 :Entity nodes). Prod overrides NEO4J_URI/PASSWORD via env to the AuraDS instance. The old :7687
+# (57k) / :7688 (44k) instances are obsolete and must never be picked up silently — substrate_guard.py
+# asserts the entity count at startup and FAILS LOUD on a wrong graph.
+NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7690")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "feedsaiGraphPoC2026")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "feedsaiRekeyGraph2026")
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
+
+# ── Schema portability (env-driven; mirrors shared/graph/connection.py) ──
+# The re-keyed neo4j 2026.05 graph stores PageRank as `pagerank` (not `influence`) and names the maker
+# edges HAS_DEVELOPER/HAS_PUBLISHER (not DEVELOPED_BY/PUBLISHED_BY). These knobs let the SAME Cypher run
+# on either graph — nothing is hard-coded to a dataset. (Cypher cannot parameterise a property/rel NAME,
+# so these are interpolated into query text; values come only from our own env config, never user input.)
+# Defaults now name the re-keyed graph's schema (matches model.py's deploy setdefaults); env can override.
+GRAPH_INFLUENCE_PROP = os.getenv("GRAPH_INFLUENCE_PROP", "pagerank")
+GRAPH_DEVELOPER_REL = os.getenv("GRAPH_DEVELOPER_REL", "HAS_DEVELOPER")
+GRAPH_PUBLISHER_REL = os.getenv("GRAPH_PUBLISHER_REL", "HAS_PUBLISHER")
 
 _AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 

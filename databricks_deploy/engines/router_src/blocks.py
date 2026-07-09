@@ -50,9 +50,13 @@ def _item(entity_id, name, vertical, score, why, source) -> Item:
 # Unknown terms pass through unchanged (graph just won't match → correctly returns nothing for that
 # constraint, never a wrong match). Kept deliberately small + safe; tied to the live vocabulary.
 _CONCEPT_SYNONYMS = {
-    "rpg": "Role-Playing", "rpgs": "Role-Playing", "role playing": "Role-Playing",
-    "role-playing game": "Role-Playing", "role playing game": "Role-Playing",
-    "roleplaying": "Role-Playing", "jrpg": "Role-Playing", "arpg": "Role-Playing",
+    # Targets are the NEW re-keyed graph's raw genre/concept vocabulary (neo4j 2026.05 @ :7690),
+    # verified live: `Role-playing (RPG)`, `Puzzle`, `Reality` REPLACED the old `Role-Playing`,
+    # `Puzzle & Trivia`, `Reality / Unscripted` (which no longer exist → were a silent-zero). The graph
+    # matches concepts by lowercased key, so the value only needs to equal the canonical name.
+    "rpg": "Role-playing (RPG)", "rpgs": "Role-playing (RPG)", "role playing": "Role-playing (RPG)",
+    "role-playing game": "Role-playing (RPG)", "role playing game": "Role-playing (RPG)",
+    "roleplaying": "Role-playing (RPG)", "jrpg": "Role-playing (RPG)", "arpg": "Role-playing (RPG)",
     "sci-fi": "Science Fiction", "scifi": "Science Fiction", "sci fi": "Science Fiction",
     "science-fiction": "Science Fiction",
     "animated": "Animation", "anime": "Animation",
@@ -63,8 +67,8 @@ _CONCEPT_SYNONYMS = {
     # concept node, so apply_negations cannot hard-exclude it. We do NOT fake a proxy (e.g. violent→Horror would
     # over-suppress non-violent horror and miss violent thrillers/war). Such negations conservatively no-op.
     "docs": "Documentary", "documentaries": "Documentary",
-    "puzzle": "Puzzle & Trivia", "point and click": "Point-and-click",
-    "reality tv": "Reality / Unscripted", "reality": "Reality / Unscripted",
+    "puzzle": "Puzzle", "point and click": "Point-and-click",
+    "reality tv": "Reality", "reality": "Reality",
     "children": "Kids", "kids'": "Kids",
 }
 
@@ -207,8 +211,8 @@ def graph_similar(seed_entity: str, vertical: Optional[str] = None, top_k: int =
 
 
 def _date_payload(date_from_ts, date_to_ts) -> dict:
-    """Recency: pass UTC epoch bounds to the vector search so it range-filters `release_date_ts`
-    natively at search time (payload range filter). Empty when no window → no filter."""
+    """Recency: pass UTC epoch bounds to the vector search so it range-filters `release_date_ts` natively
+    at search time (in-process _vec_retrieve). Empty when no window → no filter → non-recency unchanged."""
     d = {}
     if date_from_ts is not None:
         d["date_from_ts"] = date_from_ts
@@ -241,6 +245,14 @@ def vector_constrain(semantic_core: str, vertical: Optional[str] = None, top_n: 
         data = _post(f"{VECTOR}/api/retrieve", {"phrase": phrase, "vertical": vert, "top_k": recall_k, **dp})
         return [_item(r.get("entity_id"), r["name"], r["vertical"], r.get("score"),
                       f"wide recall '{semantic_core}' (cosine {(r.get('score') or 0.0):.3f})", "vector(wide)")
+                for r in data.get("results", [])]
+    # DATED queries MUST use /api/retrieve — the ONLY in-process path that range-filters release_date_ts
+    # (the /api/query NLU has no date parameter). Non-dated queries keep the full /api/query pipeline
+    # untouched, so every non-recency query is identical to the pre-port behaviour.
+    if dp:
+        data = _post(f"{VECTOR}/api/retrieve", {"phrase": phrase, "vertical": vert, "top_k": top_n, **dp})
+        return [_item(r.get("entity_id"), r["name"], r["vertical"], r.get("score"),
+                      f"semantic match '{semantic_core}' (recency-filtered)", "vector(retrieve-dated)")
                 for r in data.get("results", [])]
     # B1 (query-mangling fix): embed the POSITIVE PHRASE verbatim — never concatenate the pluralised
     # vertical word into the query text ("a movie to watch tonight" must NOT become "…tonight movies").
@@ -327,7 +339,13 @@ def _known_concepts() -> Dict[str, str]:
     if _concept_vocab is None:
         try:
             data = _get(f"{GRAPH}/graph/concepts", {})
-            _concept_vocab = {c["key"].lower(): c["name"] for c in data.get("concepts", [])}
+            # Map key -> display name, FALLING BACK to the key when name is null. On the re-keyed graph
+            # (neo4j 2026.05 @ :7690) Concept nodes carry only `key` (name is NULL), so without this
+            # fallback resolve_concepts would return None for every graph-recognised concept — which then
+            # crashes the assembler's `" ".join(hard_concepts)`. The value only needs to re-lowercase to
+            # the key (which is what the graph matches on), so the key itself is a correct display value.
+            _concept_vocab = {c["key"].lower(): (c.get("name") or c["key"])
+                              for c in data.get("concepts", [])}
         except Exception:
             _concept_vocab = {}
     return _concept_vocab
@@ -599,7 +617,7 @@ def rerank_cross_encoder(query: str, items: List[Item], top_k: int = 10, pool: i
 
 if __name__ == "__main__":
     s = graph_constrain({"vertical": "game", "concepts": ["horror"],
-                         "developer_relation": {"also_made": "Role-Playing"}})
+                         "developer_relation": {"also_made": "Role-playing (RPG)"}})   # new-graph vocab
     print(f"graph_constrain(multi-hop) -> {len(s)} items; sample:")
     for it in s[:3]:
         print("  ", json.dumps(it, ensure_ascii=False))

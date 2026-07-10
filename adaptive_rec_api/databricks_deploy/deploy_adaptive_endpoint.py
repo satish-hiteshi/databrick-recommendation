@@ -15,6 +15,23 @@
 # MAGIC if OTLP). **Do NOT `%pip install mlflow`** — the runtime's MLflow is integrated.
 
 # COMMAND ----------
+
+# Cluster deps for REGISTRATION-TIME validation: after logging, MLflow loads the model IN-PROCESS on this
+# job cluster, importing the engine (neo4j / databricks-sql / pyarrow / fastapi ...). The SERVING container
+# installs from serving/requirements.txt — this cell only covers the job cluster (clean clusters lack these,
+# so running this notebook failed with a missing-dependency error without it). mlflow deliberately NOT
+# installed (runtime-integrated); anyio pinned <4 to avoid the jupyter-server resolver conflict.
+# MAGIC %pip install -q "anyio<4" numpy pandas pyarrow fastapi "pydantic>=2" databricks-sql-connector opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+
+# COMMAND ----------
+# GUARDED restart: in notebook JOBS a restart re-executes the whole notebook, so restart ONLY when a dep is
+# actually missing (post-restart everything imports -> no-op; avoids double registration).
+import importlib.util
+if any(importlib.util.find_spec(m) is None for m in ("databricks.sql", "pyarrow", "fastapi")):
+    dbutils.library.restartPython()
+
+# COMMAND ----------
+
 # ===================== 0. AUTO-DERIVE repo location + workspace host =====================
 import os
 HOST = "https://" + spark.conf.get("spark.databricks.workspaceUrl")

@@ -84,6 +84,32 @@ class CsvFollowSource(FollowSource):
         return set(self._load().get(int(follow_user_id), set()))
 
 
+class LiveFollowSource(FollowSource):
+    """Deploy seam — queries Silver `public_property_followers` (WHERE deleted_at IS NULL) via an injected
+    `query_fn(sql) -> list[dict]` (a databricks-sql-connector query in serving; no direct dev connection).
+    Vendored VERBATIM from endpoint_3 follow_source.LiveFollowSource so E4 stays standalone. Same table +
+    schema E2's LiveDataSource reads (`<catalog>.feedspostgres.public_property_followers`)."""
+
+    def __init__(self, query_fn, catalog: str = "stg_feeds_silver", pg_schema: str = "feedspostgres"):
+        self._q = query_fn
+        self._pg = f"{catalog}.{pg_schema}"
+
+    def active_followed_property_ids(self, follow_user_id: int) -> Set[int]:
+        try:
+            # user_id often lands NULL in the typed column (ingestion bug) with the real value in
+            # _rescued_data JSON — match on COALESCE(typed, rescued), else a raw `user_id = N` misses
+            # every rescued row and the user reads as following nothing (mirrors E2's LiveDataSource).
+            rows = self._q(
+                f"SELECT property_id FROM {self._pg}.public_property_followers "
+                f"WHERE COALESCE(CAST(user_id AS BIGINT), "
+                f"CAST(get_json_object(_rescued_data, '$.user_id') AS BIGINT)) = {int(follow_user_id)} "
+                f"AND deleted_at IS NULL AND property_id IS NOT NULL")
+        except Exception as e:  # never 500 the feed on a follows read failure — degrade to no follows
+            print(f"[follow_source] live follows read failed for user {follow_user_id}: {str(e)[:120]}", flush=True)
+            return set()
+        return {int(r["property_id"]) for r in rows if r.get("property_id") is not None}
+
+
 # ═══════════════════════════════════════════════════════════════════════════════════════════════════
 # Vendored from endpoint_3_home_feed/.../graph_moments.py (class GraphMoments) to make E4 standalone
 # (code copy, no data). Only the read-only context-manager lifecycle SearchBridge needs is copied.

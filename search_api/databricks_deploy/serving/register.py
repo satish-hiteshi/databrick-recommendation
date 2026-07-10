@@ -3,8 +3,6 @@
 models-from-code: model.py is the pyfunc; code_paths bundle:
   • search_api/                the E4 engine package (search_api/src — bridge/store/thematic/embed/
                                follows/ranking/…; store+follows have env-gated Silver live paths)
-  • _e3/                       vendored E3 (home_feed) — the reused bridge/vectors/follow_source
-  • _e2/                       vendored E2 (discovery_api/src {config,timeutil}) for the reuse seam
   • vector/data_v2/<parquet>   the Qwen 44k doc-vector parquet, staged from a Volume (thematic reads it)
 
 E4 is SELF-CONTAINED at serve time — no E1/E2/E3 HTTP substrate. store + follows read Silver via the
@@ -77,10 +75,6 @@ def _stage():
     # engine trees (as-is)
     shutil.copytree(os.path.join(_E4_ROOT, "search_api"), os.path.join(s, "search_api"),
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    shutil.copytree(os.path.join(_E4_ROOT, "_e3"), os.path.join(s, "_e3"),
-                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    shutil.copytree(os.path.join(_E4_ROOT, "_e2"), os.path.join(s, "_e2"),
-                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
     # Qwen parquet staged from a Volume -> vector/data_v2 (model._bootstrap sets SEARCH_VECTOR_PARQUET to it)
     vec = os.path.join(s, "vector", "data_v2")
@@ -96,8 +90,7 @@ def main():
     mlflow.set_registry_uri("databricks-uc")
     s = _stage()
     try:
-        code_paths = [os.path.join(s, "search_api"), os.path.join(s, "_e3"),
-                      os.path.join(s, "_e2"), os.path.join(s, "vector")]
+        code_paths = [os.path.join(s, "search_api"), os.path.join(s, "vector")]
         if os.path.isfile(os.path.join(s, "otel_setup.py")):
             code_paths.append(os.path.join(s, "otel_setup.py"))
         with mlflow.start_run(run_name="search-e4"):

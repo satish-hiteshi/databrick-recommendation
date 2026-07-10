@@ -41,11 +41,11 @@ class FollowGate:
         self._backend = "csv:public_property_followers"
         try:
             if _LIVE and _QUERY_FN is not None:             # deploy: Silver public_property_followers
-                from .reuse import LiveFollowSource
+                from ._vendored import LiveFollowSource
                 self._src = LiveFollowSource(_QUERY_FN, catalog=_SILVER_CAT)
                 self._backend = "silver:public_property_followers"
             else:
-                from .reuse import CsvFollowSource
+                from ._vendored import CsvFollowSource
                 self._src = CsvFollowSource(config.FOLLOWERS_CSV)
         except Exception as e:                              # pragma: no cover - defensive
             self._error = f"{type(e).__name__}: {e}"

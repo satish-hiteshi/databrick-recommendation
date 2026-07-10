@@ -7,7 +7,8 @@ Wraps the E4 engine (search_api/src) as-is. E4 is SELF-CONTAINED at serve time �
   • thematic ← the Qwen doc-vector parquet (pyarrow matmul), staged from a Volume
   • embed    ← the Qwen query-embed serving endpoint (httpx; QWEN_EMBED_ENDPOINT + DATABRICKS_TOKEN)
   • follows  ← Silver `public_property_followers` via LiveFollowSource (same injected query_fn)
-It reuses E3 (`home_feed` bridge/vectors/follows) + E2 (`timeutil`), vendored under _e3/ and _e2/.
+STANDALONE — the engine (search_api/src) imports zero symbols from other endpoints (follows/bridge/
+vectors are vendored in search_api/src/_vendored.py). No cross-endpoint vendored trees on the path.
 predict() maps {query,user_id,mode,verticals,…} records -> the UC4/UC7 predictions[] envelope.
 
 Registered as a NEW UC model (e.g. stg_feeds_silver.ml.search-staging), served at its OWN endpoint.
@@ -38,7 +39,6 @@ _ENV = {
 def _bootstrap():
     """Find the bundled packages + the staged Qwen parquet in the artifact and wire them up:
       • put the `search_api` package parent on sys.path (so `import search_api.src.*` resolves),
-      • put `_e3/` and `_e2/` on sys.path (so `import home_feed.src.*` / `discovery_api.src.*` resolve),
       • point SEARCH_VECTOR_PARQUET at the staged parquet (thematic index reads config.VECTOR_PARQUET).
     MLflow normally adds the code dir to sys.path itself; this is a belt-and-suspenders walk."""
     here = os.path.dirname(os.path.abspath(__file__))
@@ -46,8 +46,6 @@ def _bootstrap():
     for _ in range(6):
         root = os.path.dirname(root)
     pkg_parent = None
-    e3_root = None
-    e2_root = None
     parquet = None
     for dp, dns, fns in os.walk(root):
         if dp[len(root):].count(os.sep) > 8:
@@ -57,10 +55,6 @@ def _bootstrap():
         if pkg_parent is None and base == "search_api" \
            and os.path.isfile(os.path.join(dp, "src", "engine.py")):
             pkg_parent = os.path.dirname(dp)
-        if e3_root is None and base == "_e3" and os.path.isdir(os.path.join(dp, "home_feed")):
-            e3_root = dp
-        if e2_root is None and base == "_e2" and os.path.isdir(os.path.join(dp, "discovery_api")):
-            e2_root = dp
         if parquet is None:
             for fn in fns:
                 if fn.endswith(".parquet"):
@@ -68,7 +62,7 @@ def _bootstrap():
                     break
     if pkg_parent is None:
         raise ImportError(f"search bundle: search_api package not found under {root}")
-    for p in (pkg_parent, e3_root, e2_root):
+    for p in (pkg_parent,):
         if p and p not in sys.path:
             sys.path.insert(0, p)
     if parquet:
